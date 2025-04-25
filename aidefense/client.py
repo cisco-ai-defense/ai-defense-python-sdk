@@ -14,6 +14,7 @@ REQUEST_ID_HEADER = "x-aidefense-request-id"
 
 from abc import ABC, abstractmethod
 
+
 class BaseClient(ABC):
     """
     Base client for all API interactions.
@@ -67,7 +68,9 @@ class BaseClient(ABC):
         headers: Dict = None,
         json_data: Dict = None,
     ) -> Dict:
-        self.config.logger.debug(f"request called | method: {method}, url: {url}, request_id: {request_id}, headers: {headers}, json_data: {json_data}")
+        self.config.logger.debug(
+            f"request called | method: {method}, url: {url}, request_id: {request_id}, headers: {headers}, json_data: {json_data}"
+        )
         """Make an HTTP request with error handling.
 
         Args:
@@ -115,8 +118,12 @@ class BaseClient(ABC):
             self.config.logger.error(f"Request failed: {e}")
             raise
 
-    def _handle_error_response(self, response: requests.Response, request_id: str = None) -> Dict:
-        self.config.logger.debug(f"_handle_error_response called | status_code: {response.status_code}, response: {response.text}")
+    def _handle_error_response(
+        self, response: requests.Response, request_id: str = None
+    ) -> Dict:
+        self.config.logger.debug(
+            f"_handle_error_response called | status_code: {response.status_code}, response: {response.text}"
+        )
         """Handle error responses from the API.
 
         Args:
@@ -148,5 +155,5 @@ class BaseClient(ABC):
             raise ApiError(
                 f"API error {response.status_code}: {error_message}",
                 response.status_code,
-                request_id=request_id
+                request_id=request_id,
             )

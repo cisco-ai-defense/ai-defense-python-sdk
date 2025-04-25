@@ -35,6 +35,7 @@ class Config:
         retry_config (dict): Retry configuration.
         connection_pool (requests.adapters.HTTPAdapter): HTTP connection pool adapter.
     """
+
     _instance = None
     _lock = threading.Lock()
 
@@ -89,8 +90,10 @@ class Config:
             if logger_params is None:
                 logger_params = {}
             log_name = logger_params.get("name", "aidefense_sdk")
-            log_level = logger_params.get("level", logging.DEBUG)
-            log_format = logger_params.get("format", "%(asctime)s %(levelname)s %(name)s: %(message)s")
+            log_level = logger_params.get("level", logging.INFO)
+            log_format = logger_params.get(
+                "format", "%(asctime)s %(levelname)s %(name)s: %(message)s"
+            )
             self.logger = logging.getLogger(log_name)
             if not self.logger.handlers:
                 handler = logging.StreamHandler()
@@ -108,28 +111,32 @@ class Config:
         self._retry_obj = Retry(
             total=self.retry_config.get("total", 3),
             backoff_factor=self.retry_config.get("backoff_factor", 0.5),
-            status_forcelist=self.retry_config.get("status_forcelist", [429, 500, 502, 503, 504]),
+            status_forcelist=self.retry_config.get(
+                "status_forcelist", [429, 500, 502, 503, 504]
+            ),
             allowed_methods=self.retry_config.get("allowed_methods", None),
             raise_on_status=self.retry_config.get("raise_on_status", False),
-            respect_retry_after_header=self.retry_config.get("respect_retry_after_header", True),
+            respect_retry_after_header=self.retry_config.get(
+                "respect_retry_after_header", True
+            ),
         )
 
         # --- Connection Pool ---
         if connection_pool:
             if not isinstance(connection_pool, HTTPAdapter):
-                raise TypeError("connection_pool must be an instance of requests.adapters.HTTPAdapter")
+                raise TypeError(
+                    "connection_pool must be an instance of requests.adapters.HTTPAdapter"
+                )
             self.connection_pool = connection_pool
         elif pool_config:
             self.connection_pool = HTTPAdapter(
                 pool_connections=pool_config.get("pool_connections", 10),
                 pool_maxsize=pool_config.get("pool_maxsize", 20),
-                max_retries=self._retry_obj
+                max_retries=self._retry_obj,
             )
         else:
             self.connection_pool = HTTPAdapter(
-                pool_connections=10,
-                pool_maxsize=20,
-                max_retries=self._retry_obj
+                pool_connections=10, pool_maxsize=20, max_retries=self._retry_obj
             )
 
     def get_runtime_endpoint_url(self, region: str) -> str:

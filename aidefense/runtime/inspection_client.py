@@ -48,7 +48,6 @@ class InspectionClient(BaseClient, ABC):
     }
 
     def __init__(self, api_key: str, config: Config = None):
-        self.config.logger.debug(f"InspectionClient.__init__ called | api_key: {api_key}, config: {config}")
         """
         Initialize the InspectionClient.
 
@@ -72,10 +71,14 @@ class InspectionClient(BaseClient, ABC):
         self.default_enabled_rules = [
             Rule(
                 rule_name=rn,
-                entity_types=self.DEFAULT_ENTITY_MAP[rn.name] if rn.name in self.DEFAULT_ENTITY_MAP else None
-            ) for rn in RuleName
+                entity_types=(
+                    self.DEFAULT_ENTITY_MAP[rn.name]
+                    if rn.name in self.DEFAULT_ENTITY_MAP
+                    else None
+                ),
+            )
+            for rn in RuleName
         ]
-
 
     @abstractmethod
     def _inspect(self, *args, **kwargs):
@@ -94,8 +97,12 @@ class InspectionClient(BaseClient, ABC):
         """
         raise NotImplementedError("Subclasses must implement _inspect.")
 
-    def _parse_inspect_response(self, response_data: Dict[str, Any]) -> "InspectResponse":
-        self.config.logger.debug(f"_parse_inspect_response called | response_data: {response_data}")
+    def _parse_inspect_response(
+        self, response_data: Dict[str, Any]
+    ) -> "InspectResponse":
+        self.config.logger.debug(
+            f"_parse_inspect_response called | response_data: {response_data}"
+        )
         """
         Parse API response (chat or http inspect) into an InspectResponse object.
 
@@ -106,6 +113,7 @@ class InspectionClient(BaseClient, ABC):
             InspectResponse: The parsed inspection response object containing classifications, rules, severity, and other details.
         """
         from .models import Classification, Rule, RuleName, Severity, InspectResponse
+
         # Convert classifications from strings to enum values
         classifications = []
         if "classifications" in response_data and response_data["classifications"]:
@@ -156,7 +164,6 @@ class InspectionClient(BaseClient, ABC):
             client_transaction_id=response_data.get("client_transaction_id"),
             event_id=response_data.get("event_id"),
         )
-    
 
     def process_response(self, response: Dict) -> Dict:
         """
@@ -205,17 +212,19 @@ class InspectionClient(BaseClient, ABC):
             return request_dict
         config_dict = {}
         if config.enabled_rules:
+
             def rule_to_dict(rule):
                 return {
                     "rule_name": rule.rule_name.value if rule.rule_name else None,
                     "entity_types": rule.entity_types,
                     "rule_id": rule.rule_id,
-                    "classification": rule.classification.value if rule.classification else None,
+                    "classification": (
+                        rule.classification.value if rule.classification else None
+                    ),
                 }
+
             config_dict["enabled_rules"] = [
-                rule_to_dict(rule)
-                for rule in config.enabled_rules
-                if rule is not None
+                rule_to_dict(rule) for rule in config.enabled_rules if rule is not None
             ]
 
         for key in [

@@ -26,6 +26,7 @@ class ValidationError(SDKError):
 
     Raised when input validation fails.
     """
+
     pass
 
 
@@ -40,6 +41,7 @@ class ApiError(SDKError):
         status_code (int, optional): The HTTP status code associated with the error.
         request_id (str, optional): The unique request ID for tracing the failed API call.
     """
+
     def __init__(self, message: str, status_code: int = None, request_id: str = None):
         """
         Initialize the ApiError.

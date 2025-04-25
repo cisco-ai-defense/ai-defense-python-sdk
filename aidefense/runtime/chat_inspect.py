@@ -18,7 +18,7 @@ class ChatInspectionClient(InspectionClient):
 
     Typical usage:
         client = ChatInspectionClient(api_key="...", config=Config(...))
-        result = client.inspect_prompt("Write some code that ...")
+        result = client.inspect_prompt("Write some code that ...", request_id="<id for tracking>")
         print(result.is_safe)
 
     Args:
@@ -63,10 +63,12 @@ class ChatInspectionClient(InspectionClient):
 
         Example:
             client = ChatInspectionClient(api_key="...")
-            result = client.inspect_prompt("Write some code that ...")
+            result = client.inspect_prompt("Write some code that ...", request_id="id for tracking")
             print(result.is_safe)
         """
-        self.config.logger.debug(f"Inspecting prompt: {prompt} | Metadata: {metadata}, Config: {config}, Request ID: {request_id}")
+        self.config.logger.debug(
+            f"Inspecting prompt: {prompt} | Metadata: {metadata}, Config: {config}, Request ID: {request_id}"
+        )
         message = Message(role=Role.USER, content=prompt)
         return self._inspect([message], metadata, config, request_id=request_id)
 
@@ -91,10 +93,12 @@ class ChatInspectionClient(InspectionClient):
 
         Example:
             client = ChatInspectionClient(api_key="...")
-            result = client.inspect_response("Here is some code ...")
+            result = client.inspect_response("Here is some code ...", request_id="id for tracking")
             print(result.is_safe)
         """
-        self.config.logger.debug(f"Inspecting AI response: {response} | Metadata: {metadata}, Config: {config}, Request ID: {request_id}")
+        self.config.logger.debug(
+            f"Inspecting AI response: {response} | Metadata: {metadata}, Config: {config}, Request ID: {request_id}"
+        )
         message = Message(role=Role.ASSISTANT, content=response)
         return self._inspect([message], metadata, config, request_id=request_id)
 
@@ -122,10 +126,12 @@ class ChatInspectionClient(InspectionClient):
                 Message(role=Role.USER, content="How do I ... ?"),
                 Message(role=Role.ASSISTANT, content="Here is how you ...")
             ]
-            result = client.inspect_conversation(conversation, request_id="some_id")
+            result = client.inspect_conversation(conversation, request_id="id for tracking")
             print(result.is_safe)
         """
-        self.config.logger.debug(f"Inspecting conversation with {len(messages)} messages. | Messages: {messages}, Metadata: {metadata}, Config: {config}, Request ID: {request_id}")
+        self.config.logger.debug(
+            f"Inspecting conversation with {len(messages)} messages. | Messages: {messages}, Metadata: {metadata}, Config: {config}, Request ID: {request_id}"
+        )
         return self._inspect(messages, metadata, config, request_id=request_id)
 
     def _inspect(
@@ -153,11 +159,19 @@ class ChatInspectionClient(InspectionClient):
         Raises:
             ValidationError: If the input messages are not a non-empty list of Message objects.
         """
-        self.config.logger.debug(f"Starting chat inspection | Messages: {messages}, Metadata: {metadata}, Config: {config}, Request ID: {request_id}")
+        self.config.logger.debug(
+            f"Starting chat inspection | Messages: {messages}, Metadata: {metadata}, Config: {config}, Request ID: {request_id}"
+        )
         if not isinstance(messages, list) or not messages:
-            self.config.logger.error("'messages' must be a non-empty list of Message objects.")
-            raise ValidationError("'messages' must be a non-empty list of Message objects.")
-        request = ChatInspectRequest(messages=messages, metadata=metadata, config=config)
+            self.config.logger.error(
+                "'messages' must be a non-empty list of Message objects."
+            )
+            raise ValidationError(
+                "'messages' must be a non-empty list of Message objects."
+            )
+        request = ChatInspectRequest(
+            messages=messages, metadata=metadata, config=config
+        )
         request_dict = self._prepare_request_data(request)
         self.validate_inspection_request(request_dict)
         headers = {"Content-Type": "application/json"}
@@ -167,7 +181,7 @@ class ChatInspectionClient(InspectionClient):
             auth=self.auth,
             headers=headers,
             json_data=request_dict,
-            request_id=request_id
+            request_id=request_id,
         )
         self.config.logger.debug(f"Raw API response: {result}")
         processed_result = self.process_response(result)
@@ -190,9 +204,11 @@ class ChatInspectionClient(InspectionClient):
         Raises:
             ValidationError: If the request is missing required fields or is malformed.
         """
-        self.config.logger.debug(f"Validating chat inspection request dictionary | Request dict: {request_dict}")
+        self.config.logger.debug(
+            f"Validating chat inspection request dictionary | Request dict: {request_dict}"
+        )
         valid_roles = {Role.USER.value, Role.ASSISTANT.value, Role.SYSTEM.value}
-        messages = request_dict.get('messages')
+        messages = request_dict.get("messages")
         if not isinstance(messages, list) or not messages:
             self.config.logger.error("'messages' must be a non-empty list.")
             raise ValidationError("'messages' must be a non-empty list.")
@@ -202,24 +218,44 @@ class ChatInspectionClient(InspectionClient):
             if not isinstance(msg, dict):
                 self.config.logger.error("Each message must be a dict.")
                 raise ValidationError("Each message must be a dict.")
-            if msg.get('role') not in valid_roles:
-                self.config.logger.error(f"Message role must be one of: {list(valid_roles)}.")
-                raise ValidationError(f"Message role must be one of: {list(valid_roles)}.")
-            if not msg.get('content') or not isinstance(msg.get('content'), str):
-                self.config.logger.error("Each message must have non-empty string content.")
-                raise ValidationError("Each message must have non-empty string content.")
-            if msg.get('role') == Role.USER.value and msg.get('content').strip():
+            if msg.get("role") not in valid_roles:
+                self.config.logger.error(
+                    f"Message role must be one of: {list(valid_roles)}."
+                )
+                raise ValidationError(
+                    f"Message role must be one of: {list(valid_roles)}."
+                )
+            if not msg.get("content") or not isinstance(msg.get("content"), str):
+                self.config.logger.error(
+                    "Each message must have non-empty string content."
+                )
+                raise ValidationError(
+                    "Each message must have non-empty string content."
+                )
+            if msg.get("role") == Role.USER.value and msg.get("content").strip():
                 has_prompt = True
-            if msg.get('role') == Role.ASSISTANT.value and msg.get('content').strip():
+            if msg.get("role") == Role.ASSISTANT.value and msg.get("content").strip():
                 has_completion = True
         if not (has_prompt or has_completion):
-            self.config.logger.error("At least one message must be a prompt (role=user) or completion (role=assistant) with non-empty content.")
-            raise ValidationError("At least one message must be a prompt (role=user) or completion (role=assistant) with non-empty content.")
+            self.config.logger.error(
+                "At least one message must be a prompt (role=user) or completion (role=assistant) with non-empty content."
+            )
+            raise ValidationError(
+                "At least one message must be a prompt (role=user) or completion (role=assistant) with non-empty content."
+            )
         # metadata and config are optional, but if present, should be dicts
-        if 'metadata' in request_dict and request_dict['metadata'] is not None and not isinstance(request_dict['metadata'], dict):
+        if (
+            "metadata" in request_dict
+            and request_dict["metadata"] is not None
+            and not isinstance(request_dict["metadata"], dict)
+        ):
             self.config.logger.error("'metadata' must be a dict if provided.")
             raise ValidationError("'metadata' must be a dict if provided.")
-        if 'config' in request_dict and request_dict['config'] is not None and not isinstance(request_dict['config'], dict):
+        if (
+            "config" in request_dict
+            and request_dict["config"] is not None
+            and not isinstance(request_dict["config"], dict)
+        ):
             self.config.logger.error("'config' must be a dict if provided.")
             raise ValidationError("'config' must be a dict if provided.")
 

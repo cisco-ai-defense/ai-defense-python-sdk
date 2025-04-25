@@ -10,19 +10,16 @@ PII_ENTITIES = [
     "Phone Number",
     "Driver's License Number (US)",
     "Passport Number (US)",
-    "Social Security Number (SSN) (US)"
+    "Social Security Number (SSN) (US)",
 ]
 PCI_ENTITIES = [
     "Individual Taxpayer Identification Number (ITIN) (US)",
     "International Bank Account Number (IBAN)",
     "American Bankers Association (ABA) Routing Number (US)",
     "Credit Card Number",
-    "Bank Account Number (US)"
+    "Bank Account Number (US)",
 ]
-PHI_ENTITIES = [
-    "Medical License Number (US)",
-    "National Health Service (NHS) Number"
-]
+PHI_ENTITIES = ["Medical License Number (US)", "National Health Service (NHS) Number"]
 
 
 class Classification(str, Enum):
@@ -133,8 +130,6 @@ class InspectionConfig:
     integration_profile_version: Optional[str] = None
     integration_tenant_id: Optional[str] = None
     integration_type: Optional[str] = None
-
-
 
 
 @dataclass

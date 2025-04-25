@@ -3,10 +3,12 @@ from typing import List, Optional
 from enum import Enum
 from .models import InspectionConfig, Metadata
 
+
 class Role(str, Enum):
     USER = "user"
     ASSISTANT = "assistant"
     SYSTEM = "system"
+
 
 @dataclass
 class Message:
@@ -17,8 +19,10 @@ class Message:
         role (Role): The role of the message sender (user, assistant, or system).
         content (str): The text content of the message.
     """
+
     role: Role
     content: str
+
 
 @dataclass
 class ChatInspectRequest:
@@ -30,6 +34,7 @@ class ChatInspectRequest:
         metadata (Optional[Metadata]): Optional metadata about the request (user, app, etc.).
         config (Optional[InspectionConfig]): Optional inspection configuration for the request.
     """
+
     messages: List[Message]
     metadata: Optional[Metadata] = None
     config: Optional[InspectionConfig] = None
