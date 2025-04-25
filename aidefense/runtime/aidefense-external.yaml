@@ -1,0 +1,354 @@
+openapi: '3.0.0'
+info:
+  version: '1.0.0'
+  title: 'AI Defense APIs'
+  description: Inspect prompts/completions, HTTP requests/responses or JSON body of generative AI applications
+servers:
+  - url: https://us.api.inspect.aidefense.security.cisco.com
+tags:
+  - name: Chat Inspection
+    description: Inspect conversations
+  - name: HTTP Inspection
+    description: Inspect HTTP requests and responses
+paths:
+  /api/v1/inspect/chat:
+    parameters:
+      - $ref: '#/components/parameters/X-Cisco-AI-Defense-API-Key'
+    post:
+      tags:
+        - Chat Inspection
+      summary: Inspect conversations
+      description: The Chat Inspection API is designed to inspect the AI chat conversations covering prompts and responses for security, safety, and privacy concerns.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatInspectRequest'
+      responses:
+        '200':
+          description: The inspection results from inspecting a chat conversation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InspectResponse'
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        500:
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/inspect/http:
+    parameters:
+      - $ref: '#/components/parameters/X-Cisco-AI-Defense-API-Key'
+    post:
+      tags:
+        - HTTP Inspection
+      summary: Inspect an HTTP request or response from a generative AI application
+      description: The HTTP Inspect API allows network firewall products to submit GenAI-related HTTP requests and responses to AI Defense for inspection.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HttpInspectRequest'
+      responses:
+        '200':
+          description: The inspection results from inspecting an HTTP request or response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InspectResponse'
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        500:
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  parameters:
+    X-Cisco-AI-Defense-API-Key:
+      name: X-Cisco-AI-Defense-API-Key
+      in: header
+      required: true
+      schema:
+        type: string
+      description: The API key for AI Defense. This key is used to authenticate the API request. This key would be generated from the AI Defense UI.
+  schemas:
+    ChatInspectRequest:
+      type: object
+      required:
+        - messages
+      description: The request to inspect a chat conversation
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/MessageObject'
+        metadata:
+          $ref: '#/components/schemas/MetadataObject'
+        config:
+          $ref: '#/components/schemas/ConfigObject'
+    HttpInspectRequest:
+      type: object
+      required:
+        - http_req
+      description: The request to inspect a HTTP request or HTTP response
+      properties:
+        http_req:
+          $ref: '#/components/schemas/HttpReqObject'
+        http_res:
+          $ref: '#/components/schemas/HttpResObject'
+        http_meta:
+          $ref: '#/components/schemas/HttpMetaObject'
+        metadata:
+          $ref: '#/components/schemas/MetadataObject'
+        config:
+          $ref: '#/components/schemas/ConfigObject'
+    classification:
+        type: string
+        enum:
+          - SECURITY_VIOLATION
+          - PRIVACY_VIOLATION
+          - SAFETY_VIOLATION
+          - RELEVANCE_VIOLATION
+    InspectResponse:
+      type: object
+      required:
+        - classification
+      properties:
+        classifications:
+          type: array
+          description: The classification of the prompt or completion
+          items:
+            $ref: '#/components/schemas/classification'
+        is_safe:
+          type: boolean
+          description: Whether the prompt or completion is safe or unsafe
+        severity:
+          type: string
+          description: The severity of the prompt or completion
+          enum:
+            - NONE_SEVERITY
+            - LOW
+            - MEDIUM
+            - HIGH
+        rules:
+          type: array
+          description: The rules that the prompt or completion violates
+          items:
+            $ref: '#/components/schemas/RuleObject'
+        attack_technique:
+          type: string
+          description: The attack techniques that the prompt or completion falls under
+        explanation:
+          type: string
+          description: The explanation of the attack technique and the rule
+        client_transaction_id:
+            type: string
+            description: The client transaction ID received in the request if any
+        event_id:
+            type: string
+            description: The event ID if any generated by AI Defense, post inspection if there is a violation
+    MessageObject:
+      type: object
+      description: The message to inspect
+      properties:
+        role:
+          type: string
+          description: The role to be assumed for the prompt
+        content:
+          type: string
+          description: The content of the prompt
+      required:
+        - role
+        - content
+
+    MetadataObject:
+      type: object
+      description: Additional information, such as user identity and application identity
+      properties:
+        user:
+          type: string
+          description: Notion of user identity as maybe supplied by the caller
+        created_at:
+          type: string
+          format: date-time
+          description: The time the prompt or completion was created
+        src_app:
+          type: string
+          description: Notion of source application identity as maybe supplied by the caller
+        dst_app:
+          type: string
+          description: Notion of destination application identity as maybe supplied by the caller
+        sni:
+          type: string
+          description: Server name indication from TLS inspection as maybe supplied by the caller
+        dst_ip:
+          type: string
+          description: Destination IP Address, as maybe supplied by the caller
+        src_ip:
+          type: string
+          description: Source IP address, as maybe supplied by the caller
+        dst_host:
+          type: string
+          description: Destination host
+        user_agent:
+          type: string
+          description: User agent string if extracted
+        client_transaction_id:
+          type: string
+          description: The client transaction ID to be returned in the inspection response for correlation by the client side
+    ConfigObject:
+      type: object
+      description: The configuration for inspection
+      properties:
+        enabled_rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/RuleObject'
+          description: A list of rules to enable for inspection. Either of enabled_rules or integration_profile_id, integration_profile_version, integration_tenant_id, integration_type must be provided.
+        integration_profile_id:
+          type: string
+          description: The unique identifier corresponding to the integration profile to be applied for inspection. Either of enabled_rules or integration_profile_id, integration_profile_version, integration_tenant_id, integration_type must be provided.
+        integration_profile_version:
+            type: string
+            description: The version of the integration profile to be applied for inspection. Either of enabled_rules or integration_profile_id, integration_profile_version, integration_tenant_id, integration_type must be provided.
+        integration_tenant_id:
+            type: string
+            description: The tenant ID of the integration profile to be applied for inspection. Either of enabled_rules or integration_profile_id, integration_profile_version, integration_tenant_id, integration_type must be provided.
+        integration_type:
+            type: string
+            description: The type of integration profile to be applied for inspection. Either of enabled_rules or integration_profile_id, integration_profile_version, integration_tenant_id, integration_type must be provided.
+    RuleObject:
+      type: object
+      description: The available rule names in AI Defense. One of rule_name or rule_id must be provided.
+      properties:
+        rule_name:
+          type: string
+          description: The canonical name of the rule
+          enum:
+            - Code Detection
+            - Harassment
+            - Hate Speech
+            - PCI
+            - PHI
+            - PII
+            - Prompt Injection
+            - Profanity
+            - Sexual Content & Exploitation
+            - Social Division & Polarization
+            - Violence & Public Safety Threats
+        entity_types:
+          type: array
+          items:
+            type: string
+            description: The entity types of the rule
+        rule_id:
+          type: integer
+          description: The unique identifier corresponding to the rule as defined by the AI Defense product.
+        classification:
+          $ref: '#/components/schemas/classification'
+      required:
+        - rule_name
+    HttpReqObject:
+      type: object
+      description: The HTTP request body
+      required:
+        - body
+      properties:
+        method:
+          type: string
+          description: HTTP method name
+        headers:
+          $ref: '#/components/schemas/HttpHdrObject'
+        body:
+          type: string
+          description: base64 encoded request body, partial or full
+        split:
+          type: boolean
+          description: whether HTTP request body split into chunks. Note, this is not the same as HTTP transfer-encoding
+        last:
+          type: boolean
+          description: whether this is last chunk of the split body.
+    HttpResObject:
+      type: object
+      description: The HTTP response body
+      required:
+        - statusCode
+        - body
+      properties:
+        statusCode:
+          type: integer
+          description: Status code of the response
+        statusString:
+          type: string
+          description: HTTP status string
+        headers:
+          $ref: '#/components/schemas/HttpHdrObject'
+        body:
+          type: string
+          description: base64 encoded response body, partial or full
+        split:
+          type: boolean
+          description: whether HTTP response body split into chunks. Note, this is not the same as HTTP transfer-encoding
+        last:
+          type: boolean
+          description: whether this is last chunk of the split body.
+    HttpMetaObject:
+      type: object
+      required:
+        - url
+      description: Metadata useful to both HTTP request and response
+      properties:
+        url:
+          type: string
+          description: Fully qualified URL of the HTTP request
+        protocol:
+          type: string
+          description: HTTP protocol version
+    HttpHdrObject:
+      type: object
+      description: HTTP headers
+      properties:
+        hdrKvs:
+          type: array
+          items:
+            $ref: '#/components/schemas/HttpHdrKvObject'
+    HttpHdrKvObject:
+      type: object
+      description: HTTP header key value
+      properties:
+        key:
+          type: string
+          description: The header key base64 encoded
+        value:
+          type: string
+          description: The header value base64 encoded
+    Error:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          description: A human readable error message
+          type: string
+  securitySchemes:
+    ApiKey:
+      type: apiKey
+      in: header
+      name: X-Cisco-AI-Defense-API-Key
+security:
+  - ApiKey: [ ]
