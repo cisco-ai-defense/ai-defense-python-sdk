@@ -3,7 +3,7 @@ Utility functions for encoding HTTP bodies and serializing objects for the AI De
 """
 
 import base64
-from typing import Union
+from typing import Union, Any
 from dataclasses import asdict, is_dataclass
 from enum import Enum
 
@@ -29,7 +29,7 @@ def to_base64_bytes(data: Union[str, bytes]) -> str:
         raise ValueError("Input must be str or bytes.")
 
 
-def convert(obj):
+def convert(obj: Any) -> Any:
     """
     Recursively convert dataclasses, enums, and other objects to dicts/values for JSON serialization.
 

@@ -1,5 +1,5 @@
 import base64
-from typing import Dict, Optional, Any, Union
+from typing import Dict, Optional, Any, Union, List
 import requests
 
 from .constants import HTTP_REQ, HTTP_RES, HTTP_META
@@ -83,7 +83,7 @@ class HttpInspectionClient(InspectionClient):
         )
 
         # Validate and encode bodies if necessary
-        def ensure_base64_body(d: Optional[Dict[str, Any]]):
+        def ensure_base64_body(d: Optional[Dict[str, Any]]) -> None:
             if d and d.get("body"):
                 body = d["body"]
                 if isinstance(body, bytes):
@@ -121,7 +121,7 @@ class HttpInspectionClient(InspectionClient):
         Inspect an HTTP request from a popular HTTP library (e.g., requests, aiohttp).
 
         Args:
-            http_request: HTTP request object from a supported library.
+            http_request: HTTP request object from a supported library (e.g., requests.Request, requests.PreparedRequest).
             metadata (Metadata, optional): Additional metadata for inspection.
             config (InspectionConfig, optional): Inspection configuration.
             request_id (str, optional): Unique identifier for the request (usually a UUID) to enable request tracing.
@@ -136,16 +136,16 @@ class HttpInspectionClient(InspectionClient):
         headers = {}
         body = b""
         url = None
-        # Try requests
-        if isinstance(http_request, requests.PreparedRequest):
-            method = http_request.method
-            headers = dict(http_request.headers)
-            body = http_request.body or b""
+        # Support both requests.PreparedRequest and requests.Request
+        if isinstance(http_request, requests.PreparedRequest) or isinstance(http_request, requests.Request):
+            method = getattr(http_request, "method", None)
+            headers = dict(getattr(http_request, "headers", {}))
+            body = getattr(http_request, "body", b"") or getattr(http_request, "data", b"")
             url = getattr(http_request, "url", None)
             if isinstance(body, str):
                 body = body.encode()
         else:
-            raise ValueError("Unsupported HTTP request type: only requests is supported")
+            raise ValueError("Unsupported HTTP request type: only requests.Request and requests.PreparedRequest are supported")
 
         # Fallback for unknown types
         if not method:
@@ -208,7 +208,7 @@ class HttpInspectionClient(InspectionClient):
         url = None
         http_request = None
 
-        # Try requests
+        # Support requests.Response
         if isinstance(http_response, requests.Response):
             status_code = http_response.status_code
             headers = dict(http_response.headers)
@@ -216,15 +216,8 @@ class HttpInspectionClient(InspectionClient):
             url = http_response.url
             http_request = getattr(http_response, "request", None)
 
-        # Try aiohttp
-        # if isinstance(http_response, aiohttp.ClientResponse):
-        #     status_code = http_response.status
-        #     headers = dict(http_response.headers)
-        #     body = http_response._body or b""
-        #     url = str(getattr(http_response, 'url', None))
-        #     http_request = getattr(http_response, 'request_info', None)
-
-        # Build http_res
+        else:
+            raise ValueError("Unsupported HTTP response type: only requests.Response is supported")
 
         body_b64 = to_base64_bytes(body) if body else ""
         hdr_kvs = [self._header_to_kv(k, v) for k, v in (headers or {}).items()]
@@ -236,9 +229,7 @@ class HttpInspectionClient(InspectionClient):
         if http_request is not None:
             method = getattr(http_request, "method", None)
             req_headers = dict(getattr(http_request, "headers", {}))
-            req_body = getattr(http_request, "body", b"") or getattr(
-                http_request, "content", b""
-            )
+            req_body = getattr(http_request, "body", b"") or getattr(http_request, "data", b"") or getattr(http_request, "content", b"")
             if isinstance(req_body, str):
                 req_body = req_body.encode()
             req_body_b64 = base64.b64encode(req_body).decode() if req_body else ""
@@ -373,12 +364,12 @@ class HttpInspectionClient(InspectionClient):
 
     def _inspect(
         self,
-        http_req,
-        http_res,
-        http_meta,
-        metadata,
-        config,
-        entities_map=None,
+        http_req: HttpReqObject,
+        http_res: Optional[HttpResObject],
+        http_meta: HttpMetaObject,
+        metadata: Optional[Metadata] = None,
+        config: Optional[InspectionConfig] = None,
+        entities_map: Optional[Dict[str, List[str]]] = None,
         request_id: Optional[str] = None,
     ) -> InspectResponse:
         """
@@ -449,7 +440,7 @@ class HttpInspectionClient(InspectionClient):
         self.config.logger.debug(f"Prepared request_dict: {request_dict}")
         return request_dict
 
-    def validate_inspection_request(self, request_dict: Dict[str, Any]):
+    def validate_inspection_request(self, request_dict: Dict[str, Any]) -> None:
         """
         Validate both the inspection request dictionary and the config for required structure and fields.
 

@@ -34,7 +34,7 @@ It enables you to detect security, privacy, and safety risks in real time, with 
 ## Features
 
 - **Chat Inspection**: Analyze chat prompts, responses, or full conversations for risks.
-- **HTTP Inspection**: Inspect HTTP requests and responses, including support for `requests` and `aiohttp` libraries.
+- **HTTP Inspection**: Inspect HTTP requests and responses, including support for `requests.Request`, `requests.PreparedRequest`, and `requests.Response` objects.
 - **Strong Input Validation**: Prevent malformed requests and catch errors early.
 - **Flexible Configuration**: Easily customize logging, retry policies, and connection pooling.
 - **Extensible Models**: Typed data models for all API request/response structures.
@@ -160,8 +160,8 @@ http_req = {
 result = client.inspect_http_raw(http_req=http_req)
 print(result.is_safe)
 
-# Inspect a requests.PreparedRequest
-req = requests.Request("GET", "https://example.com").prepare()
+# Inspect a requests.Request or PreparedRequest
+req = requests.Request("GET", "https://example.com").prepare()  # or use requests.Request directly
 result = client.inspect_request_from_http_library(req)
 print(result.is_safe)
 
