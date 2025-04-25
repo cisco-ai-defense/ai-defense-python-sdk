@@ -2,8 +2,6 @@ import base64
 from typing import Dict, Optional, Any, Union
 import requests
 
-# import aiohttp
-
 from .constants import HTTP_REQ, HTTP_RES, HTTP_META
 
 from .inspection_client import InspectionClient
@@ -18,7 +16,7 @@ from .http_models import (
 )
 from .models import Metadata, InspectionConfig, InspectResponse, Rule, RuleName
 from ..config import Config
-from .utils import convert
+from .utils import convert, to_base64_bytes
 
 
 class HttpInspectionClient(InspectionClient):
@@ -29,7 +27,7 @@ class HttpInspectionClient(InspectionClient):
 
     Example:
         client = HttpInspectionClient(api_key="...", config=Config(...))
-        result = client.inspect_http_api(http_req={...})
+        result = client.inspect_http_raw(http_req={...})
         print(result.is_safe)
 
     Args:
@@ -52,7 +50,7 @@ class HttpInspectionClient(InspectionClient):
         super().__init__(api_key, config)
         self.endpoint = f"{self.config.runtime_base_url}/api/v1/inspect/http"
 
-    def inspect_http_api(
+    def inspect_http_raw(
         self,
         http_req: Optional[Dict[str, Any]] = None,
         http_res: Optional[Dict[str, Any]] = None,
@@ -73,58 +71,44 @@ class HttpInspectionClient(InspectionClient):
             config (InspectionConfig, optional): Inspection configuration.
             request_id (str, optional): Unique identifier for the request (usually a UUID) to enable request tracing.
 
-        Returns:
-            InspectResponse: Inspection results as an InspectResponse object.
-        """
-        """
-        Direct interface for HTTP API inspection using raw dicts for http_req, http_res, and http_meta.
-        This method is intended for advanced users who want to interact directly with the HTTP inspection API.
-
-        Args:
-            http_req (dict, optional): HTTP request dictionary.
-            http_res (dict, optional): HTTP response dictionary.
-            http_meta (dict, optional): HTTP metadata dictionary.
-            metadata (Metadata, optional): Additional metadata.
-            config (InspectionConfig, optional): Inspection configuration.
-            request_id (str, optional): Unique identifier for the request (usually a UUID) to enable request tracing.
-
         Note:
             - The 'body' field for both request and response dicts must be a base64-encoded string representing the original bytes.
             - If you have a str, encode it to bytes first, then base64 encode.
+
+        Returns:
+            InspectResponse: Inspection results as an InspectResponse object.
         """
         self.config.logger.debug(
-            f"inspect_http_api called | http_req: {http_req}, http_res: {http_res}, http_meta: {http_meta}, metadata: {metadata}, config: {config}, request_id: {request_id}"
+            f"inspect_http_raw called | http_req: {http_req}, http_res: {http_res}, http_meta: {http_meta}, metadata: {metadata}, config: {config}, request_id: {request_id}"
         )
 
         # Validate and encode bodies if necessary
-        def ensure_base64_body(d):
-            if d and "body" in d:
+        def ensure_base64_body(d: Optional[Dict[str, Any]]):
+            if d and d.get("body"):
                 body = d["body"]
                 if isinstance(body, bytes):
-                    d["body"] = base64.b64encode(body).decode()
+                    d["body"] = to_base64_bytes(body)
                 elif isinstance(body, str):
                     # Heuristic: if not valid base64, treat as raw string and encode
                     try:
                         base64.b64decode(body)
                         # Already base64
                     except Exception:
-                        d["body"] = base64.b64encode(body.encode()).decode()
+                        d["body"] = to_base64_bytes(body)
                 elif body is None:
                     d["body"] = ""
                 else:
                     raise ValueError(
                         "HTTP body must be bytes, str, or base64-encoded string."
                     )
-            if http_req:
-                ensure_base64_body(http_req)
-            if http_res:
-                ensure_base64_body(http_res)
-            req = HttpReqObject(**http_req) if http_req else None
-            res = HttpResObject(**http_res) if http_res else None
-            meta = HttpMetaObject(**http_meta) if http_meta else None
-            return self._inspect(
-                req, res, meta, metadata, config, request_id=request_id
-            )
+
+        if http_req:
+            ensure_base64_body(convert(http_req))
+        if http_res:
+            ensure_base64_body(convert(http_res))
+        return self._inspect(
+            http_req, http_res, http_meta, metadata, config, request_id=request_id
+        )
 
     def inspect_request_from_http_library(
         self,
@@ -160,15 +144,8 @@ class HttpInspectionClient(InspectionClient):
             url = getattr(http_request, "url", None)
             if isinstance(body, str):
                 body = body.encode()
-
-        # Try aiohttp
-        # if isinstance(http_request, aiohttp.ClientRequest):
-        #     method = http_request.method
-        #     headers = dict(http_request.headers)
-        #     body = http_request.body or b""
-        #     url = str(getattr(http_request, 'url', None))
-        #     if isinstance(body, str):
-        #         body = body.encode()
+        else:
+            raise ValueError("Unsupported HTTP request type: only requests is supported")
 
         # Fallback for unknown types
         if not method:
@@ -192,12 +169,11 @@ class HttpInspectionClient(InspectionClient):
             raise ValueError(
                 "HTTP request body must be bytes or None for base64 encoding."
             )
-        from .utils import to_base64_bytes
 
         http_req = HttpReqObject(
             method=method,
             headers=HttpHdrObject(hdrKvs=hdr_kvs),
-            body=to_base64_bytes(body or b"", logger=self.config.logger),
+            body=to_base64_bytes(body or b""),
         )
         http_meta = HttpMetaObject(url=url or "")
         return self._inspect(
@@ -249,9 +225,8 @@ class HttpInspectionClient(InspectionClient):
         #     http_request = getattr(http_response, 'request_info', None)
 
         # Build http_res
-        from .utils import to_base64_bytes
 
-        body_b64 = to_base64_bytes(body, logger=self.config.logger) if body else ""
+        body_b64 = to_base64_bytes(body) if body else ""
         hdr_kvs = [self._header_to_kv(k, v) for k, v in (headers or {}).items()]
         http_res = HttpResObject(
             statusCode=status_code, headers=HttpHdrObject(hdrKvs=hdr_kvs), body=body_b64
@@ -279,7 +254,9 @@ class HttpInspectionClient(InspectionClient):
                 "Could not extract HTTP request context from response object. 'http_req' is required for inspection."
             )
         http_meta = HttpMetaObject(url=url)
-        return self._inspect(http_req, http_res, http_meta, metadata, config)
+        return self._inspect(
+            http_req, http_res, http_meta, metadata, config, request_id=request_id
+        )
 
     def inspect_request(
         self,
@@ -317,7 +294,9 @@ class HttpInspectionClient(InspectionClient):
             method=method, headers=HttpHdrObject(hdrKvs=hdr_kvs), body=body_b64
         )
         http_meta = HttpMetaObject(url=url)
-        return self._inspect(http_req, None, http_meta, metadata, config)
+        return self._inspect(
+            http_req, None, http_meta, metadata, config, request_id=request_id
+        )
 
     def inspect_response(
         self,
@@ -376,11 +355,9 @@ class HttpInspectionClient(InspectionClient):
             if request_body is None:
                 req_body_b64 = ""
             elif isinstance(request_body, str):
-                req_body_b64 = to_base64_bytes(
-                    request_body.encode(), logger=self.config.logger
-                )
+                req_body_b64 = to_base64_bytes(request_body.encode())
             else:
-                req_body_b64 = to_base64_bytes(request_body, logger=self.config.logger)
+                req_body_b64 = to_base64_bytes(request_body)
             http_req = HttpReqObject(
                 method=request_method,
                 headers=HttpHdrObject(hdrKvs=req_hdr_kvs),
@@ -390,7 +367,9 @@ class HttpInspectionClient(InspectionClient):
             # (If you want to attach request_metadata to the main metadata, merge here or pass as a separate field)
 
         http_meta = HttpMetaObject(url=url)
-        return self._inspect(http_req, http_res, http_meta, metadata, config)
+        return self._inspect(
+            http_req, http_res, http_meta, metadata, config, request_id=request_id
+        )
 
     def _inspect(
         self,
@@ -455,27 +434,18 @@ class HttpInspectionClient(InspectionClient):
         Recursively convert all dataclass objects and enums in the request to dicts/values so the payload is JSON serializable.
         """
         self.config.logger.debug("Preparing request data for HTTP inspection API.")
-        from .utils import convert
 
         request_dict = {}
         if request.http_req:
-            request_dict[HTTP_REQ] = convert(
-                request.http_req, logger=self.config.logger
-            )
+            request_dict[HTTP_REQ] = convert(request.http_req)
         if request.http_res:
-            request_dict[HTTP_RES] = convert(
-                request.http_res, logger=self.config.logger
-            )
+            request_dict[HTTP_RES] = convert(request.http_res)
         if request.http_meta:
-            request_dict[HTTP_META] = convert(
-                request.http_meta, logger=self.config.logger
-            )
+            request_dict[HTTP_META] = convert(request.http_meta)
         if request.metadata:
-            request_dict["metadata"] = convert(
-                request.metadata, logger=self.config.logger
-            )
+            request_dict["metadata"] = convert(request.metadata)
         if request.config:
-            request_dict["config"] = convert(request.config, logger=self.config.logger)
+            request_dict["config"] = convert(request.config)
         self.config.logger.debug(f"Prepared request_dict: {request_dict}")
         return request_dict
 
@@ -556,23 +526,3 @@ class HttpInspectionClient(InspectionClient):
             key=key,
             value=value,
         )
-
-    def to_base64_bytes(self, data: Union[str, bytes]) -> str:
-        """
-        Encode a string or bytes object to a base64-encoded string.
-
-        Args:
-            data (str or bytes): The input data to encode.
-
-        Returns:
-            str: Base64-encoded string representation of the input.
-
-        Raises:
-            ValueError: If data is not of type str or bytes.
-        """
-        if isinstance(data, bytes):
-            return base64.b64encode(data).decode()
-        elif isinstance(data, str):
-            return base64.b64encode(data.encode()).decode()
-        else:
-            raise ValueError("Input must be str or bytes.")

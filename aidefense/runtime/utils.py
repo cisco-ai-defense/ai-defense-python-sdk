@@ -1,19 +1,35 @@
 """
-Utility functions for encoding/decoding HTTP bodies and serializing objects for the AI Defense SDK.
+Utility functions for encoding HTTP bodies and serializing objects for the AI Defense SDK.
 """
 
 import base64
 from typing import Union
+from dataclasses import asdict, is_dataclass
+from enum import Enum
 
-import logging
 
-
-def convert(obj, logger=None):
+def to_base64_bytes(data: Union[str, bytes]) -> str:
     """
-    Recursively convert dataclasses, enums, and other objects to dicts/values for JSON serialization.
+    Encode a string or bytes object to a base64-encoded string.
+
+    Args:
+        data (str or bytes): The input data to encode.
+
+    Returns:
+        str: Base64-encoded string representation of the input.
+
+    Raises:
+        ValueError: If data is not of type str or bytes.
     """
-    if logger:
-        logger.debug(f"convert called | obj type: {type(obj)}, obj: {obj}")
+    if isinstance(data, bytes):
+        return base64.b64encode(data).decode()
+    elif isinstance(data, str):
+        return base64.b64encode(data.encode()).decode()
+    else:
+        raise ValueError("Input must be str or bytes.")
+
+
+def convert(obj):
     """
     Recursively convert dataclasses, enums, and other objects to dicts/values for JSON serialization.
 
@@ -26,8 +42,6 @@ def convert(obj, logger=None):
     Returns:
         The converted object as a dict, value, or list suitable for JSON serialization.
     """
-    from dataclasses import asdict, is_dataclass
-    from enum import Enum
 
     if is_dataclass(obj):
         return {k: convert(v) for k, v in asdict(obj).items()}

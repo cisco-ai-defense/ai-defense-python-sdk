@@ -157,7 +157,7 @@ http_req = {
     "headers": {"Content-Type": "application/json"},
     "body": to_base64_bytes(json_bytes),  # base64-encoded bytes using SDK utility
 }
-result = client.inspect_http_api(http_req=http_req)
+result = client.inspect_http_raw(http_req=http_req)
 print(result.is_safe)
 
 # Inspect a requests.PreparedRequest
@@ -222,12 +222,6 @@ except ApiError as ae:
 ## Contributing
 
 Contributions are welcome! Please open issues or pull requests for bug fixes, new features, or documentation improvements.
-
----
-
-## License
-
-[MIT License](LICENSE)
 
 ---
 
