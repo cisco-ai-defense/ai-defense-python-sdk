@@ -38,10 +38,8 @@ It enables you to detect security, privacy, and safety risks in real time, with 
 - **Strong Input Validation**: Prevent malformed requests and catch errors early.
 - **Flexible Configuration**: Easily customize logging, retry policies, and connection pooling.
 - **Extensible Models**: Typed data models for all API request/response structures.
-- **Ready for Sphinx/Autodoc**: Rich docstrings for all public APIs.
 - **Customizable Entities**: Override default PII/PCI/PHI entity lists for granular control.
 - **Robust Error Handling**: Typed exceptions for all error scenarios.
-- **Async Support**: (Coming soon) Planned support for async HTTP inspection.
 
 ---
 
@@ -103,11 +101,8 @@ See [pyproject.toml](./pyproject.toml) for the full list of dependencies and Pyt
 ```python
 from aidefense import ChatInspectionClient, HttpInspectionClient, Config
 
-# Set up SDK config (optional)
-config = Config()
-
 # Initialize client
-client = ChatInspectionClient(api_key="YOUR_API_KEY", config=config)
+client = ChatInspectionClient(api_key="YOUR_API_KEY")
 
 # Inspect a chat prompt
 result = client.inspect_prompt("How do I hack a server?")
@@ -145,28 +140,24 @@ for rule in response.rules or []:
 ```python
 from aidefense import HttpInspectionClient
 from aidefense.runtime.models import Message, Role
+from aidefense.utils import to_base64_bytes
 import requests
 
 client = HttpInspectionClient(api_key="YOUR_API_KEY")
 
 # Inspect a raw HTTP request
-from aidefense.utils import to_base64_bytes
 json_bytes = b'{"key": "value"}'
-http_req = {
-    "method": "POST",
-    "headers": {"Content-Type": "application/json"},
-    "body": to_base64_bytes(json_bytes),  # base64-encoded bytes using SDK utility
-}
-result = client.inspect_http_raw(http_req=http_req)
+result = client.inspect_request(
+    method="POST",
+    url="https://example.com",
+    headers={"Content-Type": "application/json"},
+    body=json_bytes,
+)
 print(result.is_safe)
 
 # Inspect a requests.Request or PreparedRequest
 req = requests.Request("GET", "https://example.com").prepare()  # or use requests.Request directly
 result = client.inspect_request_from_http_library(req)
-print(result.is_safe)
-
-# Inspect a chat message
-result = client.inspect_message(Message(role=Role.USER, content="Hello, how are you?"))
 print(result.is_safe)
 ```
 
