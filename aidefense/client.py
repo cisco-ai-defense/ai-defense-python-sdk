@@ -49,15 +49,14 @@ class BaseClient(ABC):
         )
 
     def get_request_id(self) -> str:
-        request_id = str(uuid.uuid4())
-        self.config.logger.debug(f"get_request_id called | returning: {request_id}")
-        return request_id
         """Generate a unique request ID.
 
         Returns:
             str: A unique identifier for the request.
         """
-        return str(uuid.uuid4())
+        request_id = str(uuid.uuid4())
+        self.config.logger.debug(f"get_request_id called | returning: {request_id}")
+        return request_id
 
     def request(
         self,
@@ -68,9 +67,6 @@ class BaseClient(ABC):
         headers: Dict = None,
         json_data: Dict = None,
     ) -> Dict:
-        self.config.logger.debug(
-            f"request called | method: {method}, url: {url}, request_id: {request_id}, headers: {headers}, json_data: {json_data}"
-        )
         """Make an HTTP request with error handling.
 
         Args:
@@ -88,6 +84,9 @@ class BaseClient(ABC):
             ValidationError: For bad requests.
             ApiError: For other API errors.
         """
+        self.config.logger.debug(
+            f"request called | method: {method}, url: {url}, request_id: {request_id}, headers: {headers}, json_data: {json_data}"
+        )
         try:
             headers = headers or {}
             request_id = request_id or self.get_request_id()
@@ -121,9 +120,6 @@ class BaseClient(ABC):
     def _handle_error_response(
         self, response: requests.Response, request_id: str = None
     ) -> Dict:
-        self.config.logger.debug(
-            f"_handle_error_response called | status_code: {response.status_code}, response: {response.text}"
-        )
         """Handle error responses from the API.
 
         Args:
@@ -138,6 +134,9 @@ class BaseClient(ABC):
             ValidationError: For bad requests.
             ApiError: For other API errors.
         """
+        self.config.logger.debug(
+            f"_handle_error_response called | status_code: {response.status_code}, response: {response.text}"
+        )
         try:
             error_data = response.json()
         except ValueError:
