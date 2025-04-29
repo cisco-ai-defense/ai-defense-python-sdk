@@ -27,6 +27,7 @@ class BaseClient(ABC):
     """
 
     USER_AGENT = f"Cisco-AI-Defense-Python-SDK/{version}"
+    VALID_HTTP_METHODS = {"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"}
 
     def __init__(self, config: Config):
         """
@@ -86,6 +87,12 @@ class BaseClient(ABC):
             f"request called | method: {method}, url: {url}, request_id: {request_id}, headers: {headers}, json_data: {json_data}"
         )
         try:
+            if method not in self.VALID_HTTP_METHODS:
+                raise ValidationError(f"Invalid HTTP method: {method}")
+
+            if not url or not url.startswith(("http://", "https://")):
+                raise ValidationError(f"Invalid URL: {url}")
+
             headers = headers or {}
             request_id = request_id or self.get_request_id()
             headers[REQUEST_ID_HEADER] = request_id

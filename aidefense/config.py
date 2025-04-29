@@ -94,6 +94,8 @@ class Config:
             "apj": "https://apj.api.inspect.aidefense.security.cisco.com",
         }
         if runtime_base_url:
+            if not runtime_base_url.startswith(("http://", "https://")):
+                raise ValidationError(f"Invalid URL: {runtime_base_url}")
             self.runtime_base_url = runtime_base_url
         else:
             self.runtime_base_url = self.runtime_region_endpoints.get(region)
