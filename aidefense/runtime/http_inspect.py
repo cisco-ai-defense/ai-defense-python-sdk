@@ -58,6 +58,7 @@ class HttpInspectionClient(InspectionClient):
         metadata: Optional[Metadata] = None,
         config: Optional[InspectionConfig] = None,
         request_id: Optional[str] = None,
+        timeout: Optional[int] = None,
     ) -> InspectResponse:
         """
         Direct interface for HTTP API inspection using raw dicts for http_req, http_res, and http_meta.
@@ -107,7 +108,7 @@ class HttpInspectionClient(InspectionClient):
         if http_res:
             ensure_base64_body(convert(http_res))
         return self._inspect(
-            http_req, http_res, http_meta, metadata, config, request_id=request_id
+            http_req, http_res, http_meta, metadata, config, request_id=request_id, timeout=timeout
         )
 
     def inspect_request_from_http_library(
@@ -116,6 +117,7 @@ class HttpInspectionClient(InspectionClient):
         metadata: Optional[Metadata] = None,
         config: Optional[InspectionConfig] = None,
         request_id: Optional[str] = None,
+        timeout: Optional[int] = None,
     ) -> InspectResponse:
         """
         Inspect an HTTP request from a popular HTTP library (e.g., requests, aiohttp).
@@ -177,7 +179,7 @@ class HttpInspectionClient(InspectionClient):
         )
         http_meta = HttpMetaObject(url=url or "")
         return self._inspect(
-            http_req, None, http_meta, metadata, config, request_id=request_id
+            http_req, None, http_meta, metadata, config, request_id=request_id, timeout=timeout
         )
 
     def inspect_response_from_http_library(
@@ -186,6 +188,7 @@ class HttpInspectionClient(InspectionClient):
         metadata: Optional[Metadata] = None,
         config: Optional[InspectionConfig] = None,
         request_id: Optional[str] = None,
+        timeout: Optional[int] = None,
     ) -> InspectResponse:
         """
         Inspect an HTTP response from a supported HTTP library (e.g., requests, aiohttp).
@@ -246,7 +249,7 @@ class HttpInspectionClient(InspectionClient):
             )
         http_meta = HttpMetaObject(url=url)
         return self._inspect(
-            http_req, http_res, http_meta, metadata, config, request_id=request_id
+            http_req, http_res, http_meta, metadata, config, request_id=request_id, timeout=timeout
         )
 
     def inspect_request(
@@ -258,6 +261,7 @@ class HttpInspectionClient(InspectionClient):
         metadata: Optional[Metadata] = None,
         config: Optional[InspectionConfig] = None,
         request_id: Optional[str] = None,
+        timeout: Optional[int] = None,
     ) -> InspectResponse:
         """
         Inspect an HTTP request with simplified arguments (method, url, headers, body).
@@ -286,7 +290,7 @@ class HttpInspectionClient(InspectionClient):
         )
         http_meta = HttpMetaObject(url=url)
         return self._inspect(
-            http_req, None, http_meta, metadata, config, request_id=request_id
+            http_req, None, http_meta, metadata, config, request_id=request_id, timeout=timeout
         )
 
     def inspect_response(
@@ -302,6 +306,7 @@ class HttpInspectionClient(InspectionClient):
         metadata: Optional[Metadata] = None,
         config: Optional[InspectionConfig] = None,
         request_id: Optional[str] = None,
+        timeout: Optional[int] = None,
     ) -> InspectResponse:
         """
         Inspect an HTTP response (status code, url, headers, body), with optional request context and metadata, for security, privacy, and policy violations.
@@ -359,7 +364,7 @@ class HttpInspectionClient(InspectionClient):
 
         http_meta = HttpMetaObject(url=url)
         return self._inspect(
-            http_req, http_res, http_meta, metadata, config, request_id=request_id
+            http_req, http_res, http_meta, metadata, config, request_id=request_id, timeout=timeout
         )
 
     def _inspect(
@@ -371,6 +376,7 @@ class HttpInspectionClient(InspectionClient):
         config: Optional[InspectionConfig] = None,
         entities_map: Optional[Dict[str, List[str]]] = None,
         request_id: Optional[str] = None,
+        timeout: Optional[int] = None,
     ) -> InspectResponse:
         """
         Implements InspectionClient._inspect for HTTP inspection.
@@ -414,6 +420,7 @@ class HttpInspectionClient(InspectionClient):
             headers=headers,
             json_data=request_dict,
             request_id=request_id,
+            timeout=timeout,
         )
         self.config.logger.debug(f"Raw API response: {result}")
         processed_result = self.process_response(result)

@@ -48,6 +48,7 @@ class ChatInspectionClient(InspectionClient):
         metadata: Optional[Metadata] = None,
         config: Optional[InspectionConfig] = None,
         request_id: Optional[str] = None,
+        timeout: Optional[int] = None,
     ) -> InspectResponse:
         """
         Inspect a single user prompt for security, privacy, and safety violations.
@@ -70,7 +71,7 @@ class ChatInspectionClient(InspectionClient):
             f"Inspecting prompt: {prompt} | Metadata: {metadata}, Config: {config}, Request ID: {request_id}"
         )
         message = Message(role=Role.USER, content=prompt)
-        return self._inspect([message], metadata, config, request_id=request_id)
+        return self._inspect([message], metadata, config, request_id=request_id, timeout=timeout)
 
     def inspect_response(
         self,
@@ -78,6 +79,7 @@ class ChatInspectionClient(InspectionClient):
         metadata: Optional[Metadata] = None,
         config: Optional[InspectionConfig] = None,
         request_id: Optional[str] = None,
+        timeout: Optional[int] = None,
     ) -> InspectResponse:
         """
         Inspect a single AI response for security, privacy, and safety risks.
@@ -100,7 +102,7 @@ class ChatInspectionClient(InspectionClient):
             f"Inspecting AI response: {response} | Metadata: {metadata}, Config: {config}, Request ID: {request_id}"
         )
         message = Message(role=Role.ASSISTANT, content=response)
-        return self._inspect([message], metadata, config, request_id=request_id)
+        return self._inspect([message], metadata, config, request_id=request_id, timeout=timeout)
 
     def inspect_conversation(
         self,
@@ -108,6 +110,7 @@ class ChatInspectionClient(InspectionClient):
         metadata: Optional[Metadata] = None,
         config: Optional[InspectionConfig] = None,
         request_id: Optional[str] = None,
+        timeout: Optional[int] = None,
     ) -> InspectResponse:
         """
         Inspect a full conversation (list of messages) for security, privacy, and safety risks.
@@ -132,7 +135,7 @@ class ChatInspectionClient(InspectionClient):
         self.config.logger.debug(
             f"Inspecting conversation with {len(messages)} messages. | Messages: {messages}, Metadata: {metadata}, Config: {config}, Request ID: {request_id}"
         )
-        return self._inspect(messages, metadata, config, request_id=request_id)
+        return self._inspect(messages, metadata, config, request_id=request_id, timeout=timeout)
 
     def _inspect(
         self,
@@ -140,6 +143,7 @@ class ChatInspectionClient(InspectionClient):
         metadata: Optional[Metadata] = None,
         config: Optional[InspectionConfig] = None,
         request_id: Optional[str] = None,
+        timeout: Optional[int] = None,
     ) -> InspectResponse:
         """
         Implements the inspection logic for chat conversations.
@@ -182,6 +186,7 @@ class ChatInspectionClient(InspectionClient):
             headers=headers,
             json_data=request_dict,
             request_id=request_id,
+            timeout=timeout,
         )
         self.config.logger.debug(f"Raw API response: {result}")
         processed_result = self.process_response(result)
