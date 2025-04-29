@@ -38,6 +38,11 @@ class Config:
 
     _instance = None
     _lock = threading.Lock()
+    DEFAULT_STATUS_FORCELIST = (429, 500, 502, 503, 504)
+    DEFAULT_BACKOFF_FACTOR = 0.5
+    DEFAULT_TOTAL = 3
+    DEFAULT_POOL_CONNECTIONS = 10
+    DEFAULT_POOL_MAXSIZE = 20
 
     def __new__(cls, *args, **kwargs):
         # Singleton constructor for Config. Ensures only one instance is created.
@@ -103,16 +108,16 @@ class Config:
 
         # --- Retry Config ---
         self.retry_config = retry_config or {
-            "total": 3,
-            "backoff_factor": 0.5,
-            "status_forcelist": [429, 500, 502, 503, 504],
+            "total": self.DEFAULT_TOTAL,
+            "backoff_factor": self.DEFAULT_BACKOFF_FACTOR,
+            "status_forcelist": list(self.DEFAULT_STATUS_FORCELIST),
         }
         # Build a urllib3 Retry object from retry_config
         self._retry_obj = Retry(
-            total=self.retry_config.get("total", 3),
-            backoff_factor=self.retry_config.get("backoff_factor", 0.5),
+            total=self.retry_config.get("total", self.DEFAULT_TOTAL),
+            backoff_factor=self.retry_config.get("backoff_factor", self.DEFAULT_BACKOFF_FACTOR),
             status_forcelist=self.retry_config.get(
-                "status_forcelist", [429, 500, 502, 503, 504]
+                "status_forcelist", list(self.DEFAULT_STATUS_FORCELIST)
             ),
             allowed_methods=self.retry_config.get("allowed_methods", None),
             raise_on_status=self.retry_config.get("raise_on_status", False),
@@ -130,13 +135,15 @@ class Config:
             self.connection_pool = connection_pool
         elif pool_config:
             self.connection_pool = HTTPAdapter(
-                pool_connections=pool_config.get("pool_connections", 10),
-                pool_maxsize=pool_config.get("pool_maxsize", 20),
+                pool_connections=pool_config.get("pool_connections", self.DEFAULT_POOL_CONNECTIONS),
+                pool_maxsize=pool_config.get("pool_maxsize", self.DEFAULT_POOL_MAXSIZE),
                 max_retries=self._retry_obj,
             )
         else:
             self.connection_pool = HTTPAdapter(
-                pool_connections=10, pool_maxsize=20, max_retries=self._retry_obj
+                pool_connections=self.DEFAULT_POOL_CONNECTIONS, 
+                pool_maxsize=self.DEFAULT_POOL_MAXSIZE, 
+                max_retries=self._retry_obj
             )
 
     def get_runtime_endpoint_url(self, region: str) -> str:
