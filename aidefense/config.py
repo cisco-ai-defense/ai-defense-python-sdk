@@ -44,6 +44,11 @@ class Config:
     DEFAULT_TOTAL = 3
     DEFAULT_POOL_CONNECTIONS = 10
     DEFAULT_POOL_MAXSIZE = 20
+    DEFAULT_LOG_LEVEL = logging.INFO
+    DEFAULT_LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s: %(message)s"
+    DEFAULT_NAME = "aidefense_sdk"
+    DEFAULT_REGION = "us"
+    DEFAULT_TIMEOUT = 30
 
     def __new__(cls, *args, **kwargs):
         # Singleton constructor for Config. Ensures only one instance is created.
@@ -55,15 +60,15 @@ class Config:
 
     def _initialize(
         self,
-        region: str = "us",
+        region: str = None,
         runtime_base_url: str = None,
-        timeout: int = 30,
+        timeout: int = None,
         logger: logging.Logger = None,
         logger_params: dict = None,
         retry_config: dict = None,
         connection_pool: HTTPAdapter = None,
         pool_config: dict = None,
-    ):
+    ): 
         """
         Initialize the configuration with the provided parameters.
 
@@ -77,6 +82,10 @@ class Config:
             connection_pool (HTTPAdapter, optional): Custom HTTPAdapter for connection pooling.
             pool_config (dict, optional): Parameters for connection pool.
         """
+        if region is None:
+            region = self.DEFAULT_REGION
+        if timeout is None:
+            timeout = self.DEFAULT_TIMEOUT
         self.region = region
         self.timeout = timeout
         self.runtime_region_endpoints = {
@@ -95,11 +104,9 @@ class Config:
         else:
             if logger_params is None:
                 logger_params = {}
-            log_name = logger_params.get("name", "aidefense_sdk")
-            log_level = logger_params.get("level", logging.INFO)
-            log_format = logger_params.get(
-                "format", "%(asctime)s %(levelname)s %(name)s: %(message)s"
-            )
+            log_name = logger_params.get("name", self.DEFAULT_NAME)
+            log_level = logger_params.get("level", self.DEFAULT_LOG_LEVEL)
+            log_format = logger_params.get("format", self.DEFAULT_LOG_FORMAT)
             self.logger = logging.getLogger(log_name)
             if not self.logger.handlers:
                 handler = logging.StreamHandler()
