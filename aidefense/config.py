@@ -3,6 +3,7 @@
 import logging
 import requests
 import threading
+
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
@@ -115,7 +116,9 @@ class Config:
         # Build a urllib3 Retry object from retry_config
         self._retry_obj = Retry(
             total=self.retry_config.get("total", self.DEFAULT_TOTAL),
-            backoff_factor=self.retry_config.get("backoff_factor", self.DEFAULT_BACKOFF_FACTOR),
+            backoff_factor=self.retry_config.get(
+                "backoff_factor", self.DEFAULT_BACKOFF_FACTOR
+            ),
             status_forcelist=self.retry_config.get(
                 "status_forcelist", list(self.DEFAULT_STATUS_FORCELIST)
             ),
@@ -135,15 +138,17 @@ class Config:
             self.connection_pool = connection_pool
         elif pool_config:
             self.connection_pool = HTTPAdapter(
-                pool_connections=pool_config.get("pool_connections", self.DEFAULT_POOL_CONNECTIONS),
+                pool_connections=pool_config.get(
+                    "pool_connections", self.DEFAULT_POOL_CONNECTIONS
+                ),
                 pool_maxsize=pool_config.get("pool_maxsize", self.DEFAULT_POOL_MAXSIZE),
                 max_retries=self._retry_obj,
             )
         else:
             self.connection_pool = HTTPAdapter(
-                pool_connections=self.DEFAULT_POOL_CONNECTIONS, 
-                pool_maxsize=self.DEFAULT_POOL_MAXSIZE, 
-                max_retries=self._retry_obj
+                pool_connections=self.DEFAULT_POOL_CONNECTIONS,
+                pool_maxsize=self.DEFAULT_POOL_MAXSIZE,
+                max_retries=self._retry_obj,
             )
 
     def get_runtime_endpoint_url(self, region: str) -> str:

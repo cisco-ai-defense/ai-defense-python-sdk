@@ -2,17 +2,15 @@
 
 import requests
 import uuid
-
-from .version import version
-from .config import Config  # Fixed import
-from .exceptions import SDKError, ValidationError, ApiError  # Fixed import
-from typing import Dict
+from abc import ABC, abstractmethod
+from typing import Dict, Any, Optional  
 from requests.auth import AuthBase
 
+from .version import version
+from .config import Config
+from .exceptions import SDKError, ValidationError, ApiError
+
 REQUEST_ID_HEADER = "x-aidefense-request-id"
-
-
-from abc import ABC, abstractmethod
 
 
 class BaseClient(ABC):
@@ -31,8 +29,6 @@ class BaseClient(ABC):
     USER_AGENT = f"Cisco-AI-Defense-Python-SDK/{version}"
 
     def __init__(self, config: Config):
-        self.config = config
-        self.config.logger.debug(f"BaseClient.__init__ called | config: {config}")
         """
         Initialize the BaseClient.
 
