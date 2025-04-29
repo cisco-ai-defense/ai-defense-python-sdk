@@ -3,7 +3,7 @@
 import requests
 import uuid
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional  
+from typing import Dict, Any, Optional
 from requests.auth import AuthBase
 
 from .version import version
@@ -62,6 +62,7 @@ class BaseClient(ABC):
         request_id: str = None,
         headers: Dict = None,
         json_data: Dict = None,
+        timeout: int = None,
     ) -> Dict:
         """Make an HTTP request with error handling.
 
@@ -71,6 +72,7 @@ class BaseClient(ABC):
             auth (AuthBase): The authentication object for the request.
             headers (Dict, optional): Additional headers for the request.
             json_data (Dict, optional): JSON payload for the request.
+            timeout (int, optional): Timeout for the request in seconds.
 
         Returns:
             Dict: The JSON response from the API.
@@ -101,7 +103,7 @@ class BaseClient(ABC):
                 url=url,
                 headers=headers,
                 json=json_data,
-                timeout=self.config.timeout,
+                timeout=timeout or self.config.timeout,
             )
 
             if response.status_code >= 400:

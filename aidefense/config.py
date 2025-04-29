@@ -68,7 +68,7 @@ class Config:
         retry_config: dict = None,
         connection_pool: HTTPAdapter = None,
         pool_config: dict = None,
-    ): 
+    ):
         """
         Initialize the configuration with the provided parameters.
 
