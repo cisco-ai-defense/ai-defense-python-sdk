@@ -2,7 +2,7 @@ import base64
 from typing import Dict, Optional, Any, Union, List
 import requests
 
-from .constants import HTTP_REQ, HTTP_RES, HTTP_META
+from .constants import HTTP_REQ, HTTP_RES, HTTP_META, HTTP_METHOD, HTTP_BODY
 
 from .inspection_client import InspectionClient
 from ..exceptions import ValidationError
@@ -85,19 +85,19 @@ class HttpInspectionClient(InspectionClient):
 
         # Validate and encode bodies if necessary
         def ensure_base64_body(d: Optional[Dict[str, Any]]) -> None:
-            if d and d.get("body"):
-                body = d["body"]
+            if d and d.get(HTTP_BODY):
+                body = d[HTTP_BODY]
                 if isinstance(body, bytes):
-                    d["body"] = to_base64_bytes(body)
+                    d[HTTP_BODY] = to_base64_bytes(body)
                 elif isinstance(body, str):
                     # Heuristic: if not valid base64, treat as raw string and encode
                     try:
                         base64.b64decode(body)
                         # Already base64
                     except Exception:
-                        d["body"] = to_base64_bytes(body)
+                        d[HTTP_BODY] = to_base64_bytes(body)
                 elif body is None:
-                    d["body"] = ""
+                    d[HTTP_BODY] = ""
                 else:
                     raise ValueError(
                         "HTTP body must be bytes, str, or base64-encoded string."
@@ -140,9 +140,9 @@ class HttpInspectionClient(InspectionClient):
         url = None
         # Support both requests.PreparedRequest and requests.Request
         if isinstance(http_request, requests.PreparedRequest) or isinstance(http_request, requests.Request):
-            method = getattr(http_request, "method", None)
+            method = getattr(http_request, HTTP_METHOD, None)
             headers = dict(getattr(http_request, "headers", {}))
-            body = getattr(http_request, "body", b"") or getattr(http_request, "data", b"")
+            body = getattr(http_request, HTTP_BODY, b"") or getattr(http_request, "data", b"")
             url = getattr(http_request, "url", None)
             if isinstance(body, str):
                 body = body.encode()
@@ -151,11 +151,11 @@ class HttpInspectionClient(InspectionClient):
 
         # Fallback for unknown types
         if not method:
-            method = getattr(http_request, "method", None)
+            method = getattr(http_request, HTTP_METHOD, None)
         if not headers:
             headers = dict(getattr(http_request, "headers", {}))
         if not body:
-            body = getattr(http_request, "body", b"") or getattr(
+            body = getattr(http_request, HTTP_BODY, b"") or getattr(
                 http_request, "content", b""
             )
             if isinstance(body, str):
@@ -230,9 +230,9 @@ class HttpInspectionClient(InspectionClient):
         # Build http_req from associated request if possible
         http_req = None
         if http_request is not None:
-            method = getattr(http_request, "method", None)
+            method = getattr(http_request, HTTP_METHOD, None)
             req_headers = dict(getattr(http_request, "headers", {}))
-            req_body = getattr(http_request, "body", b"") or getattr(http_request, "data", b"") or getattr(http_request, "content", b"")
+            req_body = getattr(http_request, HTTP_BODY, b"") or getattr(http_request, "data", b"") or getattr(http_request, "content", b"")
             if isinstance(req_body, str):
                 req_body = req_body.encode()
             req_body_b64 = base64.b64encode(req_body).decode() if req_body else ""
@@ -423,9 +423,7 @@ class HttpInspectionClient(InspectionClient):
             timeout=timeout,
         )
         self.config.logger.debug(f"Raw API response: {result}")
-        processed_result = self.process_response(result)
-        self.config.logger.debug(f"Processed API response: {processed_result}")
-        return self._parse_inspect_response(processed_result)
+        return self._parse_inspect_response(result)
 
     def _prepare_request_data(self, request: HttpInspectRequest) -> Dict[str, Any]:
         """
@@ -451,8 +449,7 @@ class HttpInspectionClient(InspectionClient):
         """
         Validate both the inspection request dictionary and the config for required structure and fields.
 
-        This unified validation covers both Python object structure (enabled_rules, Rule objects, etc.) and
-        the final serialized request dict (required keys, field types, and presence for API contract).
+        This validation covers the final serialized request dict (required keys, field types, and presence for API contract).
 
         Args:
             request_dict (Dict[str, Any]): The request dictionary to validate. Should include a 'config' key if config validation is desired.
@@ -460,10 +457,8 @@ class HttpInspectionClient(InspectionClient):
         Raises:
             ValidationError: If the request is missing required fields, malformed, or config is invalid.
         """
-        # Validate config.enabled_rules (Python object level)
         self.config.logger.debug(f"Validating request dict: {request_dict}")
-        # print(f"Validating request dict: {request_dict}")
-
+        
         config = request_dict.get("config")
         if config is not None:
             if not config.get("enabled_rules") or not isinstance(
@@ -480,32 +475,18 @@ class HttpInspectionClient(InspectionClient):
         if http_req:
             if not isinstance(http_req, dict):
                 raise ValidationError(f"'{HTTP_REQ}' must be a dict.")
-            if not http_req.get("body"):
+            if not http_req.get(HTTP_BODY):
                 raise ValidationError(f"'{HTTP_REQ}' must have a non-empty 'body'.")
-            if not http_req.get("method"):
-                raise ValidationError(f"'{HTTP_REQ}' must have a 'method'.")
+            if not http_req.get(HTTP_METHOD):
+                raise ValidationError(f"'{HTTP_REQ}' must have a '{HTTP_METHOD}'.")
+            if http_req.get(HTTP_METHOD) not in VALID_HTTP_METHODS:
+                raise ValidationError(f"'{HTTP_REQ}' must have a valid '{HTTP_METHOD}' (one of {VALID_HTTP_METHODS}).")
         if http_res:
             if not isinstance(http_res, dict):
                 raise ValidationError(f"'{HTTP_RES}' must be a dict.")
             if "statusCode" not in http_res or http_res["statusCode"] is None:
                 raise ValidationError(f"'{HTTP_RES}' must have a 'statusCode'.")
-            if not http_res.get("body"):
-                raise ValidationError(f"'{HTTP_RES}' must have a non-empty 'body'.")
-        if not http_req:
-            raise ValidationError(f"'{HTTP_REQ}' must be provided.")
-        if http_req:
-            if not isinstance(http_req, dict):
-                raise ValidationError(f"'{HTTP_REQ}' must be a dict.")
-            if not http_req.get("body"):
-                raise ValidationError(f"'{HTTP_REQ}' must have a non-empty 'body'.")
-            if not http_req.get("method"):
-                raise ValidationError(f"'{HTTP_REQ}' must have a 'method'.")
-        if http_res:
-            if not isinstance(http_res, dict):
-                raise ValidationError(f"'{HTTP_RES}' must be a dict.")
-            if "statusCode" not in http_res or http_res["statusCode"] is None:
-                raise ValidationError(f"'{HTTP_RES}' must have a 'statusCode'.")
-            if not http_res.get("body"):
+            if not http_res.get(HTTP_BODY):
                 raise ValidationError(f"'{HTTP_RES}' must have a non-empty 'body'.")
 
     @staticmethod

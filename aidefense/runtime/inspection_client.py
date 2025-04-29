@@ -165,19 +165,6 @@ class InspectionClient(BaseClient, ABC):
             event_id=response_data.get("event_id"),
         )
 
-    def process_response(self, response: Dict) -> Dict:
-        """
-        Process and validate API responses.
-
-        Args:
-            response (Dict): The raw response dictionary returned from the API.
-
-        Returns:
-            Dict: The processed and validated response dictionary.
-        """
-        # Add common response processing logic here
-        return response
-
     def _prepare_inspection_metadata(self, metadata: Metadata) -> Dict:
         """
         Convert a Metadata object to a JSON-serializable dictionary for API requests.

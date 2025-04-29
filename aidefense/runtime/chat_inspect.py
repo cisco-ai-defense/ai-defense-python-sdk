@@ -189,9 +189,7 @@ class ChatInspectionClient(InspectionClient):
             timeout=timeout,
         )
         self.config.logger.debug(f"Raw API response: {result}")
-        processed_result = self.process_response(result)
-        self.config.logger.debug(f"Processed API response: {processed_result}")
-        return self._parse_inspect_response(processed_result)
+        return self._parse_inspect_response(result)
 
     def validate_inspection_request(self, request_dict: Dict[str, Any]):
         """

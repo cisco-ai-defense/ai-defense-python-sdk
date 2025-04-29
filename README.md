@@ -54,7 +54,7 @@ pip install aidefense-python-sdk
 Or, for local development:
 
 ```bash
-git clone <this-repo-url>
+git clone https://github.com/cisco-sbg/ai-defense-python-sdk.git
 cd aidefense-python-sdk
 pip install -e .
 ```
