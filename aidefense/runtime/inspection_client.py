@@ -4,7 +4,7 @@ from dataclasses import asdict
 
 from .auth import RuntimeAuth
 from .models import PII_ENTITIES, PCI_ENTITIES, PHI_ENTITIES
-from .models import Rule, RuleName, Metadata, InspectionConfig, Severity, Classification
+from .models import Rule, RuleName, Metadata, InspectionConfig, Severity, Classification, InspectResponse
 from .constants import INTEGRATION_DETAILS
 from ..exceptions import ValidationError
 from ..client import BaseClient

@@ -168,9 +168,6 @@ class ChatInspectionClient(InspectionClient):
             f"Starting chat inspection | Messages: {messages}, Metadata: {metadata}, Config: {config}, Request ID: {request_id}"
         )
         if not isinstance(messages, list) or not messages:
-            self.config.logger.error(
-                "'messages' must be a non-empty list of Message objects."
-            )
             raise ValidationError(
                 "'messages' must be a non-empty list of Message objects."
             )

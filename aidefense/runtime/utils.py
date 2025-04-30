@@ -3,9 +3,11 @@ Utility functions for encoding HTTP bodies and serializing objects for the AI De
 """
 
 import base64
-from typing import Union, Any
+from typing import Union, Any, Optional, Dict
 from dataclasses import asdict, is_dataclass
 from enum import Enum
+
+from .constants import HTTP_BODY
 
 
 def to_base64_bytes(data: Union[str, bytes]) -> str:
@@ -53,3 +55,23 @@ def convert(obj: Any) -> Any:
         return [convert(v) for v in obj]
     else:
         return obj
+
+# Validate and encode bodies if necessary
+def ensure_base64_body(d: Optional[Dict[str, Any]]) -> None:
+    if d and d.get(HTTP_BODY):
+        body = d[HTTP_BODY]
+        if isinstance(body, bytes):
+            d[HTTP_BODY] = to_base64_bytes(body)
+        elif isinstance(body, str):
+            # Heuristic: if not valid base64, treat as raw string and encode
+            try:
+                base64.b64decode(body)
+                # Already base64
+            except Exception:
+                d[HTTP_BODY] = to_base64_bytes(body)
+        elif body is None:
+            d[HTTP_BODY] = ""
+        else:
+            raise ValueError(
+                "HTTP body must be bytes, str, or base64-encoded string."
+            )

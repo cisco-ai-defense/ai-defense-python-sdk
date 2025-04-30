@@ -12,7 +12,7 @@ from .http_models import (
     HttpHdrObject,
     HttpHdrKvObject,
 )
-from .utils import convert, to_base64_bytes
+from .utils import convert, to_base64_bytes, ensure_base64_body
 from .models import Metadata, InspectionConfig, InspectResponse, Rule, RuleName
 from ..config import Config
 from ..exceptions import ValidationError
@@ -82,26 +82,6 @@ class HttpInspectionClient(InspectionClient):
             f"inspect_http_raw called | http_req: {http_req}, http_res: {http_res}, http_meta: {http_meta}, metadata: {metadata}, config: {config}, request_id: {request_id}"
         )
 
-        # Validate and encode bodies if necessary
-        def ensure_base64_body(d: Optional[Dict[str, Any]]) -> None:
-            if d and d.get(HTTP_BODY):
-                body = d[HTTP_BODY]
-                if isinstance(body, bytes):
-                    d[HTTP_BODY] = to_base64_bytes(body)
-                elif isinstance(body, str):
-                    # Heuristic: if not valid base64, treat as raw string and encode
-                    try:
-                        base64.b64decode(body)
-                        # Already base64
-                    except Exception:
-                        d[HTTP_BODY] = to_base64_bytes(body)
-                elif body is None:
-                    d[HTTP_BODY] = ""
-                else:
-                    raise ValueError(
-                        "HTTP body must be bytes, str, or base64-encoded string."
-                    )
-
         if http_req:
             ensure_base64_body(convert(http_req))
         if http_res:
@@ -112,7 +92,7 @@ class HttpInspectionClient(InspectionClient):
 
     def inspect_request_from_http_library(
         self,
-        http_request: Any,
+        http_request: Union[requests.PreparedRequest, requests.Request],
         metadata: Optional[Metadata] = None,
         config: Optional[InspectionConfig] = None,
         request_id: Optional[str] = None,
@@ -139,43 +119,15 @@ class HttpInspectionClient(InspectionClient):
         url = None
         # Support both requests.PreparedRequest and requests.Request
         if isinstance(http_request, requests.PreparedRequest) or isinstance(http_request, requests.Request):
-            method = getattr(http_request, HTTP_METHOD, None)
-            headers = dict(getattr(http_request, "headers", {}))
-            body = getattr(http_request, HTTP_BODY, b"") or getattr(http_request, "data", b"")
             url = getattr(http_request, "url", None)
-            if isinstance(body, str):
-                body = body.encode()
+            http_req = self._build_http_req_from_http_library(http_request)
         else:
             raise ValueError("Unsupported HTTP request type: only requests.Request and requests.PreparedRequest are supported")
 
         # Fallback for unknown types
-        if not method:
-            method = getattr(http_request, HTTP_METHOD, None)
-        if not headers:
-            headers = dict(getattr(http_request, "headers", {}))
-        if not body:
-            body = getattr(http_request, HTTP_BODY, b"") or getattr(
-                http_request, "content", b""
-            )
-            if isinstance(body, str):
-                body = body.encode()
-        if not url:
-            url = getattr(http_request, "url", None)
-            if url is not None:
-                url = str(url)
+        if url is not None:
+            url = str(url)
         # Prepare and inspect
-        hdr_kvs = [self._header_to_kv(k, v) for k, v in headers.items()]
-        # Always base64-encode bytes body
-        if not isinstance(body, (bytes, type(None))):
-            raise ValueError(
-                "HTTP request body must be bytes or None for base64 encoding."
-            )
-
-        http_req = HttpReqObject(
-            method=method,
-            headers=HttpHdrObject(hdrKvs=hdr_kvs),
-            body=to_base64_bytes(body or b""),
-        )
         http_meta = HttpMetaObject(url=url or "")
         return self._inspect(
             http_req, None, http_meta, metadata, config, request_id=request_id, timeout=timeout
@@ -229,18 +181,7 @@ class HttpInspectionClient(InspectionClient):
         # Build http_req from associated request if possible
         http_req = None
         if http_request is not None:
-            method = getattr(http_request, HTTP_METHOD, None)
-            req_headers = dict(getattr(http_request, "headers", {}))
-            req_body = getattr(http_request, HTTP_BODY, b"") or getattr(http_request, "data", b"") or getattr(http_request, "content", b"")
-            if isinstance(req_body, str):
-                req_body = req_body.encode()
-            req_body_b64 = base64.b64encode(req_body).decode() if req_body else ""
-            req_hdr_kvs = [self._header_to_kv(k, v) for k, v in req_headers.items()]
-            http_req = HttpReqObject(
-                method=method,
-                headers=HttpHdrObject(hdrKvs=req_hdr_kvs),
-                body=req_body_b64,
-            )
+            http_req = self._build_http_req_from_http_library(http_request)
         # If http_req could not be built, raise a clear error
         if http_req is None:
             raise ValueError(
@@ -478,8 +419,8 @@ class HttpInspectionClient(InspectionClient):
                 raise ValidationError(f"'{HTTP_REQ}' must have a non-empty 'body'.")
             if not http_req.get(HTTP_METHOD):
                 raise ValidationError(f"'{HTTP_REQ}' must have a '{HTTP_METHOD}'.")
-            if http_req.get(HTTP_METHOD) not in VALID_HTTP_METHODS:
-                raise ValidationError(f"'{HTTP_REQ}' must have a valid '{HTTP_METHOD}' (one of {VALID_HTTP_METHODS}).")
+            if http_req.get(HTTP_METHOD) not in self.VALID_HTTP_METHODS:
+                raise ValidationError(f"'{HTTP_REQ}' must have a valid '{HTTP_METHOD}' (one of {self.VALID_HTTP_METHODS}).")
         if http_res:
             if not isinstance(http_res, dict):
                 raise ValidationError(f"'{HTTP_RES}' must be a dict.")
@@ -504,3 +445,18 @@ class HttpInspectionClient(InspectionClient):
             key=key,
             value=value,
         )
+
+    def _build_http_req_from_http_library(self, http_request: Union[requests.PreparedRequest, requests.Request]) -> HttpReqObject:
+        method = getattr(http_request, HTTP_METHOD, None)
+        req_headers = dict(getattr(http_request, "headers", {}))
+        req_body = getattr(http_request, "data", b"") or getattr(http_request, HTTP_BODY, b"") or getattr(http_request, "content", b"")
+        if isinstance(req_body, str):
+            req_body = req_body.encode()
+        req_body_b64 = base64.b64encode(req_body).decode() if req_body else ""
+        req_hdr_kvs = [self._header_to_kv(k, v) for k, v in req_headers.items()]
+        http_req = HttpReqObject(
+            method=method,
+            headers=HttpHdrObject(hdrKvs=req_hdr_kvs),
+            body=req_body_b64,
+        )
+        return http_req
