@@ -3,9 +3,7 @@ from typing import Dict, Optional, Any, Union, List
 import requests
 
 from .constants import HTTP_REQ, HTTP_RES, HTTP_META, HTTP_METHOD, HTTP_BODY
-
 from .inspection_client import InspectionClient
-from ..exceptions import ValidationError
 from .http_models import (
     HttpInspectRequest,
     HttpReqObject,
@@ -14,9 +12,10 @@ from .http_models import (
     HttpHdrObject,
     HttpHdrKvObject,
 )
+from .utils import convert, to_base64_bytes
 from .models import Metadata, InspectionConfig, InspectResponse, Rule, RuleName
 from ..config import Config
-from .utils import convert, to_base64_bytes
+from ..exceptions import ValidationError
 
 
 class HttpInspectionClient(InspectionClient):

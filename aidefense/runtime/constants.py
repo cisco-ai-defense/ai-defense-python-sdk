@@ -8,3 +8,10 @@ VALID_HTTP_METHODS = ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"
 HTTP_STATUS_CODE = "statusCode"
 HTTP_BODY = "body"
 HTTP_HEADERS = "headers"
+
+INTEGRATION_DETAILS = [
+    "integration_profile_id",
+    "integration_profile_version",
+    "integration_tenant_id",
+    "integration_type",
+]

@@ -1,12 +1,11 @@
 from typing import Dict, List, Optional, Any
-from ..config import Config
-from .utils import convert
 
+from .utils import convert
 from .inspection_client import InspectionClient
-from ..exceptions import ValidationError
 from .models import Metadata, InspectionConfig, InspectResponse
 from .chat_models import Message, Role, ChatInspectRequest
-
+from ..config import Config
+from ..exceptions import ValidationError
 
 class ChatInspectionClient(InspectionClient):
     """
@@ -29,6 +28,8 @@ class ChatInspectionClient(InspectionClient):
     Attributes:
         endpoint (str): The API endpoint for chat inspection requests.
     """
+
+    VALID_ROLES = {Role.USER.value, Role.ASSISTANT.value, Role.SYSTEM.value}
 
     def __init__(self, api_key: str, config: Config = None):
         """
@@ -71,7 +72,7 @@ class ChatInspectionClient(InspectionClient):
             f"Inspecting prompt: {prompt} | Metadata: {metadata}, Config: {config}, Request ID: {request_id}"
         )
         message = Message(role=Role.USER, content=prompt)
-        return self._inspect([message], metadata, config, request_id=request_id, timeout=timeout)
+        return self._inspect([message], metadata, config, request_id, timeout)
 
     def inspect_response(
         self,
@@ -102,7 +103,7 @@ class ChatInspectionClient(InspectionClient):
             f"Inspecting AI response: {response} | Metadata: {metadata}, Config: {config}, Request ID: {request_id}"
         )
         message = Message(role=Role.ASSISTANT, content=response)
-        return self._inspect([message], metadata, config, request_id=request_id, timeout=timeout)
+        return self._inspect([message], metadata, config, request_id, timeout)
 
     def inspect_conversation(
         self,
@@ -135,7 +136,7 @@ class ChatInspectionClient(InspectionClient):
         self.config.logger.debug(
             f"Inspecting conversation with {len(messages)} messages. | Messages: {messages}, Metadata: {metadata}, Config: {config}, Request ID: {request_id}"
         )
-        return self._inspect(messages, metadata, config, request_id=request_id, timeout=timeout)
+        return self._inspect(messages, metadata, config, request_id, timeout)
 
     def _inspect(
         self,
@@ -210,39 +211,34 @@ class ChatInspectionClient(InspectionClient):
         self.config.logger.debug(
             f"Validating chat inspection request dictionary | Request dict: {request_dict}"
         )
-        valid_roles = {Role.USER.value, Role.ASSISTANT.value, Role.SYSTEM.value}
         messages = request_dict.get("messages")
         if not isinstance(messages, list) or not messages:
             self.config.logger.error("'messages' must be a non-empty list.")
             raise ValidationError("'messages' must be a non-empty list.")
+        
         has_prompt = False
         has_completion = False
         for msg in messages:
             if not isinstance(msg, dict):
-                self.config.logger.error("Each message must be a dict.")
                 raise ValidationError("Each message must be a dict.")
-            if msg.get("role") not in valid_roles:
-                self.config.logger.error(
-                    f"Message role must be one of: {list(valid_roles)}."
-                )
+            
+            if msg.get("role") not in self.VALID_ROLES:
                 raise ValidationError(
-                    f"Message role must be one of: {list(valid_roles)}."
+                    f"Message role must be one of: {list(self.VALID_ROLES)}."
                 )
+            
             if not msg.get("content") or not isinstance(msg.get("content"), str):
-                self.config.logger.error(
-                    "Each message must have non-empty string content."
-                )
                 raise ValidationError(
                     "Each message must have non-empty string content."
                 )
+                
             if msg.get("role") == Role.USER.value and msg.get("content").strip():
                 has_prompt = True
+            
             if msg.get("role") == Role.ASSISTANT.value and msg.get("content").strip():
                 has_completion = True
+        
         if not (has_prompt or has_completion):
-            self.config.logger.error(
-                "At least one message must be a prompt (role=user) or completion (role=assistant) with non-empty content."
-            )
             raise ValidationError(
                 "At least one message must be a prompt (role=user) or completion (role=assistant) with non-empty content."
             )
@@ -252,14 +248,12 @@ class ChatInspectionClient(InspectionClient):
             and request_dict["metadata"] is not None
             and not isinstance(request_dict["metadata"], dict)
         ):
-            self.config.logger.error("'metadata' must be a dict if provided.")
             raise ValidationError("'metadata' must be a dict if provided.")
         if (
             "config" in request_dict
             and request_dict["config"] is not None
             and not isinstance(request_dict["config"], dict)
         ):
-            self.config.logger.error("'config' must be a dict if provided.")
             raise ValidationError("'config' must be a dict if provided.")
 
     def _prepare_request_data(self, request: ChatInspectRequest) -> Dict[str, Any]:
@@ -280,5 +274,3 @@ class ChatInspectionClient(InspectionClient):
             request_dict["config"] = convert(request.config)
         self.config.logger.debug(f"Prepared request dict: {request_dict}")
         return request_dict
-
-    # _parse_inspect_response removed; use InspectionClient._parse_inspect_response instead

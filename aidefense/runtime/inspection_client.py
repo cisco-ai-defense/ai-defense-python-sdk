@@ -1,14 +1,14 @@
-from .models import Metadata, InspectionConfig
-from ..exceptions import ValidationError
+from abc import abstractmethod, ABC
 from typing import Dict, Any
-
-from ..client import BaseClient
-from ..config import Config
+from dataclasses import asdict
 
 from .auth import RuntimeAuth
-from .models import PII_ENTITIES, PCI_ENTITIES, PHI_ENTITIES, Rule, RuleName
-from abc import abstractmethod, ABC
-
+from .models import PII_ENTITIES, PCI_ENTITIES, PHI_ENTITIES
+from .models import Rule, RuleName, Metadata, InspectionConfig, Severity, Classification
+from .constants import INTEGRATION_DETAILS
+from ..exceptions import ValidationError
+from ..client import BaseClient
+from ..config import Config
 
 class InspectionClient(BaseClient, ABC):
     """
@@ -71,11 +71,7 @@ class InspectionClient(BaseClient, ABC):
         self.default_enabled_rules = [
             Rule(
                 rule_name=rn,
-                entity_types=(
-                    self.DEFAULT_ENTITY_MAP[rn.name]
-                    if rn.name in self.DEFAULT_ENTITY_MAP
-                    else None
-                ),
+                entity_types=self.DEFAULT_ENTITY_MAP.get(rn.name, None),
             )
             for rn in RuleName
         ]
@@ -112,33 +108,28 @@ class InspectionClient(BaseClient, ABC):
         Returns:
             InspectResponse: The parsed inspection response object containing classifications, rules, severity, and other details.
         """
-        from .models import Classification, Rule, RuleName, Severity, InspectResponse
-
+        
         # Convert classifications from strings to enum values
         classifications = []
-        if "classifications" in response_data and response_data["classifications"]:
-            for cls in response_data["classifications"]:
-                try:
-                    classifications.append(Classification(cls))
-                except ValueError:
-                    pass
+        for cls in response_data.get("classifications", []):
+            try:
+                classifications.append(Classification(cls))
+            except ValueError:
+                pass
         # Parse rules if present
         rules = []
-        if "rules" in response_data and response_data["rules"]:
-            for rule_data in response_data["rules"]:
-                rule_name = None
-                if "rule_name" in rule_data:
-                    try:
-                        rule_name = RuleName(rule_data["rule_name"])
-                    except ValueError:
-                        pass
-                classification = None
-                if "classification" in rule_data:
-                    try:
-                        classification = Classification(rule_data["classification"])
-                    except ValueError:
-                        pass
-                rules.append(
+        for rule_data in response_data.get("rules", []):
+            rule_name = None
+            try:
+                rule_name = RuleName(rule_data["rule_name"])
+            except ValueError:
+                pass
+            classification = None
+            try:
+                classification = Classification(rule_data["classification"])
+            except ValueError:
+                pass
+            rules.append(
                     Rule(
                         rule_name=rule_name,
                         entity_types=rule_data.get("entity_types"),
@@ -148,11 +139,10 @@ class InspectionClient(BaseClient, ABC):
                 )
         # Parse severity if present
         severity = None
-        if "severity" in response_data and response_data["severity"]:
-            try:
-                severity = Severity(response_data["severity"])
-            except ValueError:
-                pass
+        try:
+            severity = Severity(response_data.get("severity", None))
+        except ValueError:
+            pass
         # Create the response object
         return InspectResponse(
             classifications=classifications,
@@ -177,9 +167,7 @@ class InspectionClient(BaseClient, ABC):
         """
         request_dict = {}
         if metadata:
-            request_dict["metadata"] = {
-                k: v for k, v in metadata.__dict__.items() if v is not None
-            }
+            request_dict["metadata"] = asdict(metadata)
         return request_dict
 
     def _prepare_inspection_config(self, config: InspectionConfig) -> Dict:
@@ -201,25 +189,19 @@ class InspectionClient(BaseClient, ABC):
         if config.enabled_rules:
 
             def rule_to_dict(rule):
-                return {
-                    "rule_name": rule.rule_name.value if rule.rule_name else None,
-                    "entity_types": rule.entity_types,
-                    "rule_id": rule.rule_id,
-                    "classification": (
-                        rule.classification.value if rule.classification else None
-                    ),
-                }
+                d = asdict(rule)
+                # Convert Enums to their values
+                if d.get("rule_name") is not None:
+                    d["rule_name"] = d["rule_name"].value
+                if d.get("classification") is not None:
+                    d["classification"] = d["classification"].value
+                return d
 
             config_dict["enabled_rules"] = [
                 rule_to_dict(rule) for rule in config.enabled_rules if rule is not None
             ]
 
-        for key in [
-            "integration_profile_id",
-            "integration_profile_version",
-            "integration_tenant_id",
-            "integration_type",
-        ]:
+        for key in INTEGRATION_DETAILS:
             value = getattr(config, key, None)
             if value is not None:
                 config_dict[key] = value

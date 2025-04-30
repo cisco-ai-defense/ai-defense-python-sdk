@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import List, Optional
 from enum import Enum
+
 from .models import InspectionConfig, Metadata
 
 
