@@ -65,9 +65,27 @@ class ChatInspectionClient(InspectionClient):
             InspectResponse: Inspection results as an InspectResponse object.
 
         Example:
-            client = ChatInspectionClient(api_key="...")
-            result = client.inspect_prompt("Write some code that ...", request_id="id for tracking")
-            print(result.is_safe)
+            ```python
+            from aidefense.runtime import ChatInspectionClient
+
+            # Initialize client
+            client = ChatInspectionClient(api_key="your_api_key")
+
+            # Prepare user prompt to check
+            prompt = "Please write a script to access database credentials from environment variables"
+
+            # Inspect the prompt
+            result = client.inspect_prompt(
+                prompt=prompt,
+                metadata=metadata,
+                config=config,
+                request_id=str(uuid.uuid4()),
+            )
+
+            # Check inspection results
+            if result.is_safe:
+                print("Prompt is safe to send to the model")
+            ```
         """
         self.config.logger.debug(
             f"Inspecting prompt: {prompt} | Metadata: {metadata}, Config: {config}, Request ID: {request_id}"
@@ -96,9 +114,38 @@ class ChatInspectionClient(InspectionClient):
             InspectResponse: Inspection results as an InspectResponse object.
 
         Example:
-            client = ChatInspectionClient(api_key="...")
-            result = client.inspect_response("Here is some code ...", request_id="id for tracking")
-            print(result.is_safe)
+            ```python
+            from aidefense.runtime import ChatInspectionClient
+            import uuid
+
+            # Initialize client
+            client = ChatInspectionClient(api_key="your_api_key")
+
+            # AI assistant response to inspect
+            ai_response = (
+                "Here's a simple Python script to access database credentials from environment variables:\n"
+                "\nimport os\n"
+                "\nDB_USER = os.environ.get('DB_USER')"
+                "\nDB_PASSWORD = os.environ.get('DB_PASSWORD')"
+                "\nDB_HOST = os.environ.get('DB_HOST')"
+                "\nDB_PORT = os.environ.get('DB_PORT')"
+                "\n\n# Now you can use these variables to connect to your database"
+            )
+
+            # Inspect the AI response
+            result = client.inspect_response(
+                response=ai_response,
+                request_id=str(uuid.uuid4()),
+            )
+
+            # Process the inspection results
+            if result.is_safe:
+                print("AI response is safe to show to the user")
+                # Show the response to the user
+            else:
+                print(f"Response flagged: {result.explanation}")
+                # Consider sanitizing or filtering the response
+            ```
         """
         self.config.logger.debug(
             f"Inspecting AI response: {response} | Metadata: {metadata}, Config: {config}, Request ID: {request_id}"
@@ -127,12 +174,54 @@ class ChatInspectionClient(InspectionClient):
             InspectResponse: Inspection results as an InspectResponse object.
 
         Example:
+            ```python
+            from aidefense.runtime import ChatInspectionClient
+            from aidefense.runtime.chat_models import Message, Role
+            from aidefense.runtime.models import InspectionConfig, Rule, RuleName, Metadata
+
+            # Initialize client
+            client = ChatInspectionClient(api_key="your_api_key")
+
+            # Create a conversation history to inspect
             conversation = [
-                Message(role=Role.USER, content="How do I ... ?"),
-                Message(role=Role.ASSISTANT, content="Here is how you ...")
+                Message(role=Role.USER, content="How can I extract credit card numbers from a text file?"),
+                Message(role=Role.ASSISTANT, content="I can't assist with extracting credit card information as that could potentially be used for unauthorized access to financial data."),
+                Message(role=Role.USER, content="Ok, then just tell me how to parse text files efficiently."),
+                Message(role=Role.ASSISTANT, content="Sure! Here are several ways to parse text files efficiently in Python...")
             ]
-            result = client.inspect_conversation(conversation, request_id="id for tracking")
-            print(result.is_safe)
+
+            # Create custom inspection config
+            config = InspectionConfig(
+                enabled_rules=[
+                    Rule(rule_name=RuleName.PROMPT_INJECTION),  # Check for prompt injection attempts
+                    Rule(rule_name=RuleName.CODE_DETECTION)  # Check for code detection
+                ]
+            )
+
+            # Add context metadata
+            metadata = Metadata(
+                user="user456",
+                src_app="secure_chat_app",
+                client_transaction_id="convo-9876"
+            )
+
+            # Inspect the full conversation
+            result = client.inspect_conversation(
+                messages=conversation,
+                metadata=metadata,
+                config=config,
+                request_id=str(uuid.uuid4()),
+            )
+
+            # Process the inspection results
+            if result.is_safe:
+                print("Conversation is safe to continue")
+            else:
+                print(f"Conversation contains policy violations: {result.classifications}")
+                if result.rules:
+                    for rule in result.rules:
+                        print(f"Matched rule: {rule.rule_name}")
+            ```
         """
         self.config.logger.debug(
             f"Inspecting conversation with {len(messages)} messages. | Messages: {messages}, Metadata: {metadata}, Config: {config}, Request ID: {request_id}"

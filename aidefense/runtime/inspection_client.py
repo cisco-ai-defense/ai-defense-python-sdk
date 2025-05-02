@@ -105,9 +105,6 @@ class InspectionClient(BaseClient, ABC):
     def _parse_inspect_response(
         self, response_data: Dict[str, Any]
     ) -> "InspectResponse":
-        self.config.logger.debug(
-            f"_parse_inspect_response called | response_data: {response_data}"
-        )
         """
         Parse API response (chat or http inspect) into an InspectResponse object.
 
@@ -116,7 +113,57 @@ class InspectionClient(BaseClient, ABC):
 
         Returns:
             InspectResponse: The parsed inspection response object containing classifications, rules, severity, and other details.
+
+        Example:
+            Input (response_data):
+            ```python
+            {
+                "classifications": [
+                    "SECURITY_VIOLATION"
+                ],
+                "is_safe": False,
+                "severity": "NONE_SEVERITY",
+                "rules": [
+                    {
+                        "rule_name": "Prompt Injection",
+                        "rule_id": 0,
+                        "entity_types": [
+                            ""
+                        ],
+                        "classification": "SECURITY_VIOLATION"
+                    }
+                ],
+                "attack_technique": "NONE_ATTACK_TECHNIQUE",
+                "explanation": "",
+                "client_transaction_id": "",
+                "event_id": "b403de99-8d19-408f-8184-ec6d7907f508"
+            }
+            ```
+
+            Output (InspectResponse):
+            ```python
+            InspectResponse(
+                classifications=[Classification.SECURITY_VIOLATION],
+                is_safe=False,
+                severity=Severity.NONE_SEVERITY,
+                rules=[
+                    Rule(
+                        rule_name="Prompt Injection",  # Note: This will remain a string since it's not in RuleName enum
+                        rule_id=0,
+                        entity_types=[""],
+                        classification=Classification.SECURITY_VIOLATION
+                    )
+                ],
+                attack_technique="NONE_ATTACK_TECHNIQUE",
+                explanation="",
+                client_transaction_id="",
+                event_id="b403de99-8d19-408f-8184-ec6d7907f508"
+            )
+            ```
         """
+        self.config.logger.debug(
+            f"_parse_inspect_response called | response_data: {response_data}"
+        )
 
         # Convert classifications from strings to enum values
         classifications = []

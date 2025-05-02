@@ -26,7 +26,7 @@ class HttpInspectionClient(InspectionClient):
 
     Example:
         client = HttpInspectionClient(api_key="...", config=Config(...))
-        result = client.inspect_http_raw(http_req={...})
+        result = client.inspect(http_req={...})
         print(result.is_safe)
 
     Args:
@@ -49,7 +49,7 @@ class HttpInspectionClient(InspectionClient):
         super().__init__(api_key, config)
         self.endpoint = f"{self.config.runtime_base_url}/api/v1/inspect/http"
 
-    def inspect_http_raw(
+    def inspect(
         self,
         http_req: Optional[Dict[str, Any]] = None,
         http_res: Optional[Dict[str, Any]] = None,
@@ -60,7 +60,7 @@ class HttpInspectionClient(InspectionClient):
         timeout: Optional[int] = None,
     ) -> InspectResponse:
         """
-        Direct interface for HTTP API inspection using raw dicts for http_req, http_res, and http_meta.
+        Direct interface for HTTP inspection API using dicts for http_req, http_res, and http_meta.
         Advanced users can interact directly with the HTTP inspection API.
 
         Args:
@@ -70,16 +70,46 @@ class HttpInspectionClient(InspectionClient):
             metadata (Metadata, optional): Additional metadata.
             config (InspectionConfig, optional): Inspection configuration.
             request_id (str, optional): Unique identifier for the request (usually a UUID) to enable request tracing.
+            timeout (int, optional): Request timeout in seconds.
 
         Note:
             - The 'body' field for both request and response dicts must be a base64-encoded string representing the original bytes.
             - If you have a str, encode it to bytes first, then base64 encode.
 
+        Example:
+            ```python
+            import base64
+            from aidefense.runtime import HttpInspectionClient
+
+            # Initialize client
+            client = HttpInspectionClient(api_key="your_api_key")
+
+            # Prepare HTTP request with base64 encoded body
+            body = "Hello, world!"
+            body_bytes = body.encode("utf-8")
+            body_base64 = base64.b64encode(body_bytes).decode("utf-8")
+
+            http_req = {
+                "method": "POST",
+                "headers": {"Content-Type": "text/plain"},
+                "body": body_base64
+            }
+
+            http_meta = {"url": "https://example.com/api"} # this should be a valid url to model provider.
+
+            # Inspect the HTTP request
+            result = client.inspect(http_req=http_req, http_meta=http_meta)
+
+            # Check if request is safe
+            if result.is_safe:
+                print("Request is safe to send")
+            ```
+
         Returns:
             InspectResponse: Inspection results as an InspectResponse object.
         """
         self.config.logger.debug(
-            f"inspect_http_raw called | http_req: {http_req}, http_res: {http_res}, http_meta: {http_meta}, metadata: {metadata}, config: {config}, request_id: {request_id}"
+            f"inspect called | http_req: {http_req}, http_res: {http_res}, http_meta: {http_meta}, metadata: {metadata}, config: {config}, request_id: {request_id}"
         )
 
         if http_req:
@@ -105,16 +135,49 @@ class HttpInspectionClient(InspectionClient):
         timeout: Optional[int] = None,
     ) -> InspectResponse:
         """
-        Inspect an HTTP request from a popular HTTP library (e.g., requests, aiohttp).
+        Inspect an HTTP request from a supported HTTP library (currently requests) that is being sent to the model provider.
 
         Args:
-            http_request: HTTP request object from a supported library (e.g., requests.Request, requests.PreparedRequest).
-            metadata (Metadata, optional): Additional metadata for inspection.
-            config (InspectionConfig, optional): Inspection configuration.
+            http_request: HTTP request object from a supported library (currently requests.Request/PreparedRequest).
+            metadata (Metadata, optional): Optional metadata about the user/application context.
+            config (InspectionConfig, optional): Optional inspection configuration (rules, etc.).
             request_id (str, optional): Unique identifier for the request (usually a UUID) to enable request tracing.
+            timeout (int, optional): Request timeout in seconds.
+
+        Example:
+            ```python
+            import requests
+            from aidefense.runtime import HttpInspectionClient
+
+            # Initialize client
+            client = HttpInspectionClient(api_key="your_api_key")
+
+            # Create a requests.Request object
+            req = requests.Request(
+                method="POST",
+                url="https://api.example.com/v1/completions", # this should be a valid url to model provider.
+                headers={"Content-Type": "application/json"},
+                json={"prompt": "Tell me about AI safety"}
+            )
+
+            # Prepare the request (optional)
+            prepared_req = req.prepare()
+
+            # Inspect the request
+            result = client.inspect_request_from_http_library(prepared_req)
+
+            # Check if request is safe
+            if result.is_safe:
+                # Send the request
+                session = requests.Session()
+                response = session.send(prepared_req)
+            ```
 
         Returns:
-            InspectResponse: Inspection result.
+            InspectResponse: Inspection results as an InspectResponse object.
+
+        Raises:
+            ValueError: If the HTTP request object is not supported.
         """
         self.config.logger.debug(
             f"inspect_request_from_http_library called | http_request: {http_request}, metadata: {metadata}, config: {config}, request_id: {request_id}"
@@ -158,13 +221,42 @@ class HttpInspectionClient(InspectionClient):
         timeout: Optional[int] = None,
     ) -> InspectResponse:
         """
-        Inspect an HTTP response from a supported HTTP library (e.g., requests, aiohttp).
+        Inspect an HTTP response from a supported HTTP library (currently requests) that comes from model provider and return inspection results.
 
         Args:
             http_response: HTTP response object from a supported library.
             metadata (Metadata, optional): Additional metadata for inspection.
             config (InspectionConfig, optional): Inspection configuration.
             request_id (str, optional): Unique identifier for the request (usually a UUID) to enable request tracing.
+            timeout (int, optional): Request timeout in seconds.
+
+        Example:
+            ```python
+            import requests
+            from aidefense.runtime import HttpInspectionClient
+            from aidefense.runtime.models import InspectionConfig, Rule, RuleName
+
+            # Initialize client
+            client = HttpInspectionClient(api_key="your_api_key")
+
+            # Make a request to an API
+            response = requests.get("https://api.example.com/data") # this should be a valid url to model provider.
+
+            # Create custom inspection config to check for PII
+            config = InspectionConfig(
+                enabled_rules=[Rule(rule_name=RuleName.PII)]
+            )
+
+            # Inspect the response
+            result = client.inspect_response_from_http_library(
+                http_response=response,
+                config=config
+            )
+
+            # Check if response is safe
+            if not result.is_safe:
+                print(f"Response contains sensitive information: {result.classifications}")
+            ```
 
         Returns:
             InspectResponse: Inspection result.
@@ -238,6 +330,44 @@ class HttpInspectionClient(InspectionClient):
             metadata (Metadata, optional): Additional metadata for inspection.
             config (InspectionConfig, optional): Inspection configuration.
             request_id (str, optional): Unique identifier for the request (usually a UUID) to enable request tracing.
+            timeout (int, optional): Request timeout in seconds.
+
+        Example:
+            ```python
+            import json
+            from aidefense.runtime import HttpInspectionClient
+
+            # Initialize client
+            client = HttpInspectionClient(api_key="your_api_key")
+
+            # Define request parameters
+            method = "POST"
+            url = "https://api.example.com/v1/conversation" # this should be a valid url to model provider.
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer sk-your-api-key"
+            }
+
+            # Create the request body
+            body = json.dumps({
+                "model": "gpt-4",
+                "messages": [
+                    {"role": "user", "content": "Tell me about cybersecurity risks"}
+                ]
+            })
+
+            # Inspect the request
+            result = client.inspect_request(
+                method=method,
+                url=url,
+                headers=headers,
+                body=body
+            )
+
+            # Check if it's safe to send
+            if result.is_safe:
+                print("Request is safe to send")
+            ```
 
         Returns:
             InspectResponse: Inspection result.
@@ -279,7 +409,7 @@ class HttpInspectionClient(InspectionClient):
         timeout: Optional[int] = None,
     ) -> InspectResponse:
         """
-        Inspect an HTTP response (status code, url, headers, body), with optional request context and metadata, for security, privacy, and policy violations.
+        Inspect an HTTP response (status code, url, headers, body), with request context and metadata, for security, privacy, and policy violations.
 
         Args:
             status_code (int): HTTP response status code.
@@ -293,6 +423,58 @@ class HttpInspectionClient(InspectionClient):
             metadata (Metadata, optional): Additional metadata for the response context.
             config (InspectionConfig, optional): Inspection configuration rules.
             request_id (str, optional): Unique identifier for the request (usually a UUID) to enable request tracing.
+            timeout (int, optional): Request timeout in seconds.
+
+        Example:
+            ```python
+            import json
+            from aidefense.runtime import HttpInspectionClient
+            from aidefense.runtime.models import InspectionConfig, Rule, RuleName
+
+            # Initialize client
+            client = HttpInspectionClient(api_key="your_api_key")
+
+            # Define API response details
+            status_code = 200
+            url = "https://api.example.com/user/profile" # this should be a valid url to model provider.
+            headers = {"Content-Type": "application/json"}
+
+            # Sample response with potential PII
+            response_body = json.dumps({
+                "user": {
+                    "name": "John Doe",
+                    "email": "john.doe@example.com",
+                    "phone": "555-123-4567",
+                    "address": "123 Main St, Anytown, USA"
+                }
+            })
+
+            # Define original request details for context
+            request_method = "GET"
+            request_headers = {"Authorization": "Bearer token123"}
+            request_body = json.dumps({"user_id": "12345"})
+
+            # Create inspection config focused on PII detection
+            config = InspectionConfig(
+                enabled_rules=[Rule(rule_name=RuleName.PII)]
+            )
+
+            # Inspect the response
+            result = client.inspect_response(
+                status_code=status_code,
+                url=url,
+                headers=headers,
+                body=response_body,
+                request_method=request_method,
+                request_headers=request_headers,
+                request_body=request_body,
+                config=config
+            )
+
+            # Check for PII or other issues
+            if not result.is_safe:
+                print(f"Found sensitive data in response: {result.classifications}")
+            ```
 
         Returns:
             InspectResponse: The inspection result.
@@ -350,7 +532,6 @@ class HttpInspectionClient(InspectionClient):
         http_meta: HttpMetaObject,
         metadata: Optional[Metadata] = None,
         config: Optional[InspectionConfig] = None,
-        entities_map: Optional[Dict[str, List[str]]] = None,
         request_id: Optional[str] = None,
         timeout: Optional[int] = None,
     ) -> InspectResponse:
@@ -365,15 +546,8 @@ class HttpInspectionClient(InspectionClient):
         if config is None:
             config = InspectionConfig()
         if not config.enabled_rules:
-            if entities_map:
-                # Use user-provided entities_map
-                config.enabled_rules = [
-                    Rule(rule_name=rn, entity_types=entities_map.get(rn))
-                    for rn in RuleName
-                ]
-            else:
-                # Use precomputed default_enabled_rules from InspectionClient
-                config.enabled_rules = self.default_enabled_rules
+            # Use precomputed default_enabled_rules from InspectionClient
+            config.enabled_rules = self.default_enabled_rules
         request = HttpInspectRequest(
             http_req=http_req,
             http_res=http_res,
@@ -494,8 +668,15 @@ class HttpInspectionClient(InspectionClient):
             or getattr(http_request, HTTP_BODY, b"")
             or getattr(http_request, "content", b"")
         )
+
+        if isinstance(req_body, (bytes, str)):
+            raise ValidationError(
+                f"Request body must be bytes or str, got {type(req_body)}"
+            )
+
         if isinstance(req_body, str):
             req_body = req_body.encode()
+
         req_body_b64 = base64.b64encode(req_body).decode() if req_body else ""
         req_hdr_kvs = [self._header_to_kv(k, v) for k, v in req_headers.items()]
         http_req = HttpReqObject(
