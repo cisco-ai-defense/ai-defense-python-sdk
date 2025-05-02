@@ -4,11 +4,20 @@ from dataclasses import asdict
 
 from .auth import RuntimeAuth
 from .models import PII_ENTITIES, PCI_ENTITIES, PHI_ENTITIES
-from .models import Rule, RuleName, Metadata, InspectionConfig, Severity, Classification, InspectResponse
+from .models import (
+    Rule,
+    RuleName,
+    Metadata,
+    InspectionConfig,
+    Severity,
+    Classification,
+    InspectResponse,
+)
 from .constants import INTEGRATION_DETAILS
 from ..exceptions import ValidationError
 from ..client import BaseClient
 from ..config import Config
+
 
 class InspectionClient(BaseClient, ABC):
     """
@@ -108,7 +117,7 @@ class InspectionClient(BaseClient, ABC):
         Returns:
             InspectResponse: The parsed inspection response object containing classifications, rules, severity, and other details.
         """
-        
+
         # Convert classifications from strings to enum values
         classifications = []
         for cls in response_data.get("classifications", []):
@@ -130,13 +139,13 @@ class InspectionClient(BaseClient, ABC):
             except ValueError:
                 pass
             rules.append(
-                    Rule(
-                        rule_name=rule_name,
-                        entity_types=rule_data.get("entity_types"),
-                        rule_id=rule_data.get("rule_id"),
-                        classification=classification,
-                    )
+                Rule(
+                    rule_name=rule_name,
+                    entity_types=rule_data.get("entity_types"),
+                    rule_id=rule_data.get("rule_id"),
+                    classification=classification,
                 )
+            )
         # Parse severity if present
         severity = None
         try:

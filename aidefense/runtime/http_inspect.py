@@ -87,7 +87,13 @@ class HttpInspectionClient(InspectionClient):
         if http_res:
             ensure_base64_body(convert(http_res))
         return self._inspect(
-            http_req, http_res, http_meta, metadata, config, request_id=request_id, timeout=timeout
+            http_req,
+            http_res,
+            http_meta,
+            metadata,
+            config,
+            request_id=request_id,
+            timeout=timeout,
         )
 
     def inspect_request_from_http_library(
@@ -118,11 +124,15 @@ class HttpInspectionClient(InspectionClient):
         body = b""
         url = None
         # Support both requests.PreparedRequest and requests.Request
-        if isinstance(http_request, requests.PreparedRequest) or isinstance(http_request, requests.Request):
+        if isinstance(http_request, requests.PreparedRequest) or isinstance(
+            http_request, requests.Request
+        ):
             url = getattr(http_request, "url", None)
             http_req = self._build_http_req_from_http_library(http_request)
         else:
-            raise ValueError("Unsupported HTTP request type: only requests.Request and requests.PreparedRequest are supported")
+            raise ValueError(
+                "Unsupported HTTP request type: only requests.Request and requests.PreparedRequest are supported"
+            )
 
         # Fallback for unknown types
         if url is not None:
@@ -130,7 +140,13 @@ class HttpInspectionClient(InspectionClient):
         # Prepare and inspect
         http_meta = HttpMetaObject(url=url or "")
         return self._inspect(
-            http_req, None, http_meta, metadata, config, request_id=request_id, timeout=timeout
+            http_req,
+            None,
+            http_meta,
+            metadata,
+            config,
+            request_id=request_id,
+            timeout=timeout,
         )
 
     def inspect_response_from_http_library(
@@ -171,7 +187,9 @@ class HttpInspectionClient(InspectionClient):
             http_request = getattr(http_response, "request", None)
 
         else:
-            raise ValueError("Unsupported HTTP response type: only requests.Response is supported")
+            raise ValueError(
+                "Unsupported HTTP response type: only requests.Response is supported"
+            )
 
         body_b64 = to_base64_bytes(body) if body else ""
         hdr_kvs = [self._header_to_kv(k, v) for k, v in (headers or {}).items()]
@@ -189,7 +207,13 @@ class HttpInspectionClient(InspectionClient):
             )
         http_meta = HttpMetaObject(url=url)
         return self._inspect(
-            http_req, http_res, http_meta, metadata, config, request_id=request_id, timeout=timeout
+            http_req,
+            http_res,
+            http_meta,
+            metadata,
+            config,
+            request_id=request_id,
+            timeout=timeout,
         )
 
     def inspect_request(
@@ -230,7 +254,13 @@ class HttpInspectionClient(InspectionClient):
         )
         http_meta = HttpMetaObject(url=url)
         return self._inspect(
-            http_req, None, http_meta, metadata, config, request_id=request_id, timeout=timeout
+            http_req,
+            None,
+            http_meta,
+            metadata,
+            config,
+            request_id=request_id,
+            timeout=timeout,
         )
 
     def inspect_response(
@@ -304,7 +334,13 @@ class HttpInspectionClient(InspectionClient):
 
         http_meta = HttpMetaObject(url=url)
         return self._inspect(
-            http_req, http_res, http_meta, metadata, config, request_id=request_id, timeout=timeout
+            http_req,
+            http_res,
+            http_meta,
+            metadata,
+            config,
+            request_id=request_id,
+            timeout=timeout,
         )
 
     def _inspect(
@@ -398,7 +434,7 @@ class HttpInspectionClient(InspectionClient):
             ValidationError: If the request is missing required fields, malformed, or config is invalid.
         """
         self.config.logger.debug(f"Validating request dict: {request_dict}")
-        
+
         config = request_dict.get("config")
         if config is not None:
             if not config.get("enabled_rules") or not isinstance(
@@ -420,7 +456,9 @@ class HttpInspectionClient(InspectionClient):
             if not http_req.get(HTTP_METHOD):
                 raise ValidationError(f"'{HTTP_REQ}' must have a '{HTTP_METHOD}'.")
             if http_req.get(HTTP_METHOD) not in self.VALID_HTTP_METHODS:
-                raise ValidationError(f"'{HTTP_REQ}' must have a valid '{HTTP_METHOD}' (one of {self.VALID_HTTP_METHODS}).")
+                raise ValidationError(
+                    f"'{HTTP_REQ}' must have a valid '{HTTP_METHOD}' (one of {self.VALID_HTTP_METHODS})."
+                )
         if http_res:
             if not isinstance(http_res, dict):
                 raise ValidationError(f"'{HTTP_RES}' must be a dict.")
@@ -446,10 +484,16 @@ class HttpInspectionClient(InspectionClient):
             value=value,
         )
 
-    def _build_http_req_from_http_library(self, http_request: Union[requests.PreparedRequest, requests.Request]) -> HttpReqObject:
+    def _build_http_req_from_http_library(
+        self, http_request: Union[requests.PreparedRequest, requests.Request]
+    ) -> HttpReqObject:
         method = getattr(http_request, HTTP_METHOD, None)
         req_headers = dict(getattr(http_request, "headers", {}))
-        req_body = getattr(http_request, "data", b"") or getattr(http_request, HTTP_BODY, b"") or getattr(http_request, "content", b"")
+        req_body = (
+            getattr(http_request, "data", b"")
+            or getattr(http_request, HTTP_BODY, b"")
+            or getattr(http_request, "content", b"")
+        )
         if isinstance(req_body, str):
             req_body = req_body.encode()
         req_body_b64 = base64.b64encode(req_body).decode() if req_body else ""

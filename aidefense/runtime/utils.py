@@ -56,6 +56,7 @@ def convert(obj: Any) -> Any:
     else:
         return obj
 
+
 # Validate and encode bodies if necessary
 def ensure_base64_body(d: Optional[Dict[str, Any]]) -> None:
     if d and d.get(HTTP_BODY):
@@ -72,6 +73,4 @@ def ensure_base64_body(d: Optional[Dict[str, Any]]) -> None:
         elif body is None:
             d[HTTP_BODY] = ""
         else:
-            raise ValueError(
-                "HTTP body must be bytes, str, or base64-encoded string."
-            )
+            raise ValueError("HTTP body must be bytes, str, or base64-encoded string.")

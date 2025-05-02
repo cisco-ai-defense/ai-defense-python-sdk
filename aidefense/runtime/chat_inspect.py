@@ -7,6 +7,7 @@ from .chat_models import Message, Role, ChatInspectRequest
 from ..config import Config
 from ..exceptions import ValidationError
 
+
 class ChatInspectionClient(InspectionClient):
     """
     Client for inspecting chat conversations with Cisco AI Defense.
@@ -212,29 +213,29 @@ class ChatInspectionClient(InspectionClient):
         if not isinstance(messages, list) or not messages:
             self.config.logger.error("'messages' must be a non-empty list.")
             raise ValidationError("'messages' must be a non-empty list.")
-        
+
         has_prompt = False
         has_completion = False
         for msg in messages:
             if not isinstance(msg, dict):
                 raise ValidationError("Each message must be a dict.")
-            
+
             if msg.get("role") not in self.VALID_ROLES:
                 raise ValidationError(
                     f"Message role must be one of: {list(self.VALID_ROLES)}."
                 )
-            
+
             if not msg.get("content") or not isinstance(msg.get("content"), str):
                 raise ValidationError(
                     "Each message must have non-empty string content."
                 )
-                
+
             if msg.get("role") == Role.USER.value and msg.get("content").strip():
                 has_prompt = True
-            
+
             if msg.get("role") == Role.ASSISTANT.value and msg.get("content").strip():
                 has_completion = True
-        
+
         if not (has_prompt or has_completion):
             raise ValidationError(
                 "At least one message must be a prompt (role=user) or completion (role=assistant) with non-empty content."
