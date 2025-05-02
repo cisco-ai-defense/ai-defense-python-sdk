@@ -174,10 +174,22 @@ The SDK uses a `Config` object for global settings:
 ```python
 from aidefense import Config
 
+# Basic configuration
 config = Config(
     logger_params={"level": "DEBUG"},
     retry_config={"total": 5, "backoff_factor": 1.0},
 )
+
+# Configuration with custom API endpoint
+custom_endpoint_config = Config(
+    runtime_base_url="https://custom-api-endpoint.example.com",
+    logger_params={"level": "INFO"},
+    retry_config={"total": 3, "backoff_factor": 2.0},
+)
+
+# Initialize clients with custom configuration
+chat_client = ChatInspectionClient(api_key="YOUR_API_KEY", config=custom_endpoint_config)
+http_client = HttpInspectionClient(api_key="YOUR_API_KEY", config=custom_endpoint_config)
 ```
 
 ---
