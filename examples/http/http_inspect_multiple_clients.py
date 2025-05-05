@@ -10,7 +10,7 @@ config = Config(logger_params={"level": "INFO"})
 client1 = HttpInspectionClient(api_key="YOUR_API_KEY", config=config)
 client2 = HttpInspectionClient(api_key="YOUR_API_KEY", config=config)
 
-# Use client1 to inspect a raw HTTP request (inspect_http_raw)
+# Use client1 to inspect a raw HTTP request (inspect)
 json_bytes = b'{"key": "value"}'
 http_req = {
     "method": "POST",
@@ -18,7 +18,7 @@ http_req = {
     "body": to_base64_bytes(json_bytes),
 }
 http_meta = {"url": "https://api.example.com/myendpoint"}
-result1 = client1.inspect_http_raw(http_req=http_req, http_meta=http_meta)
+result1 = client1.inspect(http_req=http_req, http_meta=http_meta)
 print("HTTP API is safe?", result1.is_safe)
 
 # Use client2 to inspect a simplified HTTP request (inspect_request)

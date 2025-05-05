@@ -169,21 +169,27 @@ class InspectionClient(BaseClient, ABC):
         classifications = []
         for cls in response_data.get("classifications", []):
             try:
+                # Ensure the classification is added if it's a valid enum value
                 classifications.append(Classification(cls))
             except ValueError:
-                pass
+                # Log invalid classification but don't add it
+                self.config.logger.warning(f"Invalid classification type: {cls}")
         # Parse rules if present
         rules = []
         for rule_data in response_data.get("rules", []):
-            rule_name = None
+            # Try to convert to enum, keep original string if not in enum
+            rule_name = rule_data["rule_name"]
             try:
                 rule_name = RuleName(rule_data["rule_name"])
             except ValueError:
+                # Keep the original string for custom rule names
                 pass
-            classification = None
+            # Try to convert to enum, keep original string if not in enum
+            classification = rule_data.get("classification")
             try:
                 classification = Classification(rule_data["classification"])
             except ValueError:
+                # Keep the original string for custom classifications
                 pass
             rules.append(
                 Rule(

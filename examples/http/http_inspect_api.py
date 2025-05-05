@@ -1,5 +1,5 @@
 """
-Example: Using inspect_http_raw for raw HTTP request/response dicts
+Example: Using inspect for raw HTTP request/response dicts
 """
 
 from aidefense import HttpInspectionClient

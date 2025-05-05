@@ -540,7 +540,7 @@ class HttpInspectionClient(InspectionClient):
         See base class for contract. Handles validation and sends the inspection request.
         """
         self.config.logger.debug(
-            f"_inspect called | http_req: {http_req}, http_res: {http_res}, http_meta: {http_meta}, metadata: {metadata}, config: {config}, entities_map: {entities_map}, request_id: {request_id}"
+            f"_inspect called | http_req: {http_req}, http_res: {http_res}, http_meta: {http_meta}, metadata: {metadata}, config: {config}, request_id: {request_id}"
         )
         # Centralized validation for all HTTP inspection
         if config is None:
@@ -669,9 +669,9 @@ class HttpInspectionClient(InspectionClient):
             or getattr(http_request, "content", b"")
         )
 
-        if isinstance(req_body, (bytes, str)):
+        if not isinstance(req_body, (bytes, str, type(None))):
             raise ValidationError(
-                f"Request body must be bytes or str, got {type(req_body)}"
+                "Request body must be bytes, str, or None"
             )
 
         if isinstance(req_body, str):
