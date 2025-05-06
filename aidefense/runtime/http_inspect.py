@@ -1,6 +1,7 @@
 import base64
-from typing import Dict, Optional, Any, Union, List
+from typing import Dict, Optional, Any, Union
 import requests
+import json
 
 from .constants import HTTP_REQ, HTTP_RES, HTTP_META, HTTP_METHOD, HTTP_BODY
 from .inspection_client import InspectionClient
@@ -313,7 +314,7 @@ class HttpInspectionClient(InspectionClient):
         method: str,
         url: str,
         headers: Optional[Dict[str, str]] = None,
-        body: Union[str, bytes, None] = None,
+        body: Union[str, bytes, dict] = None,
         metadata: Optional[Metadata] = None,
         config: Optional[InspectionConfig] = None,
         request_id: Optional[str] = None,
@@ -326,7 +327,7 @@ class HttpInspectionClient(InspectionClient):
             method (str): HTTP request method.
             url (str): URL of the request.
             headers (dict, optional): HTTP request headers.
-            body (bytes or str, optional): Request body as bytes or string.
+            body (bytes, str, or dict, optional): Request body as bytes, string, or dictionary (will be JSON-serialized).
             metadata (Metadata, optional): Additional metadata for inspection.
             config (InspectionConfig, optional): Inspection configuration.
             request_id (str, optional): Unique identifier for the request (usually a UUID) to enable request tracing.
@@ -372,12 +373,17 @@ class HttpInspectionClient(InspectionClient):
         Returns:
             InspectResponse: Inspection result.
         """
-        if body is None:
-            body_b64 = ""
+        if not isinstance(body, (str, bytes, dict)):
+            raise ValidationError("Request body must be str, bytes, or dict")
+
+        if isinstance(body, dict):
+            # Convert dictionary to JSON string and then encode
+            body_b64 = base64.b64encode(json.dumps(body).encode()).decode()
         elif isinstance(body, str):
             body_b64 = base64.b64encode(body.encode()).decode()
-        else:
+        elif isinstance(body, bytes):
             body_b64 = base64.b64encode(body).decode()
+
         hdr_kvs = [self._header_to_kv(k, v) for k, v in (headers or {}).items()]
         http_req = HttpReqObject(
             method=method, headers=HttpHdrObject(hdrKvs=hdr_kvs), body=body_b64
@@ -398,10 +404,10 @@ class HttpInspectionClient(InspectionClient):
         status_code: int,
         url: str,
         headers: Optional[Dict[str, str]] = None,
-        body: Union[str, bytes, None] = None,
-        request_method: Optional[str] = None,
-        request_headers: Optional[dict] = None,
-        request_body: Optional[bytes] = None,
+        body: Union[str, bytes, dict] = None,
+        request_method: str = None,
+        request_headers: Optional[Dict[str, str]] = None,
+        request_body: Union[str, bytes, dict] = None,
         request_metadata: Optional[Metadata] = None,
         metadata: Optional[Metadata] = None,
         config: Optional[InspectionConfig] = None,
@@ -415,10 +421,10 @@ class HttpInspectionClient(InspectionClient):
             status_code (int): HTTP response status code.
             url (str): URL associated with the response.
             headers (dict, optional): HTTP headers for the response.
-            body (bytes or str, optional): Response body as bytes or string.
-            request_method (str, optional): HTTP request method for context.
+            body (Union[bytes, str, dict]): Response body as bytes, string, or dictionary.
+            request_method (str): HTTP request method for context.
             request_headers (dict, optional): HTTP request headers for context.
-            request_body (bytes or str, optional): HTTP request body for context.
+            request_body (Union[bytes, str, dict]): HTTP request body for context.
             request_metadata (Metadata, optional): Additional metadata for the request context.
             metadata (Metadata, optional): Additional metadata for the response context.
             config (InspectionConfig, optional): Inspection configuration rules.
@@ -483,12 +489,19 @@ class HttpInspectionClient(InspectionClient):
             f"inspect_response called | status_code: {status_code}, url: {url}, headers: {headers}, body: {body}, request_method: {request_method}, request_headers: {request_headers}, request_body: {request_body}, request_metadata: {request_metadata}, metadata: {metadata}, config: {config}, request_id: {request_id}"
         )
         # Response body encoding
-        if body is None:
-            body_b64 = ""
+        if not isinstance(body, (str, bytes, dict)):
+            raise ValidationError(
+                f"Response body must be bytes, str, or dict; got {type(body)}"
+            )
+
+        elif isinstance(body, dict):
+            # Convert dictionary to JSON string and then encode
+            body_b64 = base64.b64encode(json.dumps(body).encode()).decode()
         elif isinstance(body, str):
             body_b64 = base64.b64encode(body.encode()).decode()
-        else:
+        elif isinstance(body, bytes):
             body_b64 = base64.b64encode(body).decode()
+
         hdr_kvs = [self._header_to_kv(k, v) for k, v in (headers or {}).items()]
         http_res = HttpResObject(
             statusCode=status_code, headers=HttpHdrObject(hdrKvs=hdr_kvs), body=body_b64
@@ -497,6 +510,11 @@ class HttpInspectionClient(InspectionClient):
         # Request context (optional)
         http_req = None
         if request_method or request_headers or request_body or request_metadata:
+            if not isinstance(request_body, (str, bytes, dict)):
+                raise ValidationError(
+                    f"Request body must be bytes, str, or dict; got {type(request_body)}"
+                )
+
             req_hdr_kvs = [
                 self._header_to_kv(k, v) for k, v in (request_headers or {}).items()
             ]
@@ -504,6 +522,11 @@ class HttpInspectionClient(InspectionClient):
                 req_body_b64 = ""
             elif isinstance(request_body, str):
                 req_body_b64 = to_base64_bytes(request_body.encode())
+            elif isinstance(request_body, dict):
+                # Convert dictionary to JSON string and then encode
+                req_body_b64 = base64.b64encode(
+                    json.dumps(request_body).encode()
+                ).decode()
             else:
                 req_body_b64 = to_base64_bytes(request_body)
             http_req = HttpReqObject(
@@ -511,8 +534,6 @@ class HttpInspectionClient(InspectionClient):
                 headers=HttpHdrObject(hdrKvs=req_hdr_kvs),
                 body=req_body_b64,
             )
-            # Optionally attach request_metadata to the request as needed by your API
-            # (If you want to attach request_metadata to the main metadata, merge here or pass as a separate field)
 
         http_meta = HttpMetaObject(url=url)
         return self._inspect(
@@ -669,13 +690,13 @@ class HttpInspectionClient(InspectionClient):
             or getattr(http_request, "content", b"")
         )
 
-        if not isinstance(req_body, (bytes, str, type(None))):
-            raise ValidationError(
-                "Request body must be bytes, str, or None"
-            )
+        if not isinstance(req_body, (bytes, str, dict)):
+            raise ValidationError("Request body must be bytes, str or dict")
 
         if isinstance(req_body, str):
             req_body = req_body.encode()
+        if isinstance(req_body, dict):
+            req_body = json.dumps(req_body).encode()
 
         req_body_b64 = base64.b64encode(req_body).decode() if req_body else ""
         req_hdr_kvs = [self._header_to_kv(k, v) for k, v in req_headers.items()]
