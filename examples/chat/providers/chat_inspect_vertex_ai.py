@@ -1,3 +1,19 @@
+# Copyright 2025 Cisco Systems, Inc. and its affiliates
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """
 Example: Inspecting a Google Vertex AI prompt and response using ChatInspectionClient
 
@@ -47,12 +63,12 @@ try:
     credentials, project = google.auth.default()
     auth_req = google.auth.transport.requests.Request()
     credentials.refresh(auth_req)
-    
+
     vertex_headers = {
         "Authorization": f"Bearer {credentials.token}",
         "Content-Type": "application/json"
     }
-    
+
     vertex_payload = {
         "instances": [
             {
@@ -66,24 +82,24 @@ try:
             "topP": 0.95
         }
     }
-    
+
     vertex_response = requests.post(
         VERTEX_API_URL, headers=vertex_headers, json=vertex_payload
     )
     vertex_response.raise_for_status()
     vertex_data = vertex_response.json()
     ai_response = vertex_data.get("predictions", [{}])[0].get("content", "")
-    
+
     print("\n----------------Vertex AI Response----------------")
     print("Response:", ai_response)
-    
+
     # --- Inspect the AI response ---
     response_result = client.inspect_response(ai_response)
     print("\n----------------Inspect Response Result----------------")
     print("Response is safe?", response_result.is_safe)
     if not response_result.is_safe:
         print(f"Violated policies: {[rule.rule_name.value for rule in response_result.rules or []]}")
-    
+
     # --- Inspect the full conversation ---
     conversation = [
         Message(role=Role.USER, content=user_prompt),
@@ -99,18 +115,18 @@ except Exception as e:
     print(f"\nError calling Vertex AI API: {e}")
     print("Note: This example requires Google Cloud credentials and permissions to access Vertex AI.")
     print("For testing purposes, you can mock the API response as follows:")
-    
+
     # Mock response for testing without actual API call
     ai_response = "Einstein's theory of relativity has two parts: Special Relativity and General Relativity. Special Relativity says that the laws of physics are the same for everyone, no matter how fast they're moving, and that the speed of light is constant. General Relativity explains that gravity is actually the bending of space and time by massive objects."
-    
+
     print("\n----------------Mocked Vertex AI Response----------------")
     print("Response:", ai_response)
-    
+
     # Continue with inspection as before
     response_result = client.inspect_response(ai_response)
     print("\n----------------Inspect Response Result----------------")
     print("Response is safe?", response_result.is_safe)
-    
+
     conversation = [
         Message(role=Role.USER, content=user_prompt),
         Message(role=Role.ASSISTANT, content=ai_response),

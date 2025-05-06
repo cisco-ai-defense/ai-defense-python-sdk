@@ -1,3 +1,19 @@
+# Copyright 2025 Cisco Systems, Inc. and its affiliates
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """
 Example: Inspecting an Anthropic Claude prompt and response using ChatInspectionClient
 
@@ -48,17 +64,17 @@ try:
     anthropic_response.raise_for_status()
     anthropic_data = anthropic_response.json()
     ai_response = anthropic_data.get("content", [{}])[0].get("text", "")
-    
+
     print("\n----------------Anthropic Claude Response----------------")
     print("Response:", ai_response)
-    
+
     # --- Inspect the AI response ---
     response_result = client.inspect_response(ai_response)
     print("\n----------------Inspect Response Result----------------")
     print("Response is safe?", response_result.is_safe)
     if not response_result.is_safe:
         print(f"Violated policies: {[rule.rule_name.value for rule in response_result.rules or []]}")
-    
+
     # --- Inspect the full conversation ---
     conversation = [
         Message(role=Role.USER, content=user_prompt),
@@ -74,7 +90,7 @@ except Exception as e:
     print(f"\nError calling Anthropic API: {e}")
     print("Note: This example requires a valid Anthropic API key.")
     print("For testing purposes, you can mock the API response as follows:")
-    
+
     # Mock response for testing without actual API call
     ai_response = """Here are three significant ways AI is helping with environmental sustainability:
 
@@ -83,15 +99,15 @@ except Exception as e:
 2. Monitoring and Protecting Biodiversity: AI-powered systems analyze satellite imagery, audio recordings, and camera trap data to monitor deforestation, track endangered species, and detect illegal activities like poaching. For example, platforms like Temboo's Kosmos use machine learning to analyze satellite imagery to detect forest loss in real-time, while organizations like Rainforest Connection use AI to analyze audio recordings to detect illegal logging.
 
 3. Accelerating Climate Science Research: AI is helping climate scientists analyze massive datasets to improve climate models, predict extreme weather events more accurately, and understand complex climate patterns. This enables better preparedness for climate-related disasters and more informed policy decisions. AI has also accelerated materials science research for more sustainable solutions, from better batteries to carbon capture technologies."""
-    
+
     print("\n----------------Mocked Anthropic Claude Response----------------")
     print("Response:", ai_response)
-    
+
     # Continue with inspection as before
     response_result = client.inspect_response(ai_response)
     print("\n----------------Inspect Response Result----------------")
     print("Response is safe?", response_result.is_safe)
-    
+
     conversation = [
         Message(role=Role.USER, content=user_prompt),
         Message(role=Role.ASSISTANT, content=ai_response),

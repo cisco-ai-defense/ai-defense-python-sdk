@@ -1,3 +1,19 @@
+# Copyright 2025 Cisco Systems, Inc. and its affiliates
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """
 Example: Inspecting a Mistral AI prompt and response using ChatInspectionClient
 
@@ -47,17 +63,17 @@ try:
     mistral_response.raise_for_status()
     mistral_data = mistral_response.json()
     ai_response = mistral_data.get("choices", [{}])[0].get("message", {}).get("content", "")
-    
+
     print("\n----------------Mistral AI Response----------------")
     print("Response:", ai_response)
-    
+
     # --- Inspect the AI response ---
     response_result = client.inspect_response(ai_response)
     print("\n----------------Inspect Response Result----------------")
     print("Response is safe?", response_result.is_safe)
     if not response_result.is_safe:
         print(f"Violated policies: {[rule.rule_name.value for rule in response_result.rules or []]}")
-    
+
     # --- Inspect the full conversation ---
     conversation = [
         Message(role=Role.USER, content=user_prompt),
@@ -73,7 +89,7 @@ except Exception as e:
     print(f"\nError calling Mistral AI API: {e}")
     print("Note: This example requires a valid Mistral AI API key.")
     print("For testing purposes, you can mock the API response as follows:")
-    
+
     # Mock response for testing without actual API call
     ai_response = """Supervised and unsupervised learning are two fundamental approaches in machine learning that differ in how they learn from data:
 
@@ -97,15 +113,15 @@ Key differences:
 3. Complexity: Supervised is conceptually simpler; unsupervised can be more complex
 4. Applications: Different use cases depending on available data and objectives
 5. Evaluation: Supervised has clear metrics; unsupervised is harder to evaluate"""
-    
+
     print("\n----------------Mocked Mistral AI Response----------------")
     print("Response:", ai_response)
-    
+
     # Continue with inspection as before
     response_result = client.inspect_response(ai_response)
     print("\n----------------Inspect Response Result----------------")
     print("Response is safe?", response_result.is_safe)
-    
+
     conversation = [
         Message(role=Role.USER, content=user_prompt),
         Message(role=Role.ASSISTANT, content=ai_response),
