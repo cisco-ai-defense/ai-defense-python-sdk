@@ -1,3 +1,19 @@
+# Copyright 2025 Cisco Systems, Inc. and its affiliates
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 from aidefense.runtime.inspection_client import InspectionClient
 from aidefense.runtime.models import InspectResponse, Classification, Severity, Rule, RuleName
@@ -25,11 +41,11 @@ class TestInspectionClient(InspectionClient):
     """
     Test implementation of the abstract InspectionClient for testing purposes.
     """
-    
+
     def __init__(self, api_key: str, config: Optional[Config] = None):
         super().__init__(api_key, config)
         self.endpoint = "https://test.endpoint/api/v1/inspect/test"
-    
+
     def _inspect(self, *args, **kwargs):
         # Simple implementation for testing
         return {"result": "test"}
@@ -38,15 +54,15 @@ class TestInspectionClient(InspectionClient):
 def test_parse_inspect_response_basic():
     """Test parsing a basic inspection response."""
     client = TestInspectionClient(TEST_API_KEY)
-    
+
     response_data = {
         "is_safe": True,
         "classifications": [],
         "explanation": "No issues found"
     }
-    
+
     result = client._parse_inspect_response(response_data)
-    
+
     assert isinstance(result, InspectResponse)
     assert result.is_safe is True
     assert len(result.classifications) == 0
@@ -56,15 +72,15 @@ def test_parse_inspect_response_basic():
 def test_parse_inspect_response_with_classifications():
     """Test parsing a response with classifications."""
     client = TestInspectionClient(TEST_API_KEY)
-    
+
     response_data = {
         "is_safe": False,
         "classifications": ["SECURITY_VIOLATION", "PII"],
         "explanation": "Issues found"
     }
-    
+
     result = client._parse_inspect_response(response_data)
-    
+
     assert isinstance(result, InspectResponse)
     assert result.is_safe is False
     # Only SECURITY_VIOLATION is a valid Classification enum value, PII is invalid
@@ -77,15 +93,15 @@ def test_parse_inspect_response_with_classifications():
 def test_parse_inspect_response_with_invalid_classification():
     """Test parsing a response with an invalid classification type."""
     client = TestInspectionClient(TEST_API_KEY)
-    
+
     response_data = {
         "is_safe": False,
         "classifications": ["SECURITY_VIOLATION", "INVALID_TYPE"],
         "explanation": "Issues found"
     }
-    
+
     result = client._parse_inspect_response(response_data)
-    
+
     # Should ignore the invalid classification
     assert len(result.classifications) == 1
     assert Classification.SECURITY_VIOLATION in result.classifications
@@ -94,7 +110,7 @@ def test_parse_inspect_response_with_invalid_classification():
 def test_parse_inspect_response_with_rules():
     """Test parsing a response with rule information."""
     client = TestInspectionClient(TEST_API_KEY)
-    
+
     response_data = {
         "is_safe": False,
         "rules": [
@@ -111,16 +127,16 @@ def test_parse_inspect_response_with_rules():
             }
         ]
     }
-    
+
     result = client._parse_inspect_response(response_data)
-    
+
     assert len(result.rules) == 2
     # Compare using string value rather than enum since our implementation preserves the string
     assert result.rules[0].rule_name == "PROMPT_INJECTION"
     assert result.rules[0].rule_id == 1
     # Prompt Injection doesn't have entity types
     assert result.rules[0].classification == Classification.SECURITY_VIOLATION
-    
+
     assert result.rules[1].rule_name == "PII"
     assert result.rules[1].rule_id == 2
     assert "EMAIL" in result.rules[1].entity_types
@@ -132,7 +148,7 @@ def test_parse_inspect_response_with_rules():
 def test_parse_inspect_response_with_custom_rule_name():
     """Test parsing a response with a custom rule name not in the enum."""
     client = TestInspectionClient(TEST_API_KEY)
-    
+
     response_data = {
         "is_safe": False,
         "rules": [
@@ -143,9 +159,9 @@ def test_parse_inspect_response_with_custom_rule_name():
             }
         ]
     }
-    
+
     result = client._parse_inspect_response(response_data)
-    
+
     # Should keep the string rule name if not in enum
     assert len(result.rules) == 1
     assert result.rules[0].rule_name == "Custom Rule"
@@ -156,15 +172,15 @@ def test_parse_inspect_response_with_custom_rule_name():
 def test_parse_inspect_response_with_severity():
     """Test parsing a response with severity information."""
     client = TestInspectionClient(TEST_API_KEY)
-    
+
     response_data = {
         "is_safe": False,
         "severity": "HIGH",
         "explanation": "High severity issue detected"
     }
-    
+
     result = client._parse_inspect_response(response_data)
-    
+
     assert result.severity == Severity.HIGH
     assert result.explanation == "High severity issue detected"
 
@@ -172,15 +188,15 @@ def test_parse_inspect_response_with_severity():
 def test_parse_inspect_response_with_invalid_severity():
     """Test parsing a response with invalid severity."""
     client = TestInspectionClient(TEST_API_KEY)
-    
+
     response_data = {
         "is_safe": False,
         "severity": "UNKNOWN_LEVEL",  # Not in Severity enum
         "explanation": "Issue detected"
     }
-    
+
     result = client._parse_inspect_response(response_data)
-    
+
     # Invalid severity should be None
     assert result.severity is None
 
@@ -188,18 +204,18 @@ def test_parse_inspect_response_with_invalid_severity():
 def test_parse_inspect_response_with_metadata():
     """Test parsing a response with transaction metadata."""
     client = TestInspectionClient(TEST_API_KEY)
-    
+
     event_id = str(uuid.uuid4())
     transaction_id = "tx-12345"
-    
+
     response_data = {
         "is_safe": True,
         "event_id": event_id,
         "client_transaction_id": transaction_id
     }
-    
+
     result = client._parse_inspect_response(response_data)
-    
+
     assert result.event_id == event_id
     assert result.client_transaction_id == transaction_id
 
@@ -207,15 +223,15 @@ def test_parse_inspect_response_with_metadata():
 def test_parse_inspect_response_with_attack_technique():
     """Test parsing a response with attack technique information."""
     client = TestInspectionClient(TEST_API_KEY)
-    
+
     response_data = {
         "is_safe": False,
         "attack_technique": "INJECTION",
         "explanation": "Injection attempt detected"
     }
-    
+
     result = client._parse_inspect_response(response_data)
-    
+
     assert result.attack_technique == "INJECTION"
     assert result.explanation == "Injection attempt detected"
 
@@ -223,7 +239,7 @@ def test_parse_inspect_response_with_attack_technique():
 def test_parse_inspect_response_complex():
     """Test parsing a complex response with all possible fields."""
     client = TestInspectionClient(TEST_API_KEY)
-    
+
     response_data = {
         "classifications": [
             "SECURITY_VIOLATION"
@@ -245,9 +261,9 @@ def test_parse_inspect_response_complex():
         "client_transaction_id": "tx-9876",
         "event_id": "b403de99-8d19-408f-8184-ec6d7907f508"
     }
-    
+
     result = client._parse_inspect_response(response_data)
-    
+
     # Verify all fields were parsed correctly
     assert isinstance(result, InspectResponse)
     assert result.is_safe is False

@@ -17,10 +17,11 @@
 """
 Example: Inspecting an OpenAI API HTTP request and response using HttpInspectionClient
 
-This script demonstrates:
-- Sending a prompt to the OpenAI API and receiving a response
-- Inspecting the HTTP request and response using the AI Defense SDK
-- Inspecting the same request using both the raw and high-level HTTP inspection methods
+# This script demonstrates how to use the AI Defense SDK to inspect HTTP requests/responses
+# at various points in the OpenAI API interaction:
+# 1. Inspecting the request before sending it (both raw and using dictionary body)
+# 2. Inspecting the response with full request context (using dictionary for request context)
+# 3. Demonstrating automatic JSON serialization of dictionary bodies
 """
 import os
 import requests
@@ -32,8 +33,6 @@ import json
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "YOUR_OPENAI_API_KEY")
 AIDEFENSE_API_KEY = os.environ.get("AIDEFENSE_API_KEY", "YOUR_AIDEFENSE_API_KEY")
 OPENAI_API_URL = "https://api.openai.com/v1/chat/completions"
-
-# config = Config(logger_params={"level": "DEBUG"})
 
 # --- User Prompt ---
 user_prompt = "Tell me a fun fact about space."
@@ -53,6 +52,7 @@ openai_payload = {
 # --- Inspect the outgoing HTTP request (before sending) ---
 http_client = HttpInspectionClient(api_key=AIDEFENSE_API_KEY)
 
+# Method 1: Using the low-level inspect() method (manual encoding required)
 raw_body = json.dumps(openai_payload).encode()
 http_req_dict = {
     "method": "POST",
@@ -65,14 +65,15 @@ req_res = http_client.inspect(
     http_req=http_req_dict,
     http_meta=http_meta,
 )
-print("HTTP Request (raw) is safe?", req_res.is_safe)
+print("HTTP Request is safe?", req_res.is_safe)
 
-# --- Inspect the HTTP request ---
+# Method 2: Using the high-level inspect_request() method with dictionary body
+# The dictionary is automatically JSON-serialized - no manual encoding needed
 req_result = http_client.inspect_request(
     method="POST",
     url=OPENAI_API_URL,
     headers=openai_headers,
-    body=raw_body,
+    body=openai_payload,  # Pass the dictionary directly - SDK handles serialization
 )
 print("HTTP Request is safe?", req_result.is_safe)
 
@@ -82,14 +83,16 @@ resp.raise_for_status()
 print(resp.content)
 
 # --- Inspect the HTTP response (with request context) ---
+# Method 1: Using response.content (bytes) directly
 resp_result = http_client.inspect_response(
     status_code=resp.status_code,
     url=OPENAI_API_URL,
     headers=dict(resp.headers),
-    body=resp.content,
+    body=resp.content,  # Using bytes
     request_method="POST",
     request_headers=openai_headers,
-    request_body=raw_body,
+    request_body=openai_payload,  # Using dictionary directly for request context
+
 )
 print("HTTP Response is safe?", resp_result.is_safe)
 

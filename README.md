@@ -1,6 +1,6 @@
 # aidefense-python-sdk
 
-**Cisco AI Defense Python SDK**  
+**Cisco AI Defense Python SDK**
 Integrate AI-powered security, privacy, and safety inspections into your Python applications with ease.
 
 ---
@@ -26,7 +26,7 @@ Integrate AI-powered security, privacy, and safety inspections into your Python 
 
 ## Overview
 
-The `aidefense-python-sdk` provides a developer-friendly interface for inspecting chat conversations and HTTP requests/responses using Cisco's AI Defense API.  
+The `aidefense-python-sdk` provides a developer-friendly interface for inspecting chat conversations and HTTP requests/responses using Cisco's AI Defense API.
 It enables you to detect security, privacy, and safety risks in real time, with flexible configuration and robust validation.
 
 ---
@@ -140,13 +140,28 @@ for rule in response.rules or []:
 ```python
 from aidefense import HttpInspectionClient
 from aidefense.runtime.models import Message, Role
-from aidefense.utils import to_base64_bytes
 import requests
+import json
 
 client = HttpInspectionClient(api_key="YOUR_API_KEY")
 
-# Inspect a raw HTTP request
-json_bytes = b'{"key": "value"}'
+# Inspect a request with dictionary body (automatically JSON-serialized)
+payload = {
+    "model": "gpt-4",
+    "messages": [
+        {"role": "user", "content": "Tell me about security"}
+    ]
+}
+result = client.inspect_request(
+    method="POST",
+    url="https://api.example.com/v1/chat/completions",
+    headers={"Content-Type": "application/json"},
+    body=payload,  # Dictionary is automatically serialized to JSON
+)
+print(result.is_safe)
+
+# Inspect using raw bytes or string
+json_bytes = json.dumps({"key": "value"}).encode()
 result = client.inspect_request(
     method="POST",
     url="https://example.com",
@@ -156,7 +171,7 @@ result = client.inspect_request(
 print(result.is_safe)
 
 # Inspect a requests.Request or PreparedRequest
-req = requests.Request("GET", "https://example.com").prepare()  # or use requests.Request directly
+req = requests.Request("GET", "https://example.com").prepare()
 result = client.inspect_request_from_http_library(req)
 print(result.is_safe)
 ```
@@ -206,7 +221,7 @@ http_client = HttpInspectionClient(api_key="YOUR_API_KEY", config=custom_endpoin
 
 ## Error Handling
 
-All SDK errors derive from `SDKError` in `exceptions.py`.  
+All SDK errors derive from `SDKError` in `exceptions.py`.
 Specific exceptions include `ValidationError` (input issues) and `ApiError` (API/server issues).
 
 ```python

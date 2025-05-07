@@ -1,3 +1,19 @@
+# Copyright 2025 Cisco Systems, Inc. and its affiliates
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 import requests
 import uuid
@@ -58,7 +74,7 @@ def test_get_request_id():
     assert request_id is not None
     assert isinstance(request_id, str)
     assert len(request_id) > 0
-    
+
     # Verify that the request_id is a valid UUID
     try:
         uuid_obj = uuid.UUID(request_id)
@@ -110,7 +126,7 @@ def test_request_success(mock_request, client):
 
     # Check result
     assert result == {"success": True}
-    
+
     # Verify request was made correctly
     mock_request.assert_called_once()
     args, kwargs = mock_request.call_args
@@ -147,7 +163,7 @@ def test_request_with_auth(mock_request, client):
 
     # Check result
     assert result == {"success": True}
-    
+
     # Verify request includes auth headers
     mock_request.assert_called_once()
     args, kwargs = mock_request.call_args
@@ -232,10 +248,10 @@ def test_api_error_contains_request_id(mock_request, client):
     mock_response.status_code = 500
     mock_response.json.return_value = {"message": "Server error"}
     mock_request.return_value = mock_response
-    
+
     # Create a specific request_id for testing
     test_request_id = "test-request-id-12345"
-    
+
     # Test request with explicit request_id
     try:
         client.request(

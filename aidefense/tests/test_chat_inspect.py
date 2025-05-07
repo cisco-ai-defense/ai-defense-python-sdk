@@ -1,3 +1,19 @@
+# Copyright 2025 Cisco Systems, Inc. and its affiliates
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 from aidefense import ChatInspectionClient, Config
 from aidefense.runtime.chat_models import Message, Role
@@ -20,7 +36,7 @@ def test_chat_client_init_default():
 def test_chat_client_init_with_config():
     # Reset the Config singleton before this test
     Config._instance = None
-    
+
     config = Config(runtime_base_url="https://custom.chat")
     client = ChatInspectionClient(api_key=TEST_API_KEY, config=config)
     assert client.config is config
@@ -134,7 +150,7 @@ def test_inspect_network_error(monkeypatch):
     def mock_request(*args, **kwargs):
         from requests.exceptions import RequestException
         raise RequestException("Network error")
-        
+
     monkeypatch.setattr(client, "request", mock_request)
     with pytest.raises(RequestException, match="Network error"):
         client._inspect([Message(role=Role.USER, content="test")])
@@ -146,7 +162,7 @@ def test_inspect_timeout_handling(monkeypatch):
     def mock_request(*args, **kwargs):
         from requests.exceptions import Timeout
         raise Timeout("Request timed out")
-        
+
     monkeypatch.setattr(client, "request", mock_request)
     with pytest.raises(Timeout, match="Request timed out"):
         client._inspect([Message(role=Role.USER, content="test")], timeout=5)
@@ -158,13 +174,13 @@ def test_inspect_with_empty_content():
     # Mock to avoid actual API call
     def mock_request(*args, **kwargs):
         return {"is_safe": True}
-    
+
     monkeypatch = pytest.MonkeyPatch()
     monkeypatch.setattr(client, "request", mock_request)
     monkeypatch.setattr(client, "_parse_inspect_response", lambda x: x)
     # Also mock the validation method to allow empty content
     monkeypatch.setattr(client, "validate_inspection_request", lambda x: None)
-    
+
     result = client._inspect([Message(role=Role.USER, content="")])
     # Should get a basic response even with empty content
     assert result == {"is_safe": True}
@@ -178,10 +194,10 @@ def test_inspect_with_very_long_content(monkeypatch):
         content = kwargs.get("json_data", {}).get("messages", [{}])[0].get("content")
         assert content == "x" * 10000
         return {"is_safe": True}
-    
+
     monkeypatch.setattr(client, "request", mock_request)
     monkeypatch.setattr(client, "_parse_inspect_response", lambda x: x)
-    
+
     # Create a message with very long content
     result = client._inspect([Message(role=Role.USER, content="x" * 10000)])
     assert result == {"is_safe": True}
@@ -193,9 +209,9 @@ def test_chat_client_with_request_id():
     def mock_request(*args, **kwargs):
         assert kwargs.get("request_id") == "test-request-id"
         return {"is_safe": True}
-    
+
     monkeypatch = pytest.MonkeyPatch()
     monkeypatch.setattr(client, "request", mock_request)
     monkeypatch.setattr(client, "_parse_inspect_response", lambda x: x)
-    
+
     client._inspect([Message(role=Role.USER, content="test")], request_id="test-request-id")
