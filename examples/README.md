@@ -15,7 +15,6 @@ examples/
 │   ├── chat_inspect_prompt.py
 │   ├── chat_inspect_response.py
 │   └── providers/           # Model provider specific examples
-│       ├── chat_inspect_anthropic.py
 │       ├── chat_inspect_bedrock.py
 │       ├── chat_inspect_cohere_prompt_response.py
 │       ├── chat_inspect_mistral.py
@@ -29,7 +28,6 @@ examples/
 │   ├── http_inspect_response.py
 │   ├── http_inspect_response_from_http_library.py
 │   └── providers/           # Model provider specific examples
-│       ├── http_inspect_anthropic_api.py
 │       ├── http_inspect_bedrock_api.py
 │       ├── http_inspect_cohere_api.py
 │       ├── http_inspect_mistral_api.py
@@ -60,7 +58,6 @@ These examples use `ChatInspectionClient` to inspect chat prompts, responses, an
 | Vertex AI | [chat_inspect_vertex_ai.py](./chat/providers/chat_inspect_vertex_ai.py) |
 | Amazon Bedrock | [chat_inspect_bedrock.py](./chat/providers/chat_inspect_bedrock.py) |
 | Mistral AI | [chat_inspect_mistral.py](./chat/providers/chat_inspect_mistral.py) |
-| Anthropic | [chat_inspect_anthropic.py](./chat/providers/chat_inspect_anthropic.py) |
 
 ## HTTP Inspection Examples
 
@@ -78,13 +75,12 @@ These examples use `HttpInspectionClient` to inspect HTTP requests and responses
 ### HTTP Inspection with Model Providers
 
 | Model Provider | Example |
-|----------------|---------|  
+|----------------|---------|
 | Cohere | [http_inspect_cohere_api.py](./http/providers/http_inspect_cohere_api.py) |
 | OpenAI | [http_inspect_openai_api.py](./http/providers/http_inspect_openai_api.py) |
 | Vertex AI | [http_inspect_vertex_ai_api.py](./http/providers/http_inspect_vertex_ai_api.py) |
 | Amazon Bedrock | [http_inspect_bedrock_api.py](./http/providers/http_inspect_bedrock_api.py) |
 | Mistral AI | [http_inspect_mistral_api.py](./http/providers/http_inspect_mistral_api.py) |
-| Anthropic | [http_inspect_anthropic_api.py](./http/providers/http_inspect_anthropic_api.py) |
 
 ## Advanced Examples
 
