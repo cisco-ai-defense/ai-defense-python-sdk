@@ -87,25 +87,17 @@ def test_request_invalid_method():
     """Test request with invalid HTTP method."""
     client = TestClient()
     with pytest.raises(ValidationError, match="Invalid HTTP method"):
-        client.request(
-            method="INVALID",
-            url="https://api.example.com",
-            auth=None
-        )
+        client.request(method="INVALID", url="https://api.example.com", auth=None)
 
 
 def test_request_invalid_url():
     """Test request with invalid URL."""
     client = TestClient()
     with pytest.raises(ValidationError, match="Invalid URL"):
-        client.request(
-            method="GET",
-            url="invalid-url",
-            auth=None
-        )
+        client.request(method="GET", url="invalid-url", auth=None)
 
 
-@patch('requests.Session.request')
+@patch("requests.Session.request")
 def test_request_success(mock_request, client):
     """Test successful request."""
     # Mock response
@@ -121,7 +113,7 @@ def test_request_success(mock_request, client):
         auth=None,
         headers={"X-Custom": "Value"},
         json_data={"key": "value"},
-        timeout=30
+        timeout=30,
     )
 
     # Check result
@@ -138,7 +130,7 @@ def test_request_success(mock_request, client):
     assert kwargs["timeout"] == 30
 
 
-@patch('requests.Session.request')
+@patch("requests.Session.request")
 def test_request_with_auth(mock_request, client):
     """Test request with authentication."""
     # Mock response
@@ -158,7 +150,7 @@ def test_request_with_auth(mock_request, client):
         method="POST",
         url="https://api.example.com",
         auth=MockAuth(),
-        json_data={"key": "value"}
+        json_data={"key": "value"},
     )
 
     # Check result
@@ -171,7 +163,7 @@ def test_request_with_auth(mock_request, client):
     assert kwargs["headers"]["Authorization"] == "Bearer test-token"
 
 
-@patch('requests.Session.request')
+@patch("requests.Session.request")
 def test_request_with_network_error(mock_request, client):
     """Test request with network error."""
     # Mock network error
@@ -179,14 +171,10 @@ def test_request_with_network_error(mock_request, client):
 
     # Test request
     with pytest.raises(requests.RequestException, match="Network error"):
-        client.request(
-            method="GET",
-            url="https://api.example.com",
-            auth=None
-        )
+        client.request(method="GET", url="https://api.example.com", auth=None)
 
 
-@patch('requests.Session.request')
+@patch("requests.Session.request")
 def test_handle_error_response_401(mock_request, client):
     """Test handling 401 authentication error."""
     # Mock 401 response
@@ -197,14 +185,10 @@ def test_handle_error_response_401(mock_request, client):
 
     # Test request
     with pytest.raises(SDKError, match="Authentication error: Unauthorized access"):
-        client.request(
-            method="GET",
-            url="https://api.example.com",
-            auth=None
-        )
+        client.request(method="GET", url="https://api.example.com", auth=None)
 
 
-@patch('requests.Session.request')
+@patch("requests.Session.request")
 def test_handle_error_response_400(mock_request, client):
     """Test handling 400 validation error."""
     # Mock 400 response
@@ -215,14 +199,10 @@ def test_handle_error_response_400(mock_request, client):
 
     # Test request
     with pytest.raises(ValidationError, match="Bad request: Invalid parameters"):
-        client.request(
-            method="GET",
-            url="https://api.example.com",
-            auth=None
-        )
+        client.request(method="GET", url="https://api.example.com", auth=None)
 
 
-@patch('requests.Session.request')
+@patch("requests.Session.request")
 def test_handle_error_response_500(mock_request, client):
     """Test handling 500 server error."""
     # Mock 500 response
@@ -233,14 +213,10 @@ def test_handle_error_response_500(mock_request, client):
 
     # Test request
     with pytest.raises(ApiError, match="API error 500: Internal server error"):
-        client.request(
-            method="GET",
-            url="https://api.example.com",
-            auth=None
-        )
+        client.request(method="GET", url="https://api.example.com", auth=None)
 
 
-@patch('requests.Session.request')
+@patch("requests.Session.request")
 def test_api_error_contains_request_id(mock_request, client):
     """Test that ApiError contains the request_id when provided."""
     # Mock 500 response
@@ -258,7 +234,7 @@ def test_api_error_contains_request_id(mock_request, client):
             method="GET",
             url="https://api.example.com",
             auth=None,
-            request_id=test_request_id
+            request_id=test_request_id,
         )
         pytest.fail("Expected ApiError was not raised")
     except ApiError as e:
@@ -267,7 +243,7 @@ def test_api_error_contains_request_id(mock_request, client):
         assert "API error 500" in str(e)
 
 
-@patch('requests.Session.request')
+@patch("requests.Session.request")
 def test_handle_error_response_non_json(mock_request, client):
     """Test handling error with non-JSON response."""
     # Mock error response with non-JSON content
@@ -279,14 +255,10 @@ def test_handle_error_response_non_json(mock_request, client):
 
     # Test request
     with pytest.raises(ApiError, match="API error 500: Internal Server Error"):
-        client.request(
-            method="GET",
-            url="https://api.example.com",
-            auth=None
-        )
+        client.request(method="GET", url="https://api.example.com", auth=None)
 
 
-@patch('requests.Session.request')
+@patch("requests.Session.request")
 def test_handle_error_response_empty_response(mock_request, client):
     """Test handling error with empty response."""
     # Mock error response with empty content
@@ -298,8 +270,4 @@ def test_handle_error_response_empty_response(mock_request, client):
 
     # Test request
     with pytest.raises(ApiError, match="API error 500: Unknown error"):
-        client.request(
-            method="GET",
-            url="https://api.example.com",
-            auth=None
-        )
+        client.request(method="GET", url="https://api.example.com", auth=None)

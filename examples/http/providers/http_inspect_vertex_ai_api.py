@@ -55,21 +55,17 @@ try:
     # --- Prepare the HTTP request ---
     vertex_headers = {
         "Authorization": f"Bearer {credentials.token}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
     }
 
     vertex_payload = {
-        "instances": [
-            {
-                "content": user_prompt
-            }
-        ],
+        "instances": [{"content": user_prompt}],
         "parameters": {
             "temperature": 0.2,
             "maxOutputTokens": 256,
             "topK": 40,
-            "topP": 0.95
-        }
+            "topP": 0.95,
+        },
     }
 
     # --- Inspect the request using the raw method ---
@@ -131,8 +127,12 @@ try:
 
 except Exception as e:
     print(f"\nError with Vertex AI API: {e}")
-    print("Note: This example requires Google Cloud credentials and permissions to access Vertex AI.")
-    print("To run this example, ensure you have properly configured Google Cloud credentials.")
+    print(
+        "Note: This example requires Google Cloud credentials and permissions to access Vertex AI."
+    )
+    print(
+        "To run this example, ensure you have properly configured Google Cloud credentials."
+    )
 
     # For demonstration purposes, we'll create a mock response
     print("\n--- Mock example for demonstration purposes ---")
@@ -140,10 +140,13 @@ except Exception as e:
     # Mocked payload and response
     mock_payload = {
         "instances": [{"content": user_prompt}],
-        "parameters": {"temperature": 0.2}
+        "parameters": {"temperature": 0.2},
     }
     mock_raw_body = json.dumps(mock_payload).encode()
-    mock_headers = {"Content-Type": "application/json", "Authorization": "Bearer mock_token"}
+    mock_headers = {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer mock_token",
+    }
 
     # Inspect using high-level method
     mock_req_result = http_client.inspect_request(

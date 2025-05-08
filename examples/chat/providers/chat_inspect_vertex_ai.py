@@ -50,7 +50,9 @@ prompt_result = client.inspect_prompt(user_prompt)
 print("\n----------------Inspect Prompt Result----------------")
 print("Prompt is safe?", prompt_result.is_safe)
 if not prompt_result.is_safe:
-    print(f"Violated policies: {[rule.rule_name.value for rule in prompt_result.rules or []]}")
+    print(
+        f"Violated policies: {[rule.rule_name.value for rule in prompt_result.rules or []]}"
+    )
 
 # --- Call Vertex AI API ---
 # Note: In a real application, you'd likely use the Google Cloud Python client library
@@ -66,21 +68,17 @@ try:
 
     vertex_headers = {
         "Authorization": f"Bearer {credentials.token}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
     }
 
     vertex_payload = {
-        "instances": [
-            {
-                "content": user_prompt
-            }
-        ],
+        "instances": [{"content": user_prompt}],
         "parameters": {
             "temperature": 0.2,
             "maxOutputTokens": 256,
             "topK": 40,
-            "topP": 0.95
-        }
+            "topP": 0.95,
+        },
     }
 
     vertex_response = requests.post(
@@ -98,7 +96,9 @@ try:
     print("\n----------------Inspect Response Result----------------")
     print("Response is safe?", response_result.is_safe)
     if not response_result.is_safe:
-        print(f"Violated policies: {[rule.rule_name.value for rule in response_result.rules or []]}")
+        print(
+            f"Violated policies: {[rule.rule_name.value for rule in response_result.rules or []]}"
+        )
 
     # --- Inspect the full conversation ---
     conversation = [
@@ -109,11 +109,15 @@ try:
     print("\n----------------Inspect Conversation Result----------------")
     print("Conversation is safe?", conversation_result.is_safe)
     if not conversation_result.is_safe:
-        print(f"Violated policies: {[rule.rule_name.value for rule in conversation_result.rules or []]}")
+        print(
+            f"Violated policies: {[rule.rule_name.value for rule in conversation_result.rules or []]}"
+        )
 
 except Exception as e:
     print(f"\nError calling Vertex AI API: {e}")
-    print("Note: This example requires Google Cloud credentials and permissions to access Vertex AI.")
+    print(
+        "Note: This example requires Google Cloud credentials and permissions to access Vertex AI."
+    )
     print("For testing purposes, you can mock the API response as follows:")
 
     # Mock response for testing without actual API call

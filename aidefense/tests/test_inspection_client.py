@@ -16,7 +16,13 @@
 
 import pytest
 from aidefense.runtime.inspection_client import InspectionClient
-from aidefense.runtime.models import InspectResponse, Classification, Severity, Rule, RuleName
+from aidefense.runtime.models import (
+    InspectResponse,
+    Classification,
+    Severity,
+    Rule,
+    RuleName,
+)
 from aidefense.config import Config
 from aidefense.exceptions import ValidationError
 from typing import Dict, Any, Optional
@@ -58,7 +64,7 @@ def test_parse_inspect_response_basic():
     response_data = {
         "is_safe": True,
         "classifications": [],
-        "explanation": "No issues found"
+        "explanation": "No issues found",
     }
 
     result = client._parse_inspect_response(response_data)
@@ -76,7 +82,7 @@ def test_parse_inspect_response_with_classifications():
     response_data = {
         "is_safe": False,
         "classifications": ["SECURITY_VIOLATION", "PII"],
-        "explanation": "Issues found"
+        "explanation": "Issues found",
     }
 
     result = client._parse_inspect_response(response_data)
@@ -97,7 +103,7 @@ def test_parse_inspect_response_with_invalid_classification():
     response_data = {
         "is_safe": False,
         "classifications": ["SECURITY_VIOLATION", "INVALID_TYPE"],
-        "explanation": "Issues found"
+        "explanation": "Issues found",
     }
 
     result = client._parse_inspect_response(response_data)
@@ -117,15 +123,15 @@ def test_parse_inspect_response_with_rules():
             {
                 "rule_name": "PROMPT_INJECTION",
                 "rule_id": 1,
-                "classification": "SECURITY_VIOLATION"
+                "classification": "SECURITY_VIOLATION",
             },
             {
                 "rule_name": "PII",
                 "rule_id": 2,
                 "entity_types": ["EMAIL", "PHONE"],
-                "classification": "PII"
-            }
-        ]
+                "classification": "PII",
+            },
+        ],
     }
 
     result = client._parse_inspect_response(response_data)
@@ -155,9 +161,9 @@ def test_parse_inspect_response_with_custom_rule_name():
             {
                 "rule_name": "Custom Rule",  # Not in RuleName enum
                 "rule_id": 100,
-                "classification": "SECURITY_VIOLATION"
+                "classification": "SECURITY_VIOLATION",
             }
-        ]
+        ],
     }
 
     result = client._parse_inspect_response(response_data)
@@ -176,7 +182,7 @@ def test_parse_inspect_response_with_severity():
     response_data = {
         "is_safe": False,
         "severity": "HIGH",
-        "explanation": "High severity issue detected"
+        "explanation": "High severity issue detected",
     }
 
     result = client._parse_inspect_response(response_data)
@@ -192,7 +198,7 @@ def test_parse_inspect_response_with_invalid_severity():
     response_data = {
         "is_safe": False,
         "severity": "UNKNOWN_LEVEL",  # Not in Severity enum
-        "explanation": "Issue detected"
+        "explanation": "Issue detected",
     }
 
     result = client._parse_inspect_response(response_data)
@@ -211,7 +217,7 @@ def test_parse_inspect_response_with_metadata():
     response_data = {
         "is_safe": True,
         "event_id": event_id,
-        "client_transaction_id": transaction_id
+        "client_transaction_id": transaction_id,
     }
 
     result = client._parse_inspect_response(response_data)
@@ -227,7 +233,7 @@ def test_parse_inspect_response_with_attack_technique():
     response_data = {
         "is_safe": False,
         "attack_technique": "INJECTION",
-        "explanation": "Injection attempt detected"
+        "explanation": "Injection attempt detected",
     }
 
     result = client._parse_inspect_response(response_data)
@@ -241,25 +247,21 @@ def test_parse_inspect_response_complex():
     client = TestInspectionClient(TEST_API_KEY)
 
     response_data = {
-        "classifications": [
-            "SECURITY_VIOLATION"
-        ],
+        "classifications": ["SECURITY_VIOLATION"],
         "is_safe": False,
         "severity": "NONE_SEVERITY",
         "rules": [
             {
                 "rule_name": "Prompt Injection",
                 "rule_id": 0,
-                "entity_types": [
-                    ""
-                ],
-                "classification": "SECURITY_VIOLATION"
+                "entity_types": [""],
+                "classification": "SECURITY_VIOLATION",
             }
         ],
         "attack_technique": "NONE_ATTACK_TECHNIQUE",
         "explanation": "Security violation detected",
         "client_transaction_id": "tx-9876",
-        "event_id": "b403de99-8d19-408f-8184-ec6d7907f508"
+        "event_id": "b403de99-8d19-408f-8184-ec6d7907f508",
     }
 
     result = client._parse_inspect_response(response_data)

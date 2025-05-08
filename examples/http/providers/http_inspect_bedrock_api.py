@@ -51,7 +51,9 @@ try:
 
     # Define the AWS endpoint
     model_id = "anthropic.claude-v2"  # Claude model on Bedrock
-    endpoint = f"https://bedrock-runtime.{AWS_REGION}.amazonaws.com/model/{model_id}/invoke"
+    endpoint = (
+        f"https://bedrock-runtime.{AWS_REGION}.amazonaws.com/model/{model_id}/invoke"
+    )
 
     # --- Prepare the HTTP request ---
     bedrock_headers = {
@@ -63,15 +65,16 @@ try:
         "prompt": f"\n\nHuman: {user_prompt}\n\nAssistant:",
         "max_tokens_to_sample": 300,
         "temperature": 0.5,
-        "top_p": 0.9
+        "top_p": 0.9,
     }
 
     # --- Inspect the request using the raw method ---
     raw_body = json.dumps(bedrock_payload).encode()
 
     # Sign the request (for the actual API call later)
-    aws_request = AWSRequest(method="POST", url=endpoint,
-                             data=raw_body, headers=bedrock_headers)
+    aws_request = AWSRequest(
+        method="POST", url=endpoint, data=raw_body, headers=bedrock_headers
+    )
     SigV4Auth(credentials, "bedrock", AWS_REGION).add_auth(aws_request)
     signed_headers = dict(aws_request.headers)
 
@@ -135,8 +138,12 @@ try:
 
 except Exception as e:
     print(f"\nError with Amazon Bedrock API: {e}")
-    print("Note: This example requires AWS credentials and permissions to access Bedrock.")
-    print("To run this example, you need to have the AWS CLI configured or appropriate environment variables set.")
+    print(
+        "Note: This example requires AWS credentials and permissions to access Bedrock."
+    )
+    print(
+        "To run this example, you need to have the AWS CLI configured or appropriate environment variables set."
+    )
 
     # For demonstration purposes, we'll create a mock response
     print("\n--- Mock example for demonstration purposes ---")
@@ -144,7 +151,7 @@ except Exception as e:
     # Mocked payload and response
     mock_payload = {
         "prompt": f"\n\nHuman: {user_prompt}\n\nAssistant:",
-        "max_tokens_to_sample": 300
+        "max_tokens_to_sample": 300,
     }
     mock_raw_body = json.dumps(mock_payload).encode()
     mock_headers = {"Content-Type": "application/json"}

@@ -46,10 +46,17 @@ cohere_headers = {
     "Content-Type": "application/json",
 }
 cohere_payload = {"message": user_prompt}
-cohere_response = requests.post(COHERE_API_URL, headers=cohere_headers, json=cohere_payload)
+cohere_response = requests.post(
+    COHERE_API_URL, headers=cohere_headers, json=cohere_payload
+)
 cohere_response.raise_for_status()
 cohere_data = cohere_response.json()
-ai_response = cohere_data.get("text") or cohere_data.get("reply") or cohere_data.get("response") or ""
+ai_response = (
+    cohere_data.get("text")
+    or cohere_data.get("reply")
+    or cohere_data.get("response")
+    or ""
+)
 
 print("Cohere AI Response:", ai_response)
 

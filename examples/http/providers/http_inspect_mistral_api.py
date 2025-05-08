@@ -34,7 +34,9 @@ AIDEFENSE_API_KEY = os.environ.get("AIDEFENSE_API_KEY", "YOUR_AIDEFENSE_API_KEY"
 MISTRAL_API_URL = "https://api.mistral.ai/v1/chat/completions"
 
 # --- User Prompt ---
-user_prompt = "What are the main differences between supervised and unsupervised learning?"
+user_prompt = (
+    "What are the main differences between supervised and unsupervised learning?"
+)
 
 # --- Create HTTP Inspection Client ---
 http_client = HttpInspectionClient(api_key=AIDEFENSE_API_KEY)
@@ -50,7 +52,7 @@ try:
         "model": "mistral-large-latest",  # Or another available model
         "messages": [{"role": "user", "content": user_prompt}],
         "temperature": 0.7,
-        "max_tokens": 500
+        "max_tokens": 500,
     }
 
     # --- Inspect the request using the raw method ---
@@ -120,10 +122,13 @@ except Exception as e:
     # Mocked payload and response
     mock_payload = {
         "model": "mistral-large-latest",
-        "messages": [{"role": "user", "content": user_prompt}]
+        "messages": [{"role": "user", "content": user_prompt}],
     }
     mock_raw_body = json.dumps(mock_payload).encode()
-    mock_headers = {"Content-Type": "application/json", "Authorization": "Bearer mock_token"}
+    mock_headers = {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer mock_token",
+    }
 
     # Inspect using high-level method
     mock_req_result = http_client.inspect_request(

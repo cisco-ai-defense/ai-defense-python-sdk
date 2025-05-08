@@ -46,7 +46,7 @@ openai_headers = {
 openai_payload = {
     "model": "gpt-4",
     "messages": [{"role": "user", "content": user_prompt}],
-    "max_tokens": 150
+    "max_tokens": 150,
 }
 
 # --- Inspect the outgoing HTTP request (before sending) ---
@@ -92,7 +92,6 @@ resp_result = http_client.inspect_response(
     request_method="POST",
     request_headers=openai_headers,
     request_body=openai_payload,  # Using dictionary directly for request context
-
 )
 print("HTTP Response is safe?", resp_result.is_safe)
 

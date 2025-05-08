@@ -29,6 +29,7 @@ import requests
 from aidefense import ChatInspectionClient, HttpInspectionClient, Config
 from aidefense.runtime.models import Message, Role
 
+
 def setup_custom_logger():
     """Set up and return a custom logger."""
     # Create a custom logger
@@ -40,7 +41,9 @@ def setup_custom_logger():
     handler.setLevel(logging.DEBUG)
 
     # Create a formatter and add it to the handler
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
     handler.setFormatter(formatter)
 
     # Add the handler to the logger
@@ -48,14 +51,13 @@ def setup_custom_logger():
 
     return logger
 
+
 def custom_api_endpoint():
     """Example of using a custom API endpoint."""
     print("\n=== Custom API Endpoint Example ===")
 
     # Create a configuration with a custom base URL
-    config = Config(
-        runtime_base_url="https://custom-aidefense-api.example.com"
-    )
+    config = Config(runtime_base_url="https://custom-aidefense-api.example.com")
 
     # Initialize the client with the custom configuration
     client = ChatInspectionClient(api_key="YOUR_API_KEY", config=config)
@@ -65,6 +67,7 @@ def custom_api_endpoint():
     # Note: This example won't actually make a call since the URL is fictional
     print("(This is a demonstration - no actual API call will be made)")
 
+
 def custom_logging_configuration():
     """Example of custom logging configuration."""
     print("\n=== Custom Logging Example ===")
@@ -72,10 +75,10 @@ def custom_logging_configuration():
     # Method 1: Configure logging via parameters
     config1 = Config(
         logger_params={
-            "level": "DEBUG",      # Set logging level
+            "level": "DEBUG",  # Set logging level
             "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
             "filename": "aidefense.log",  # Log to a file
-            "filemode": "w"        # Overwrite existing log file
+            "filemode": "w",  # Overwrite existing log file
         }
     )
 
@@ -96,6 +99,7 @@ def custom_logging_configuration():
     except Exception as e:
         print(f"Expected error caught: {e}")
 
+
 def retry_policy_configuration():
     """Example of retry policy configuration."""
     print("\n=== Retry Policy Example ===")
@@ -103,16 +107,17 @@ def retry_policy_configuration():
     # Create a configuration with custom retry settings
     config = Config(
         retry_config={
-            "total": 5,             # Total number of retries
+            "total": 5,  # Total number of retries
             "backoff_factor": 0.5,  # Exponential backoff factor
             "status_forcelist": [500, 502, 503, 504],  # Status codes to retry
-            "allowed_methods": ["GET", "POST"]          # Methods to retry
+            "allowed_methods": ["GET", "POST"],  # Methods to retry
         }
     )
 
     client = ChatInspectionClient(api_key="YOUR_API_KEY", config=config)
     print("Client configured with custom retry policy")
     print("Will retry 5 times with exponential backoff")
+
 
 def connection_pooling_example():
     """Example of connection pooling configuration."""
@@ -122,9 +127,9 @@ def connection_pooling_example():
     config1 = Config(
         pool_config={
             "pool_connections": 10,  # Number of connection pools
-            "pool_maxsize": 20,      # Maximum number of connections per pool
-            "max_retries": 3,        # Retries for the pool adapter
-            "pool_block": True       # Whether to block when a pool is full
+            "pool_maxsize": 20,  # Maximum number of connections per pool
+            "max_retries": 3,  # Retries for the pool adapter
+            "pool_block": True,  # Whether to block when a pool is full
         }
     )
 
@@ -135,15 +140,13 @@ def connection_pooling_example():
     adapter = requests.adapters.HTTPAdapter(
         pool_connections=5,
         pool_maxsize=10,
-        max_retries=requests.adapters.Retry(
-            total=3,
-            backoff_factor=0.5
-        )
+        max_retries=requests.adapters.Retry(total=3, backoff_factor=0.5),
     )
 
     config2 = Config(connection_pool=adapter)
     client2 = HttpInspectionClient(api_key="YOUR_API_KEY", config=config2)
     print("Client 2: Configured with custom connection pool adapter")
+
 
 if __name__ == "__main__":
     print("AI Defense SDK Custom Configuration Examples")

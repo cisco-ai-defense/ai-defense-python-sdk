@@ -32,7 +32,7 @@ from aidefense.runtime.models import (
     InspectionConfig,
     Rule,
     RuleName,
-    Classification
+    Classification,
 )
 from aidefense.exceptions import ValidationError
 from aidefense.runtime.chat_models import Message, Role
@@ -51,10 +51,10 @@ def custom_rules_example():
             # Only check for PII with specific entity types
             Rule(
                 rule_name=RuleName.PII,
-                entity_types=["EMAIL", "PHONE_NUMBER", "CREDIT_CARD"]
+                entity_types=["EMAIL", "PHONE_NUMBER", "CREDIT_CARD"],
             ),
             # Check for prompt injection
-            Rule(rule_name=RuleName.PROMPT_INJECTION)
+            Rule(rule_name=RuleName.PROMPT_INJECTION),
         ]
     )
 
@@ -87,7 +87,7 @@ def error_handling_example():
         # Set a very short timeout to demonstrate timeout handling
         result = client.inspect_prompt(
             "This is a prompt that will cause a timeout",
-            timeout=1  # 1 second timeout (very short)
+            timeout=1,  # 1 second timeout (very short)
         )
     except Exception as e:
         print(f"Timeout or other error: {e}")
@@ -122,7 +122,7 @@ def detailed_result_processing():
                 print(f"  - Rule: {rule.rule_name}")
                 if rule.entity_types:
                     print(f"    Entity types: {', '.join(rule.entity_types)}")
-                if hasattr(rule, 'is_violated') and rule.is_violated:
+                if hasattr(rule, "is_violated") and rule.is_violated:
                     print(f"    Is violated: {rule.is_violated}")
 
         # Get explanation
@@ -142,14 +142,11 @@ def metadata_usage_example():
         src_app="example-app",
         client_transaction_id=str(uuid.uuid4()),
         # Add any additional key-value pairs
-        custom_field="custom value"
+        custom_field="custom value",
     )
 
     # Use metadata with the inspection request
-    result = client.inspect_prompt(
-        "Is this a safe prompt?",
-        metadata=metadata
-    )
+    result = client.inspect_prompt("Is this a safe prompt?", metadata=metadata)
 
     print(f"Request with metadata - is safe? {result.is_safe}")
     print(f"Event ID from response: {result.event_id}")
@@ -173,7 +170,7 @@ def timeout_configuration():
     # Override the timeout for a specific request
     result2 = client.inspect_prompt(
         "This is a prompt with custom timeout",
-        timeout=15  # 15 second timeout for this specific request
+        timeout=15,  # 15 second timeout for this specific request
     )
     print(f"Using custom timeout - is safe? {result2.is_safe}")
 

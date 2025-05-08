@@ -87,38 +87,52 @@ def test_validate_inspection_request_message_not_dict():
 def test_validate_inspection_request_invalid_role():
     client = ChatInspectionClient(api_key=TEST_API_KEY)
     with pytest.raises(ValidationError, match="Message role must be one of"):
-        client.validate_inspection_request({"messages": [{"role": "invalid_role", "content": "hi"}]})
+        client.validate_inspection_request(
+            {"messages": [{"role": "invalid_role", "content": "hi"}]}
+        )
 
 
 def test_validate_inspection_request_empty_content():
     client = ChatInspectionClient(api_key=TEST_API_KEY)
-    with pytest.raises(ValidationError, match="Each message must have non-empty string content"):
-        client.validate_inspection_request({"messages": [{"role": "user", "content": ""}]})
+    with pytest.raises(
+        ValidationError, match="Each message must have non-empty string content"
+    ):
+        client.validate_inspection_request(
+            {"messages": [{"role": "user", "content": ""}]}
+        )
 
 
 def test_validate_inspection_request_no_prompt_or_completion():
     client = ChatInspectionClient(api_key=TEST_API_KEY)
     # Only system message, no user or assistant
-    with pytest.raises(ValidationError, match="At least one message must be a prompt.*or completion"):
-        client.validate_inspection_request({"messages": [{"role": "system", "content": "instruction"}]})
+    with pytest.raises(
+        ValidationError, match="At least one message must be a prompt.*or completion"
+    ):
+        client.validate_inspection_request(
+            {"messages": [{"role": "system", "content": "instruction"}]}
+        )
 
 
 def test_validate_inspection_request_invalid_metadata():
     client = ChatInspectionClient(api_key=TEST_API_KEY)
     with pytest.raises(ValidationError, match="'metadata' must be a dict"):
-        client.validate_inspection_request({
-            "messages": [{"role": "user", "content": "valid content"}],
-            "metadata": "not a dict"
-        })
+        client.validate_inspection_request(
+            {
+                "messages": [{"role": "user", "content": "valid content"}],
+                "metadata": "not a dict",
+            }
+        )
 
 
 def test_validate_inspection_request_invalid_config():
     client = ChatInspectionClient(api_key=TEST_API_KEY)
     with pytest.raises(ValidationError, match="'config' must be a dict"):
-        client.validate_inspection_request({
-            "messages": [{"role": "user", "content": "valid content"}],
-            "config": "not a dict"
-        })
+        client.validate_inspection_request(
+            {
+                "messages": [{"role": "user", "content": "valid content"}],
+                "config": "not a dict",
+            }
+        )
 
 
 def test_validate_inspection_request_valid():
@@ -128,10 +142,10 @@ def test_validate_inspection_request_valid():
         "messages": [
             {"role": "system", "content": "instruction"},
             {"role": "user", "content": "question"},
-            {"role": "assistant", "content": "answer"}
+            {"role": "assistant", "content": "answer"},
         ],
         "metadata": {"user": "test_user"},
-        "config": {"enabled_rules": []}
+        "config": {"enabled_rules": []},
     }
     # If no exception is raised, the test passes
     client.validate_inspection_request(request_dict)
@@ -146,9 +160,11 @@ def test_inspect_empty_messages():
 
 def test_inspect_network_error(monkeypatch):
     client = ChatInspectionClient(api_key=TEST_API_KEY)
+
     # Mock request method to simulate a network error
     def mock_request(*args, **kwargs):
         from requests.exceptions import RequestException
+
         raise RequestException("Network error")
 
     monkeypatch.setattr(client, "request", mock_request)
@@ -158,9 +174,11 @@ def test_inspect_network_error(monkeypatch):
 
 def test_inspect_timeout_handling(monkeypatch):
     client = ChatInspectionClient(api_key=TEST_API_KEY)
+
     # Mock request method to simulate a timeout
     def mock_request(*args, **kwargs):
         from requests.exceptions import Timeout
+
         raise Timeout("Request timed out")
 
     monkeypatch.setattr(client, "request", mock_request)
@@ -171,6 +189,7 @@ def test_inspect_timeout_handling(monkeypatch):
 # Tests for edge cases
 def test_inspect_with_empty_content():
     client = ChatInspectionClient(api_key=TEST_API_KEY)
+
     # Mock to avoid actual API call
     def mock_request(*args, **kwargs):
         return {"is_safe": True}
@@ -188,6 +207,7 @@ def test_inspect_with_empty_content():
 
 def test_inspect_with_very_long_content(monkeypatch):
     client = ChatInspectionClient(api_key=TEST_API_KEY)
+
     # Mock to avoid actual API call
     def mock_request(*args, **kwargs):
         # Check that the request was made with the long content
@@ -205,6 +225,7 @@ def test_inspect_with_very_long_content(monkeypatch):
 
 def test_chat_client_with_request_id():
     client = ChatInspectionClient(api_key=TEST_API_KEY)
+
     # Mock to check if request_id is properly passed
     def mock_request(*args, **kwargs):
         assert kwargs.get("request_id") == "test-request-id"
@@ -214,4 +235,6 @@ def test_chat_client_with_request_id():
     monkeypatch.setattr(client, "request", mock_request)
     monkeypatch.setattr(client, "_parse_inspect_response", lambda x: x)
 
-    client._inspect([Message(role=Role.USER, content="test")], request_id="test-request-id")
+    client._inspect(
+        [Message(role=Role.USER, content="test")], request_id="test-request-id"
+    )

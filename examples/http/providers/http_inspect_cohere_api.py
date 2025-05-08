@@ -52,7 +52,10 @@ http_client = HttpInspectionClient(api_key=AIDEFENSE_API_KEY)
 raw_body = json.dumps(cohere_payload).encode()
 http_req_dict = {
     "method": "POST",
-    "headers": {"Authorization": f"Bearer {COHERE_API_KEY}", "Content-Type": "application/json"},
+    "headers": {
+        "Authorization": f"Bearer {COHERE_API_KEY}",
+        "Content-Type": "application/json",
+    },
     "body": to_base64_bytes(raw_body),
 }
 http_meta = {"url": COHERE_API_URL}

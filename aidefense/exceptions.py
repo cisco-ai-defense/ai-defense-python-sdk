@@ -14,6 +14,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+
 class SDKError(Exception):
     """
     Base exception for SDK errors.

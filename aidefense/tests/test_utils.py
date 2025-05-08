@@ -99,7 +99,9 @@ def test_ensure_base64_body_with_none():
 def test_ensure_base64_body_with_invalid_type():
     # Test with invalid type
     d = {HTTP_BODY: 123}  # Not bytes, str, or None
-    with pytest.raises(ValueError, match="HTTP body must be bytes, str, or base64-encoded string"):
+    with pytest.raises(
+        ValueError, match="HTTP body must be bytes, str, or base64-encoded string"
+    ):
         ensure_base64_body(d)
 
 

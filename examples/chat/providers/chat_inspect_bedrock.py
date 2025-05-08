@@ -40,7 +40,9 @@ prompt_result = client.inspect_prompt(user_prompt)
 print("\n----------------Inspect Prompt Result----------------")
 print("Prompt is safe?", prompt_result.is_safe)
 if not prompt_result.is_safe:
-    print(f"Violated policies: {[rule.rule_name.value for rule in prompt_result.rules or []]}")
+    print(
+        f"Violated policies: {[rule.rule_name.value for rule in prompt_result.rules or []]}"
+    )
 
 # --- Call Amazon Bedrock API ---
 try:
@@ -49,8 +51,8 @@ try:
     import boto3
 
     bedrock_runtime = boto3.client(
-        service_name='bedrock-runtime',
-        region_name='us-east-1'  # Adjust to your preferred region
+        service_name="bedrock-runtime",
+        region_name="us-east-1",  # Adjust to your preferred region
     )
 
     # Using Claude model from Anthropic on Amazon Bedrock
@@ -60,16 +62,15 @@ try:
         "prompt": f"\n\nHuman: {user_prompt}\n\nAssistant:",
         "max_tokens_to_sample": 300,
         "temperature": 0.5,
-        "top_p": 0.9
+        "top_p": 0.9,
     }
 
     bedrock_response = bedrock_runtime.invoke_model(
-        modelId=model_id,
-        body=json.dumps(bedrock_payload)
+        modelId=model_id, body=json.dumps(bedrock_payload)
     )
 
-    response_body = json.loads(bedrock_response['body'].read())
-    ai_response = response_body.get('completion', '')
+    response_body = json.loads(bedrock_response["body"].read())
+    ai_response = response_body.get("completion", "")
 
     print("\n----------------Amazon Bedrock Response----------------")
     print("Response:", ai_response)
@@ -79,7 +80,9 @@ try:
     print("\n----------------Inspect Response Result----------------")
     print("Response is safe?", response_result.is_safe)
     if not response_result.is_safe:
-        print(f"Violated policies: {[rule.rule_name.value for rule in response_result.rules or []]}")
+        print(
+            f"Violated policies: {[rule.rule_name.value for rule in response_result.rules or []]}"
+        )
 
     # --- Inspect the full conversation ---
     conversation = [
@@ -90,11 +93,15 @@ try:
     print("\n----------------Inspect Conversation Result----------------")
     print("Conversation is safe?", conversation_result.is_safe)
     if not conversation_result.is_safe:
-        print(f"Violated policies: {[rule.rule_name.value for rule in conversation_result.rules or []]}")
+        print(
+            f"Violated policies: {[rule.rule_name.value for rule in conversation_result.rules or []]}"
+        )
 
 except Exception as e:
     print(f"\nError calling Amazon Bedrock API: {e}")
-    print("Note: This example requires AWS credentials and permissions to access Bedrock.")
+    print(
+        "Note: This example requires AWS credentials and permissions to access Bedrock."
+    )
     print("For testing purposes, you can mock the API response as follows:")
 
     # Mock response for testing without actual API call

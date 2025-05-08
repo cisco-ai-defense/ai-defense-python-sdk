@@ -34,7 +34,9 @@ AIDEFENSE_API_KEY = os.environ.get("AIDEFENSE_API_KEY", "YOUR_AIDEFENSE_API_KEY"
 MISTRAL_API_URL = "https://api.mistral.ai/v1/chat/completions"
 
 # --- User Prompt ---
-user_prompt = "What are the main differences between supervised and unsupervised learning?"
+user_prompt = (
+    "What are the main differences between supervised and unsupervised learning?"
+)
 
 # --- Inspect the user prompt ---
 client = ChatInspectionClient(api_key=AIDEFENSE_API_KEY)
@@ -42,7 +44,9 @@ prompt_result = client.inspect_prompt(user_prompt)
 print("\n----------------Inspect Prompt Result----------------")
 print("Prompt is safe?", prompt_result.is_safe)
 if not prompt_result.is_safe:
-    print(f"Violated policies: {[rule.rule_name.value for rule in prompt_result.rules or []]}")
+    print(
+        f"Violated policies: {[rule.rule_name.value for rule in prompt_result.rules or []]}"
+    )
 
 # --- Call Mistral AI API ---
 mistral_headers = {
@@ -53,7 +57,7 @@ mistral_payload = {
     "model": "mistral-large-latest",  # Or another available model
     "messages": [{"role": "user", "content": user_prompt}],
     "temperature": 0.7,
-    "max_tokens": 500
+    "max_tokens": 500,
 }
 
 try:
@@ -62,7 +66,9 @@ try:
     )
     mistral_response.raise_for_status()
     mistral_data = mistral_response.json()
-    ai_response = mistral_data.get("choices", [{}])[0].get("message", {}).get("content", "")
+    ai_response = (
+        mistral_data.get("choices", [{}])[0].get("message", {}).get("content", "")
+    )
 
     print("\n----------------Mistral AI Response----------------")
     print("Response:", ai_response)
@@ -72,7 +78,9 @@ try:
     print("\n----------------Inspect Response Result----------------")
     print("Response is safe?", response_result.is_safe)
     if not response_result.is_safe:
-        print(f"Violated policies: {[rule.rule_name.value for rule in response_result.rules or []]}")
+        print(
+            f"Violated policies: {[rule.rule_name.value for rule in response_result.rules or []]}"
+        )
 
     # --- Inspect the full conversation ---
     conversation = [
@@ -83,7 +91,9 @@ try:
     print("\n----------------Inspect Conversation Result----------------")
     print("Conversation is safe?", conversation_result.is_safe)
     if not conversation_result.is_safe:
-        print(f"Violated policies: {[rule.rule_name.value for rule in conversation_result.rules or []]}")
+        print(
+            f"Violated policies: {[rule.rule_name.value for rule in conversation_result.rules or []]}"
+        )
 
 except Exception as e:
     print(f"\nError calling Mistral AI API: {e}")

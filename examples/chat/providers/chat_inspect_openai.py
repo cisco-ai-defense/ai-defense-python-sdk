@@ -42,7 +42,9 @@ prompt_result = client.inspect_prompt(user_prompt)
 print("\n----------------Inspect Prompt Result----------------")
 print("Prompt is safe?", prompt_result.is_safe)
 if not prompt_result.is_safe:
-    print(f"Violated policies: {[rule.rule_name.value for rule in prompt_result.rules or []]}")
+    print(
+        f"Violated policies: {[rule.rule_name.value for rule in prompt_result.rules or []]}"
+    )
 
 # --- Call OpenAI API ---
 openai_headers = {
@@ -52,7 +54,7 @@ openai_headers = {
 openai_payload = {
     "model": "gpt-4",
     "messages": [{"role": "user", "content": user_prompt}],
-    "max_tokens": 150
+    "max_tokens": 150,
 }
 openai_response = requests.post(
     OPENAI_API_URL, headers=openai_headers, json=openai_payload
@@ -69,7 +71,9 @@ response_result = client.inspect_response(ai_response)
 print("\n----------------Inspect Response Result----------------")
 print("Response is safe?", response_result.is_safe)
 if not response_result.is_safe:
-    print(f"Violated policies: {[rule.rule_name.value for rule in response_result.rules or []]}")
+    print(
+        f"Violated policies: {[rule.rule_name.value for rule in response_result.rules or []]}"
+    )
 
 # --- Inspect the full conversation ---
 conversation = [
@@ -80,4 +84,6 @@ conversation_result = client.inspect_conversation(conversation)
 print("\n----------------Inspect Conversation Result----------------")
 print("Conversation is safe?", conversation_result.is_safe)
 if not conversation_result.is_safe:
-    print(f"Violated policies: {[rule.rule_name.value for rule in conversation_result.rules or []]}")
+    print(
+        f"Violated policies: {[rule.rule_name.value for rule in conversation_result.rules or []]}"
+    )

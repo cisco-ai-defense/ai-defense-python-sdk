@@ -34,7 +34,9 @@ AIDEFENSE_API_KEY = os.environ.get("AIDEFENSE_API_KEY", "YOUR_AIDEFENSE_API_KEY"
 ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages"
 
 # --- User Prompt ---
-user_prompt = "What are three ways that AI is helping with environmental sustainability?"
+user_prompt = (
+    "What are three ways that AI is helping with environmental sustainability?"
+)
 
 # --- Inspect the user prompt ---
 client = ChatInspectionClient(api_key=AIDEFENSE_API_KEY)
@@ -42,7 +44,9 @@ prompt_result = client.inspect_prompt(user_prompt)
 print("\n----------------Inspect Prompt Result----------------")
 print("Prompt is safe?", prompt_result.is_safe)
 if not prompt_result.is_safe:
-    print(f"Violated policies: {[rule.rule_name.value for rule in prompt_result.rules or []]}")
+    print(
+        f"Violated policies: {[rule.rule_name.value for rule in prompt_result.rules or []]}"
+    )
 
 # --- Call Anthropic API ---
 anthropic_headers = {
@@ -54,7 +58,7 @@ anthropic_payload = {
     "model": "claude-3-opus-20240229",  # Or another available model
     "messages": [{"role": "user", "content": user_prompt}],
     "max_tokens": 500,
-    "temperature": 0.7
+    "temperature": 0.7,
 }
 
 try:
@@ -73,7 +77,9 @@ try:
     print("\n----------------Inspect Response Result----------------")
     print("Response is safe?", response_result.is_safe)
     if not response_result.is_safe:
-        print(f"Violated policies: {[rule.rule_name.value for rule in response_result.rules or []]}")
+        print(
+            f"Violated policies: {[rule.rule_name.value for rule in response_result.rules or []]}"
+        )
 
     # --- Inspect the full conversation ---
     conversation = [
@@ -84,7 +90,9 @@ try:
     print("\n----------------Inspect Conversation Result----------------")
     print("Conversation is safe?", conversation_result.is_safe)
     if not conversation_result.is_safe:
-        print(f"Violated policies: {[rule.rule_name.value for rule in conversation_result.rules or []]}")
+        print(
+            f"Violated policies: {[rule.rule_name.value for rule in conversation_result.rules or []]}"
+        )
 
 except Exception as e:
     print(f"\nError calling Anthropic API: {e}")
