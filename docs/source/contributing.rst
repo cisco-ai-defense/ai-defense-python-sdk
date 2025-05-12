@@ -15,6 +15,8 @@ Getting Started
       git clone https://github.com/YOUR-USERNAME/ai-defense-python-sdk.git
       cd ai-defense-python-sdk
 
+      .. TODO: Update repository URL and cd command when package name changes
+
 3. **Set Up Development Environment**: The project uses Poetry for dependency management.
 
    .. code-block:: bash

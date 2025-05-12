@@ -13,7 +13,7 @@ The recommended way to install the AI Defense Python SDK is via pip:
 
 .. code-block:: bash
 
-    pip install aidefense-python-sdk
+    pip install aidefense-sdk
 
 Installing from Source
 ---------------------
@@ -25,6 +25,8 @@ You can also install the SDK directly from the source code:
     git clone https://github.com/cisco-sbg/ai-defense-python-sdk.git
     cd ai-defense-python-sdk
     pip install .
+
+.. TODO: Update repository URL when package name changes
 
 Using Poetry
 -----------

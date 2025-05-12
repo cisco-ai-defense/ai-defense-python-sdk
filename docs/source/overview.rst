@@ -11,7 +11,7 @@ Installation
 
 .. code-block:: bash
 
-   pip install ai-defense
+   pip install aidefense-sdk
 
 Basic Usage
 ~~~~~~~~~~~
@@ -21,7 +21,7 @@ Chat Inspection
 
 .. code-block:: python
 
-   from ai_defense import ChatInspectionClient
+   from aidefense import ChatInspectionClient
 
    # Initialize the client
    client = ChatInspectionClient(api_key="your_api_key")
