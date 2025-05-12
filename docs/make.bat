@@ -1,3 +1,7 @@
+:: Windows batch file for building Sphinx documentation
+:: Equivalent to the Unix Makefile, this script provides the same commands for Windows users
+:: Usage: make.bat [html|clean|latexpdf|linkcheck|...]
+
 @ECHO OFF
 
 pushd %~dp0
