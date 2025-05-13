@@ -19,5 +19,6 @@ AI Defense Python SDK
 Convenient imports for all major SDK components.
 """
 
-from .runtime import HttpInspectionClient, ChatInspectionClient
+from .runtime import *
 from .config import Config
+from .exceptions import ValidationError, ApiError, SDKError

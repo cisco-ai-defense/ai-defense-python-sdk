@@ -16,3 +16,21 @@
 
 from .http_inspect import HttpInspectionClient
 from .chat_inspect import ChatInspectionClient
+from .chat_inspect import Message, Role, ChatInspectRequest
+from .models import (
+    Rule,
+    Classification,
+    RuleName,
+    InspectionConfig,
+    Metadata,
+    InspectResponse,
+)
+from .http_models import HttpInspectRequest
+from .http_models import (
+    HttpReqObject,
+    HttpResObject,
+    HttpMetaObject,
+    HttpHdrObject,
+    HttpHdrKvObject,
+)
+from .utils import to_base64_bytes
