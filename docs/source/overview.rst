@@ -42,7 +42,7 @@ HTTP Inspection
 
 .. code-block:: python
 
-   from ai_defense import HttpInspectionClient
+   from aidefense import HttpInspectionClient
 
    # Initialize the client
    client = HttpInspectionClient(api_key="your_api_key")
