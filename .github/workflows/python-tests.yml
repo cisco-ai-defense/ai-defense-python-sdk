@@ -35,5 +35,8 @@ jobs:
     - name: Install dependencies
       run: poetry install
 
+    - name: Install extra test dependencies
+      run: poetry add --dev boto3 google-auth
+
     - name: Run tests
       run: poetry run pytest
