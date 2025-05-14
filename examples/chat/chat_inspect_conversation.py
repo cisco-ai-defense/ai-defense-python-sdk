@@ -19,7 +19,7 @@ Example: Using inspect_conversation for chat conversation inspection
 """
 
 from aidefense import ChatInspectionClient
-from aidefense.runtime.models import Message, Role
+from aidefense.runtime import Message, Role
 
 client = ChatInspectionClient(api_key="YOUR_API_KEY")
 

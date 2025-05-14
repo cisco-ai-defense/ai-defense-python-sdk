@@ -19,7 +19,7 @@ Example: Creating two ChatInspectionClient instances with a shared Config and ca
 """
 
 from aidefense import ChatInspectionClient, Config
-from aidefense.runtime.models import Message, Role
+from aidefense.runtime import Message, Role
 
 config = Config(logger_params={"level": "DEBUG"})
 

@@ -27,7 +27,7 @@ This script demonstrates:
 import logging
 import requests
 from aidefense import ChatInspectionClient, HttpInspectionClient, Config
-from aidefense.runtime.models import Message, Role
+from aidefense.runtime import Message, Role
 
 
 def setup_custom_logger():
