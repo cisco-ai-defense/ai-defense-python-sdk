@@ -51,8 +51,7 @@ def test_advanced_usage_workflow(capsys):
         metadata = Metadata(
             user="user-123",
             src_app="example-app",
-            client_transaction_id=str(uuid.uuid4()),
-            custom_field="custom value",
+            client_transaction_id=str(uuid.uuid4())
         )
         result = client.inspect_prompt("Is this a safe prompt?", metadata=metadata)
         print(f"Request with metadata - is safe? {result.is_safe}")
