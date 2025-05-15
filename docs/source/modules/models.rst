@@ -69,7 +69,7 @@ Working with Chat Inspection
 
 .. code-block:: python
 
-    from aidefense.runtime.models import Message, Role
+    from aidefense.runtime import Message, Role
 
     # Create a conversation with multiple messages
     messages = [
@@ -95,7 +95,7 @@ Working with Rules and Configurations
 
 .. code-block:: python
 
-    from aidefense.runtime.models import InspectionConfig, Rule, RuleName
+    from aidefense.runtime import InspectionConfig, Rule, RuleName
 
     # Create a configuration with specific enabled rules
     config = InspectionConfig(
@@ -162,7 +162,7 @@ Adding Context with Metadata
 
 .. code-block:: python
 
-    from aidefense.runtime.models import Metadata
+    from aidefense.runtime import Metadata
 
     # Create metadata with context information
     metadata = Metadata(

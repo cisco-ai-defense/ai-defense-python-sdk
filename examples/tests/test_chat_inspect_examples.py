@@ -1,3 +1,19 @@
+# Copyright 2025 Cisco Systems, Inc. and its affiliates
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 from unittest.mock import patch, MagicMock
 import secrets
@@ -8,12 +24,19 @@ from aidefense.runtime import Message, Role
 @pytest.fixture
 def fake_chat_client():
     dummy_api_key = secrets.token_hex(32)  # 32 bytes = 64 hex chars
-    with patch.object(ChatInspectionClient, 'inspect_prompt',
-                      return_value=MagicMock(is_safe=True, __str__=lambda self: "fake_result")) as mock_prompt, \
-            patch.object(ChatInspectionClient, 'inspect_conversation',
-                         return_value=MagicMock(is_safe=True, __str__=lambda self: "fake_result")) as mock_conv, \
-            patch.object(ChatInspectionClient, 'inspect_response',
-                         return_value=MagicMock(is_safe=True, __str__=lambda self: "fake_result")) as mock_resp:
+    with patch.object(
+        ChatInspectionClient,
+        "inspect_prompt",
+        return_value=MagicMock(is_safe=True, __str__=lambda self: "fake_result"),
+    ) as mock_prompt, patch.object(
+        ChatInspectionClient,
+        "inspect_conversation",
+        return_value=MagicMock(is_safe=True, __str__=lambda self: "fake_result"),
+    ) as mock_conv, patch.object(
+        ChatInspectionClient,
+        "inspect_response",
+        return_value=MagicMock(is_safe=True, __str__=lambda self: "fake_result"),
+    ) as mock_resp:
         yield ChatInspectionClient(api_key=dummy_api_key)
 
 
@@ -44,8 +67,13 @@ def test_chat_inspect_multiple_clients():
     dummy_api_key_1 = secrets.token_hex(32)
     dummy_api_key_2 = secrets.token_hex(32)
 
-    with patch.object(ChatInspectionClient, 'inspect_prompt', return_value=MagicMock(is_safe=True)), \
-            patch.object(ChatInspectionClient, 'inspect_conversation', return_value=MagicMock(is_safe=True)):
+    with patch.object(
+        ChatInspectionClient, "inspect_prompt", return_value=MagicMock(is_safe=True)
+    ), patch.object(
+        ChatInspectionClient,
+        "inspect_conversation",
+        return_value=MagicMock(is_safe=True),
+    ):
         client1 = ChatInspectionClient(api_key=dummy_api_key_1, config=config)
         client2 = ChatInspectionClient(api_key=dummy_api_key_2, config=config)
         result1 = client1.inspect_prompt("Is this a safe prompt?")

@@ -178,7 +178,7 @@ Inspection with Custom Rules Configuration
 .. code-block:: python
 
     from aidefense import HttpInspectionClient
-    from aidefense.runtime.models import InspectionConfig, Rule, RuleName
+    from aidefense.runtime import InspectionConfig, Rule, RuleName
 
     client = HttpInspectionClient(api_key="YOUR_API_KEY")
 

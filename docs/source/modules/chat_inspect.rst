@@ -46,7 +46,7 @@ Response Inspection
 .. code-block:: python
 
     from aidefense import ChatInspectionClient
-    from aidefense.runtime.models import Message, Role
+    from aidefense.runtime import Message, Role
 
     client = ChatInspectionClient(api_key="YOUR_API_KEY")
 
@@ -66,7 +66,7 @@ Conversation Inspection
 .. code-block:: python
 
     from aidefense import ChatInspectionClient
-    from aidefense.runtime.models import Message, Role
+    from aidefense.runtime import Message, Role
 
     client = ChatInspectionClient(api_key="YOUR_API_KEY")
 
@@ -89,7 +89,7 @@ Inspection with Custom Rules
 .. code-block:: python
 
     from aidefense import ChatInspectionClient
-    from aidefense.runtime.models import InspectionConfig, Rule, RuleName
+    from aidefense.runtime import InspectionConfig, Rule, RuleName
 
     client = ChatInspectionClient(api_key="YOUR_API_KEY")
 
@@ -118,7 +118,7 @@ Request Tracing and Metadata
 .. code-block:: python
 
     from aidefense import ChatInspectionClient
-    from aidefense.runtime.models import Metadata
+    from aidefense.runtime import Metadata
     import uuid
 
     client = ChatInspectionClient(api_key="YOUR_API_KEY")

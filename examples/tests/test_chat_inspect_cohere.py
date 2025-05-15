@@ -1,8 +1,25 @@
+# Copyright 2025 Cisco Systems, Inc. and its affiliates
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 from unittest.mock import patch, MagicMock
 import secrets
 from aidefense import ChatInspectionClient
 from aidefense.runtime.chat_models import Message, Role
+
 
 def test_chat_inspect_cohere_workflow(capsys):
     user_prompt = "Tell me a fun fact about space."
@@ -14,10 +31,17 @@ def test_chat_inspect_cohere_workflow(capsys):
     fake_cohere_response.json.return_value = {"text": "Space is completely silent."}
     fake_cohere_response.raise_for_status.return_value = None
 
-    with patch.object(ChatInspectionClient, 'inspect_prompt', return_value=MagicMock(is_safe=True)), \
-         patch.object(ChatInspectionClient, 'inspect_response', return_value=MagicMock(is_safe=True)), \
-         patch.object(ChatInspectionClient, 'inspect_conversation', return_value=MagicMock(is_safe=True)), \
-         patch("requests.post", return_value=fake_cohere_response):
+    with patch.object(
+        ChatInspectionClient, "inspect_prompt", return_value=MagicMock(is_safe=True)
+    ), patch.object(
+        ChatInspectionClient, "inspect_response", return_value=MagicMock(is_safe=True)
+    ), patch.object(
+        ChatInspectionClient,
+        "inspect_conversation",
+        return_value=MagicMock(is_safe=True),
+    ), patch(
+        "requests.post", return_value=fake_cohere_response
+    ):
 
         # --- Inspect the user prompt ---
         prompt_result = client.inspect_prompt(user_prompt)
@@ -25,6 +49,7 @@ def test_chat_inspect_cohere_workflow(capsys):
 
         # --- Call Cohere API (mocked) ---
         import requests
+
         COHERE_API_URL = "https://api.cohere.com/v1/chat"
         cohere_headers = {
             "Authorization": f"Bearer fake-key",

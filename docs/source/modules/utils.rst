@@ -28,7 +28,7 @@ Working with Base64 Encoding
 
 .. code-block:: python
 
-    from aidefense.runtime.utils import to_base64_bytes
+    from aidefense.runtime import to_base64_bytes
 
     # Encode string data to base64
     data = "Example string data"
@@ -52,7 +52,7 @@ Type Conversion Utilities
 
 .. code-block:: python
 
-    from aidefense.runtime.utils import convert
+    from aidefense.runtime import convert
 
     # Convert int to string
     str_value = convert(42, str)  # "42"
@@ -68,7 +68,7 @@ Working with HTTP Bodies
 
 .. code-block:: python
 
-    from aidefense.runtime.utils import ensure_base64_body
+    from aidefense.runtime import ensure_base64_body
     import json
 
     # Dictionary data that needs to be encoded for HTTP inspection

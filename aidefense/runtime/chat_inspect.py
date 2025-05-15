@@ -192,8 +192,8 @@ class ChatInspectionClient(InspectionClient):
         Example:
             ```python
             from aidefense.runtime import ChatInspectionClient
-            from aidefense.runtime.chat_models import Message, Role
-            from aidefense.runtime.models import InspectionConfig, Rule, RuleName, Metadata
+            from aidefense.runtime import Message, Role
+            from aidefense.runtime import InspectionConfig, Rule, RuleName, Metadata
 
             # Initialize client
             client = ChatInspectionClient(api_key="your_api_key")

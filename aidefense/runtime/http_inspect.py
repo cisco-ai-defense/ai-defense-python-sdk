@@ -251,7 +251,7 @@ class HttpInspectionClient(InspectionClient):
             ```python
             import requests
             from aidefense.runtime import HttpInspectionClient
-            from aidefense.runtime.models import InspectionConfig, Rule, RuleName
+            from aidefense.runtime import InspectionConfig, Rule, RuleName
 
             # Initialize client
             client = HttpInspectionClient(api_key="your_api_key")
@@ -451,7 +451,7 @@ class HttpInspectionClient(InspectionClient):
             ```python
             import json
             from aidefense.runtime import HttpInspectionClient
-            from aidefense.runtime.models import InspectionConfig, Rule, RuleName
+            from aidefense.runtime import InspectionConfig, Rule, RuleName
 
             # Initialize client
             client = HttpInspectionClient(api_key="your_api_key")

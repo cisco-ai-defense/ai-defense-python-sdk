@@ -1,3 +1,19 @@
+# Copyright 2025 Cisco Systems, Inc. and its affiliates
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 from unittest.mock import patch, MagicMock
 import secrets
@@ -8,9 +24,15 @@ from aidefense.runtime.chat_models import Message, Role
 @pytest.fixture
 def fake_bedrock_client():
     # Patch ChatInspectionClient methods
-    with patch.object(ChatInspectionClient, 'inspect_prompt', return_value=MagicMock(is_safe=True)), \
-            patch.object(ChatInspectionClient, 'inspect_response', return_value=MagicMock(is_safe=True)), \
-            patch.object(ChatInspectionClient, 'inspect_conversation', return_value=MagicMock(is_safe=True)):
+    with patch.object(
+        ChatInspectionClient, "inspect_prompt", return_value=MagicMock(is_safe=True)
+    ), patch.object(
+        ChatInspectionClient, "inspect_response", return_value=MagicMock(is_safe=True)
+    ), patch.object(
+        ChatInspectionClient,
+        "inspect_conversation",
+        return_value=MagicMock(is_safe=True),
+    ):
         yield
 
 
@@ -25,7 +47,9 @@ def test_chat_inspect_bedrock_workflow(fake_bedrock_client, capsys):
         mock_boto3_client.return_value = mock_bedrock
         # Simulate Bedrock model response
         mock_response = {
-            "body": MagicMock(read=lambda: b'{"completion": "AI response from Bedrock."}')
+            "body": MagicMock(
+                read=lambda: b'{"completion": "AI response from Bedrock."}'
+            )
         }
         mock_bedrock.invoke_model.return_value = mock_response
 
@@ -38,9 +62,9 @@ def test_chat_inspect_bedrock_workflow(fake_bedrock_client, capsys):
 
         # --- Call Amazon Bedrock API ---
         import boto3
+
         bedrock_runtime = boto3.client(
-            service_name="bedrock-runtime",
-            region_name="us-east-1"
+            service_name="bedrock-runtime", region_name="us-east-1"
         )
         model_id = "anthropic.claude-v2"
         bedrock_payload = {
@@ -49,9 +73,7 @@ def test_chat_inspect_bedrock_workflow(fake_bedrock_client, capsys):
             "temperature": 0.5,
             "top_p": 0.9,
         }
-        bedrock_response = bedrock_runtime.invoke_model(
-            modelId=model_id, body='{}'
-        )
+        bedrock_response = bedrock_runtime.invoke_model(modelId=model_id, body="{}")
         response_body = {"completion": "AI response from Bedrock."}
         ai_response = response_body.get("completion", "")
 

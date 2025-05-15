@@ -1,15 +1,38 @@
+# Copyright 2025 Cisco Systems, Inc. and its affiliates
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import secrets
 from unittest.mock import patch, MagicMock
 from aidefense import ChatInspectionClient, HttpInspectionClient, Config
 import requests
 
+
 def test_custom_configuration_workflow(capsys):
     dummy_api_key = secrets.token_hex(32)
     dummy_result = MagicMock(is_safe=True)
 
-    with patch.object(ChatInspectionClient, 'inspect_prompt', return_value=dummy_result), \
-         patch.object(ChatInspectionClient, 'inspect_conversation', side_effect=Exception("Expected error")), \
-         patch.object(HttpInspectionClient, 'inspect', return_value=dummy_result):
+    with patch.object(
+        ChatInspectionClient, "inspect_prompt", return_value=dummy_result
+    ), patch.object(
+        ChatInspectionClient,
+        "inspect_conversation",
+        side_effect=Exception("Expected error"),
+    ), patch.object(
+        HttpInspectionClient, "inspect", return_value=dummy_result
+    ):
 
         # Custom API endpoint
         print("\n=== Custom API Endpoint Example ===")
