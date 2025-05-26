@@ -247,4 +247,4 @@ Contributions are welcome! Please open issues or pull requests for bug fixes, ne
 
 ## Support
 
-For help or questions, please open an issue or contact the Cisco AI Defense team.
+For help or questions, please open an issue.
