@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "aidefense"
+name = "cisco-aidefense-sdk"
 version = "1.0.0"
 description = "Cisco AI Defense Python SDK"
 authors = ["Shiva Guntoju <shguntoj@cisco.com>"]
@@ -12,6 +12,7 @@ classifiers = [
     "Operating System :: OS Independent",
     "Intended Audience :: Developers"
 ]
+packages = [{include = "aidefense"}]
 
 [tool.poetry.dependencies]
 python = "^3.8"

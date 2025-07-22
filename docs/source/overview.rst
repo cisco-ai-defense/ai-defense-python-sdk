@@ -11,7 +11,7 @@ Installation
 
 .. code-block:: bash
 
-   pip install aidefense-sdk
+   pip install cisco-aidefense-sdk
 
 Basic Usage
 ~~~~~~~~~~~

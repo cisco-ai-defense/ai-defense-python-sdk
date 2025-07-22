@@ -93,7 +93,7 @@ These examples use `HttpInspectionClient` to inspect HTTP requests and responses
 
 To run these examples:
 
-1. Install the AI Defense Python SDK: `pip install aidefense-sdk`
+1. Install the AI Defense Python SDK: `pip install cisco-aidefense-sdk`
 2. Set your API keys as environment variables (varies by example)
 3. Run the example: `python examples/chat/chat_inspect_prompt.py`
 

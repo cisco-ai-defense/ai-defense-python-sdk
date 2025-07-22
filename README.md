@@ -46,7 +46,7 @@ It enables you to detect security, privacy, and safety risks in real time, with 
 ## Installation
 
 ```bash
-pip install aidefense-sdk
+pip install cisco-aidefense-sdk
 ```
 
 > **Note:** The PyPI package name is `aidefense-sdk`, but you import it as `aidefense` in your Python code.
@@ -54,10 +54,9 @@ pip install aidefense-sdk
 Or, for local development:
 
 ```bash
-git clone https://github.com/cisco-sbg/ai-defense-python-sdk.git
+git clone https://github.com/cisco-ai-defense/ai-defense-python-sdk
 cd aidefense-python-sdk
 
-# TODO: Update repository URL and cd command when package name changes
 pip install -e .
 ```
 
