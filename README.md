@@ -1,4 +1,4 @@
-# aidefense-sdk
+# cisco-aidefense-sdk
 
 **Cisco AI Defense Python SDK**
 Integrate AI-powered security, privacy, and safety inspections into your Python applications with ease.
@@ -26,7 +26,8 @@ Integrate AI-powered security, privacy, and safety inspections into your Python 
 
 ## Overview
 
-The `aidefense-sdk` provides a developer-friendly interface for inspecting chat conversations and HTTP requests/responses using Cisco's AI Defense API.
+The `cisco-aidefense-sdk` provides a developer-friendly interface for inspecting chat conversations and HTTP 
+requests/responses using Cisco's AI Defense API.
 It enables you to detect security, privacy, and safety risks in real time, with flexible configuration and robust validation.
 
 ---
@@ -49,7 +50,7 @@ It enables you to detect security, privacy, and safety risks in real time, with 
 pip install cisco-aidefense-sdk
 ```
 
-> **Note:** The PyPI package name is `aidefense-sdk`, but you import it as `aidefense` in your Python code.
+> **Note:** The PyPI package name is `cisco-aidefense-sdk`, but you import it as `aidefense` in your Python code.
 
 Or, for local development:
 

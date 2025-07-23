@@ -15,7 +15,8 @@ AI Defense Python SDK Documentation
 Overview
 --------
 
-The ``aidefense-sdk`` provides a developer-friendly interface for inspecting chat conversations and HTTP requests/responses using Cisco's AI Defense API.
+The ``cisco-aidefense-sdk`` provides a developer-friendly interface for inspecting chat conversations and HTTP
+requests/responses using Cisco's AI Defense API.
 It enables you to detect security, privacy, and safety risks in real time, with flexible configuration and robust validation.
 
 Features
