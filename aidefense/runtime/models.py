@@ -162,6 +162,7 @@ class InspectResponse:
         explanation (Optional[str]): Human-readable explanation of the inspection result.
         client_transaction_id (Optional[str]): Unique client-provided transaction ID for tracing.
         event_id (Optional[str]): Unique event ID assigned by the backend.
+        processed_rules (Optional[List[Rule]]): List of rules applied for inspection.
     """
 
     classifications: List[Classification]
@@ -172,3 +173,4 @@ class InspectResponse:
     explanation: Optional[str] = None
     client_transaction_id: Optional[str] = None
     event_id: Optional[str] = None
+    processed_rules: Optional[List[Rule]] = None
