@@ -115,8 +115,7 @@ class RequestHandler(BaseRequestHandler):
             headers = headers or {}
             request_id = request_id or self.get_request_id()
 
-            if request_id:
-                headers[REQUEST_ID_HEADER] = request_id
+            headers[REQUEST_ID_HEADER] = request_id
 
             if auth:
                 request = requests.Request(
