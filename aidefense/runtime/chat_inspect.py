@@ -61,12 +61,12 @@ class ChatInspectionClient(InspectionClient):
         self.endpoint = f"{self.config.runtime_base_url}/api/v1/inspect/chat"
 
     def inspect_prompt(
-        self,
-        prompt: str,
-        metadata: Optional[Metadata] = None,
-        config: Optional[InspectionConfig] = None,
-        request_id: Optional[str] = None,
-        timeout: Optional[int] = None,
+            self,
+            prompt: str,
+            metadata: Optional[Metadata] = None,
+            config: Optional[InspectionConfig] = None,
+            request_id: Optional[str] = None,
+            timeout: Optional[int] = None,
     ) -> InspectResponse:
         """
         Inspect a single user prompt for security, privacy, and safety violations.
@@ -76,6 +76,7 @@ class ChatInspectionClient(InspectionClient):
             metadata (Metadata, optional): Optional metadata about the user/application context.
             config (InspectionConfig, optional): Optional inspection configuration (rules, etc.).
             request_id (str, optional): Unique identifier for the request (usually a UUID) to enable request tracing.
+            timeout(int, optional): Request timeout in seconds.
 
         Returns:
             InspectResponse: Inspection results as an InspectResponse object.
@@ -110,12 +111,12 @@ class ChatInspectionClient(InspectionClient):
         return self._inspect([message], metadata, config, request_id, timeout)
 
     def inspect_response(
-        self,
-        response: str,
-        metadata: Optional[Metadata] = None,
-        config: Optional[InspectionConfig] = None,
-        request_id: Optional[str] = None,
-        timeout: Optional[int] = None,
+            self,
+            response: str,
+            metadata: Optional[Metadata] = None,
+            config: Optional[InspectionConfig] = None,
+            request_id: Optional[str] = None,
+            timeout: Optional[int] = None,
     ) -> InspectResponse:
         """
         Inspect a single AI response for security, privacy, and safety risks.
@@ -170,12 +171,12 @@ class ChatInspectionClient(InspectionClient):
         return self._inspect([message], metadata, config, request_id, timeout)
 
     def inspect_conversation(
-        self,
-        messages: List[Message],
-        metadata: Optional[Metadata] = None,
-        config: Optional[InspectionConfig] = None,
-        request_id: Optional[str] = None,
-        timeout: Optional[int] = None,
+            self,
+            messages: List[Message],
+            metadata: Optional[Metadata] = None,
+            config: Optional[InspectionConfig] = None,
+            request_id: Optional[str] = None,
+            timeout: Optional[int] = None,
     ) -> InspectResponse:
         """
         Inspect a full conversation (list of messages) for security, privacy, and safety risks.
@@ -245,12 +246,12 @@ class ChatInspectionClient(InspectionClient):
         return self._inspect(messages, metadata, config, request_id, timeout)
 
     def _inspect(
-        self,
-        messages: List[Message],
-        metadata: Optional[Metadata] = None,
-        config: Optional[InspectionConfig] = None,
-        request_id: Optional[str] = None,
-        timeout: Optional[int] = None,
+            self,
+            messages: List[Message],
+            metadata: Optional[Metadata] = None,
+            config: Optional[InspectionConfig] = None,
+            request_id: Optional[str] = None,
+            timeout: Optional[int] = None,
     ) -> InspectResponse:
         """
         Implements the inspection logic for chat conversations.
@@ -283,7 +284,7 @@ class ChatInspectionClient(InspectionClient):
         request_dict = self._prepare_request_data(request)
         self.validate_inspection_request(request_dict)
         headers = {"Content-Type": "application/json"}
-        result = self.request(
+        result = self._request_handler.request(
             method="POST",
             url=self.endpoint,
             auth=self.auth,
@@ -347,15 +348,15 @@ class ChatInspectionClient(InspectionClient):
             )
         # metadata and config are optional, but if present, should be dicts
         if (
-            "metadata" in request_dict
-            and request_dict["metadata"] is not None
-            and not isinstance(request_dict["metadata"], dict)
+                "metadata" in request_dict
+                and request_dict["metadata"] is not None
+                and not isinstance(request_dict["metadata"], dict)
         ):
             raise ValidationError("'metadata' must be a dict if provided.")
         if (
-            "config" in request_dict
-            and request_dict["config"] is not None
-            and not isinstance(request_dict["config"], dict)
+                "config" in request_dict
+                and request_dict["config"] is not None
+                and not isinstance(request_dict["config"], dict)
         ):
             raise ValidationError("'config' must be a dict if provided.")
 

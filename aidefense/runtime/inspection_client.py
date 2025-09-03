@@ -31,11 +31,11 @@ from .models import (
 )
 from .constants import INTEGRATION_DETAILS
 from ..exceptions import ValidationError
-from ..client import BaseClient
+from ..request_handler import RequestHandler
 from ..config import Config
 
 
-class InspectionClient(BaseClient, ABC):
+class InspectionClient(ABC):
     """
     Abstract base class for all AI Defense inspection clients (e.g., HTTP and Chat inspection).
 
@@ -64,7 +64,6 @@ class InspectionClient(BaseClient, ABC):
         config (Config): The runtime configuration object.
         api_key (str): The API key used for authentication.
     """
-
     # Default entity map for rules that require entity_types (PII, PCI, PHI)
     DEFAULT_ENTITY_MAP = {
         "PII": PII_ENTITIES,
@@ -89,10 +88,10 @@ class InspectionClient(BaseClient, ABC):
                 DEFAULT_ENTITY_MAP (PII, PCI, PHI) will have their associated entity_types set; all others will have entity_types as None.
         """
         config = config or Config()
-        super().__init__(config)
         self.auth = RuntimeAuth(api_key)
         self.config = config
         self.api_key = api_key
+        self._request_handler = RequestHandler(config)
         self.default_enabled_rules = [
             Rule(
                 rule_name=rn,
@@ -119,7 +118,7 @@ class InspectionClient(BaseClient, ABC):
         raise NotImplementedError("Subclasses must implement _inspect.")
 
     def _parse_inspect_response(
-        self, response_data: Dict[str, Any]
+            self, response_data: Dict[str, Any]
     ) -> "InspectResponse":
         """
         Parse API response (chat or http inspect) into an InspectResponse object.
