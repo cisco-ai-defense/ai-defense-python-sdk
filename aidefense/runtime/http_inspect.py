@@ -671,7 +671,7 @@ class HttpInspectionClient(InspectionClient):
                 not in self._request_handler.VALID_HTTP_METHODS
             ):
                 raise ValidationError(
-                    f"'{HTTP_REQ}' must have a valid '{HTTP_METHOD}' (one of {self._request_handler.VALID_HTTP_METHODS})."
+                    f"'{HTTP_REQ}' must have a valid '{HTTP_METHOD}' (one of {self.VALID_HTTP_METHODS})."
                 )
         if http_res:
             if not isinstance(http_res, dict):
@@ -699,14 +699,14 @@ class HttpInspectionClient(InspectionClient):
         )
 
     def _build_http_req_from_http_library(
-        self, http_request: Union[requests.PreparedRequest, requests.Request]
+            self, http_request: Union[requests.PreparedRequest, requests.Request]
     ) -> HttpReqObject:
         method = getattr(http_request, HTTP_METHOD, None)
         req_headers = dict(getattr(http_request, "headers", {}))
         req_body = (
-            getattr(http_request, "data", b"")
-            or getattr(http_request, HTTP_BODY, b"")
-            or getattr(http_request, "content", b"")
+                getattr(http_request, "data", b"")
+                or getattr(http_request, HTTP_BODY, b"")
+                or getattr(http_request, "content", b"")
         )
 
         if not isinstance(req_body, (bytes, str, dict)):
