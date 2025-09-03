@@ -64,6 +64,7 @@ class InspectionClient(ABC):
         config (Config): The runtime configuration object.
         api_key (str): The API key used for authentication.
     """
+
     # Default entity map for rules that require entity_types (PII, PCI, PHI)
     DEFAULT_ENTITY_MAP = {
         "PII": PII_ENTITIES,
@@ -118,7 +119,7 @@ class InspectionClient(ABC):
         raise NotImplementedError("Subclasses must implement _inspect.")
 
     def _parse_inspect_response(
-            self, response_data: Dict[str, Any]
+        self, response_data: Dict[str, Any]
     ) -> "InspectResponse":
         """
         Parse API response (chat or http inspect) into an InspectResponse object.
