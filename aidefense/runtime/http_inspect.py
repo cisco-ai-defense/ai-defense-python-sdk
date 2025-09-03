@@ -67,14 +67,14 @@ class HttpInspectionClient(InspectionClient):
         self.endpoint = f"{self.config.runtime_base_url}/api/v1/inspect/http"
 
     def inspect(
-            self,
-            http_req: Optional[Dict[str, Any]] = None,
-            http_res: Optional[Dict[str, Any]] = None,
-            http_meta: Optional[Dict[str, Any]] = None,
-            metadata: Optional[Metadata] = None,
-            config: Optional[InspectionConfig] = None,
-            request_id: Optional[str] = None,
-            timeout: Optional[int] = None,
+        self,
+        http_req: Optional[Dict[str, Any]] = None,
+        http_res: Optional[Dict[str, Any]] = None,
+        http_meta: Optional[Dict[str, Any]] = None,
+        metadata: Optional[Metadata] = None,
+        config: Optional[InspectionConfig] = None,
+        request_id: Optional[str] = None,
+        timeout: Optional[int] = None,
     ) -> InspectResponse:
         """
         Direct interface for HTTP inspection API using dicts for http_req, http_res, and http_meta.
@@ -144,12 +144,12 @@ class HttpInspectionClient(InspectionClient):
         )
 
     def inspect_request_from_http_library(
-            self,
-            http_request: Union[requests.PreparedRequest, requests.Request],
-            metadata: Optional[Metadata] = None,
-            config: Optional[InspectionConfig] = None,
-            request_id: Optional[str] = None,
-            timeout: Optional[int] = None,
+        self,
+        http_request: Union[requests.PreparedRequest, requests.Request],
+        metadata: Optional[Metadata] = None,
+        config: Optional[InspectionConfig] = None,
+        request_id: Optional[str] = None,
+        timeout: Optional[int] = None,
     ) -> InspectResponse:
         """
         Inspect an HTTP request from a supported HTTP library (currently requests) that is being sent to the model provider.
@@ -205,7 +205,7 @@ class HttpInspectionClient(InspectionClient):
         url = None
         # Support both requests.PreparedRequest and requests.Request
         if isinstance(http_request, requests.PreparedRequest) or isinstance(
-                http_request, requests.Request
+            http_request, requests.Request
         ):
             url = getattr(http_request, "url", None)
             http_req = self._build_http_req_from_http_library(http_request)
@@ -230,12 +230,12 @@ class HttpInspectionClient(InspectionClient):
         )
 
     def inspect_response_from_http_library(
-            self,
-            http_response: Any,
-            metadata: Optional[Metadata] = None,
-            config: Optional[InspectionConfig] = None,
-            request_id: Optional[str] = None,
-            timeout: Optional[int] = None,
+        self,
+        http_response: Any,
+        metadata: Optional[Metadata] = None,
+        config: Optional[InspectionConfig] = None,
+        request_id: Optional[str] = None,
+        timeout: Optional[int] = None,
     ) -> InspectResponse:
         """
         Inspect an HTTP response from a supported HTTP library (currently requests) that comes from model provider and return inspection results.
@@ -326,15 +326,15 @@ class HttpInspectionClient(InspectionClient):
         )
 
     def inspect_request(
-            self,
-            method: str,
-            url: str,
-            headers: Optional[Dict[str, str]] = None,
-            body: Union[str, bytes, dict] = None,
-            metadata: Optional[Metadata] = None,
-            config: Optional[InspectionConfig] = None,
-            request_id: Optional[str] = None,
-            timeout: Optional[int] = None,
+        self,
+        method: str,
+        url: str,
+        headers: Optional[Dict[str, str]] = None,
+        body: Union[str, bytes, dict] = None,
+        metadata: Optional[Metadata] = None,
+        config: Optional[InspectionConfig] = None,
+        request_id: Optional[str] = None,
+        timeout: Optional[int] = None,
     ) -> InspectResponse:
         """
         Inspect an HTTP request with simplified arguments (method, url, headers, body).
@@ -416,19 +416,19 @@ class HttpInspectionClient(InspectionClient):
         )
 
     def inspect_response(
-            self,
-            status_code: int,
-            url: str,
-            headers: Optional[Dict[str, str]] = None,
-            body: Union[str, bytes, dict] = None,
-            request_method: str = None,
-            request_headers: Optional[Dict[str, str]] = None,
-            request_body: Union[str, bytes, dict] = None,
-            request_metadata: Optional[Metadata] = None,
-            metadata: Optional[Metadata] = None,
-            config: Optional[InspectionConfig] = None,
-            request_id: Optional[str] = None,
-            timeout: Optional[int] = None,
+        self,
+        status_code: int,
+        url: str,
+        headers: Optional[Dict[str, str]] = None,
+        body: Union[str, bytes, dict] = None,
+        request_method: str = None,
+        request_headers: Optional[Dict[str, str]] = None,
+        request_body: Union[str, bytes, dict] = None,
+        request_metadata: Optional[Metadata] = None,
+        metadata: Optional[Metadata] = None,
+        config: Optional[InspectionConfig] = None,
+        request_id: Optional[str] = None,
+        timeout: Optional[int] = None,
     ) -> InspectResponse:
         """
         Inspect an HTTP response (status code, url, headers, body), with request context and metadata, for security, privacy, and policy violations.
@@ -563,14 +563,14 @@ class HttpInspectionClient(InspectionClient):
         )
 
     def _inspect(
-            self,
-            http_req: HttpReqObject,
-            http_res: Optional[HttpResObject],
-            http_meta: HttpMetaObject,
-            metadata: Optional[Metadata] = None,
-            config: Optional[InspectionConfig] = None,
-            request_id: Optional[str] = None,
-            timeout: Optional[int] = None,
+        self,
+        http_req: HttpReqObject,
+        http_res: Optional[HttpResObject],
+        http_meta: HttpMetaObject,
+        metadata: Optional[Metadata] = None,
+        config: Optional[InspectionConfig] = None,
+        request_id: Optional[str] = None,
+        timeout: Optional[int] = None,
     ) -> InspectResponse:
         """
         Implements InspectionClient._inspect for HTTP inspection.
@@ -649,7 +649,7 @@ class HttpInspectionClient(InspectionClient):
         config = request_dict.get("config")
         if config is not None:
             if not config.get("enabled_rules") or not isinstance(
-                    config["enabled_rules"], list
+                config["enabled_rules"], list
             ):
                 raise ValidationError(
                     "config.enabled_rules must be a non-empty list of Rule objects."
@@ -666,7 +666,10 @@ class HttpInspectionClient(InspectionClient):
                 raise ValidationError(f"'{HTTP_REQ}' must have a non-empty 'body'.")
             if not http_req.get(HTTP_METHOD):
                 raise ValidationError(f"'{HTTP_REQ}' must have a '{HTTP_METHOD}'.")
-            if http_req.get(HTTP_METHOD) not in self._request_handler.VALID_HTTP_METHODS:
+            if (
+                http_req.get(HTTP_METHOD)
+                not in self._request_handler.VALID_HTTP_METHODS
+            ):
                 raise ValidationError(
                     f"'{HTTP_REQ}' must have a valid '{HTTP_METHOD}' (one of {self._request_handler.VALID_HTTP_METHODS})."
                 )
@@ -696,14 +699,14 @@ class HttpInspectionClient(InspectionClient):
         )
 
     def _build_http_req_from_http_library(
-            self, http_request: Union[requests.PreparedRequest, requests.Request]
+        self, http_request: Union[requests.PreparedRequest, requests.Request]
     ) -> HttpReqObject:
         method = getattr(http_request, HTTP_METHOD, None)
         req_headers = dict(getattr(http_request, "headers", {}))
         req_body = (
-                getattr(http_request, "data", b"")
-                or getattr(http_request, HTTP_BODY, b"")
-                or getattr(http_request, "content", b"")
+            getattr(http_request, "data", b"")
+            or getattr(http_request, HTTP_BODY, b"")
+            or getattr(http_request, "content", b"")
         )
 
         if not isinstance(req_body, (bytes, str, dict)):

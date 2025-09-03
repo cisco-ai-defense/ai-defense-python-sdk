@@ -34,6 +34,7 @@ class BaseRequestHandler(ABC):
     Abstract parent for all request handlers (sync, async, http2, etc).
     Defines the interface and shared logic for request handlers.
     """
+
     USER_AGENT = f"Cisco-AI-Defense-Python-SDK/{version}"
     VALID_HTTP_METHODS = {"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"}
 
@@ -54,16 +55,25 @@ class RequestHandler(BaseRequestHandler):
     """
     Synchronous HTTP/1.1 request handler using requests.Session.
     """
+
     def __init__(self, config: Config):
         super().__init__(config)
         self._session = requests.Session()
         self._session.mount("https://", config.connection_pool)
-        self._session.headers.update({
-            "User-Agent": self.USER_AGENT,
-            "Content-Type": "application/json"
-        })
+        self._session.headers.update(
+            {"User-Agent": self.USER_AGENT, "Content-Type": "application/json"}
+        )
 
-    def request(self, method: str, url: str, auth: AuthBase, request_id: str = None, headers: dict = None, json_data: dict = None, timeout: int = None) -> dict:
+    def request(
+        self,
+        method: str,
+        url: str,
+        auth: AuthBase,
+        request_id: str = None,
+        headers: dict = None,
+        json_data: dict = None,
+        timeout: int = None,
+    ) -> dict:
         """
         Make an HTTP request to the specified URL.
 
@@ -109,16 +119,21 @@ class RequestHandler(BaseRequestHandler):
             self.config.logger.error(f"Request failed: {e}")
             raise
 
-    def _handle_error_response(self, response: requests.Response, request_id: str = None) -> dict:
+    def _handle_error_response(
+        self, response: requests.Response, request_id: str = None
+    ) -> dict:
         self.config.logger.debug(
-            f"_handle_error_response called | status_code: {response.status_code}, response: {response.text}")
+            f"_handle_error_response called | status_code: {response.status_code}, response: {response.text}"
+        )
         try:
             error_data = response.json()
         except ValueError:
             error_data = {"message": response.text or "Unknown error"}
         error_message = error_data.get("message", "Unknown error")
         if response.status_code == 401:
-            raise SDKError(f"Authentication error: {error_message}", response.status_code)
+            raise SDKError(
+                f"Authentication error: {error_message}", response.status_code
+            )
         elif response.status_code == 400:
             raise ValidationError(f"Bad request: {error_message}", response.status_code)
         else:
