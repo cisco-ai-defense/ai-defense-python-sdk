@@ -115,8 +115,6 @@ class RequestHandler(BaseRequestHandler):
             headers = headers or {}
             request_id = request_id or self.get_request_id()
 
-            headers.setdefault("User-Agent", self.USER_AGENT)
-            headers.setdefault("Content-Type", "application/json")
             if request_id:
                 headers[REQUEST_ID_HEADER] = request_id
 
@@ -126,6 +124,7 @@ class RequestHandler(BaseRequestHandler):
                 )
                 prepared_request = auth(request.prepare())
                 headers.update(prepared_request.headers)
+
             response = self._session.request(
                 method=method,
                 url=url,
@@ -133,9 +132,12 @@ class RequestHandler(BaseRequestHandler):
                 json=json_data,
                 timeout=timeout or self.config.timeout,
             )
+
             if response.status_code >= 400:
                 return self._handle_error_response(response, request_id)
+
             return response.json()
+
         except requests.RequestException as e:
             self.config.logger.error(f"Request failed: {e}")
             raise
