@@ -49,6 +49,7 @@ coverage.xml
 *.swp
 *.swo
 .DS_Store
+*.iml
 
 # Project specific
 *.log

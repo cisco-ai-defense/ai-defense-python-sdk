@@ -53,7 +53,15 @@ class BaseRequestHandler(ABC):
 
 class RequestHandler(BaseRequestHandler):
     """
-    Synchronous HTTP/1.1 request handler using requests.Session.
+    Request handler for all API interactions.
+
+    Provides methods for making HTTP requests, handling errors, and managing
+    session configurations.
+
+    Attributes:
+        USER_AGENT (str): The user agent string for the SDK.
+        config (Config): The configuration object for the client.
+        _session (requests.Session): The HTTP session used for making requests.
     """
 
     def __init__(self, config: Config):
@@ -70,10 +78,10 @@ class RequestHandler(BaseRequestHandler):
         url: str,
         auth: AuthBase,
         request_id: str = None,
-        headers: dict = None,
-        json_data: dict = None,
+        headers: Dict = None,
+        json_data: Dict = None,
         timeout: int = None,
-    ) -> dict:
+    ) -> Dict:
         """
         Make an HTTP request to the specified URL.
 
@@ -87,23 +95,36 @@ class RequestHandler(BaseRequestHandler):
             timeout (int, optional): Request timeout in seconds.
 
         Returns:
-            dict: JSON-decoded response body.
+            Dict: The JSON response from the API.
 
         Raises:
-            ValueError: If the HTTP method is invalid.
-            requests.RequestException: If the request fails.
-            SDKError: If the request is not successful.
+            SDKError: For authentication errors.
+            ValidationError: For bad requests.
+            ApiError: For other API errors.
         """
-        if method not in self.VALID_HTTP_METHODS:
-            raise ValueError(f"Invalid HTTP method: {method}")
-        headers = headers or {}
-        headers.setdefault("User-Agent", self.USER_AGENT)
-        headers.setdefault("Content-Type", "application/json")
-        if request_id:
-            headers[REQUEST_ID_HEADER] = request_id
+        self.config.logger.debug(
+            f"request called | method: {method}, url: {url}, request_id: {request_id}, headers: {headers}, json_data: {json_data}"
+        )
         try:
+            if method not in self.VALID_HTTP_METHODS:
+                raise ValidationError(f"Invalid HTTP method: {method}")
+
+            if not url or not url.startswith(("http://", "https://")):
+                raise ValidationError(f"Invalid URL: {url}")
+
+            headers = headers or {}
+            request_id = request_id or self.get_request_id()
+
+            headers.setdefault("User-Agent", self.USER_AGENT)
+            headers.setdefault("Content-Type", "application/json")
+            if request_id:
+                headers[REQUEST_ID_HEADER] = request_id
+
             if auth:
-                prepared_request = auth(requests.Request(url=url).prepare())
+                request = requests.Request(
+                    method=method, url=url, headers=headers, json=json_data
+                )
+                prepared_request = auth(request.prepare())
                 headers.update(prepared_request.headers)
             response = self._session.request(
                 method=method,
@@ -121,7 +142,21 @@ class RequestHandler(BaseRequestHandler):
 
     def _handle_error_response(
         self, response: requests.Response, request_id: str = None
-    ) -> dict:
+    ) -> Dict:
+        """Handle error responses from the API.
+
+        Args:
+            response (requests.Response): The HTTP response object.
+            request_id (str, optional): The unique request ID for tracing the failed API call.
+
+        Returns:
+            Dict: The parsed error data.
+
+        Raises:
+            SDKError: For authentication errors.
+            ValidationError: For bad requests.
+            ApiError: For other API errors.
+        """
         self.config.logger.debug(
             f"_handle_error_response called | status_code: {response.status_code}, response: {response.text}"
         )

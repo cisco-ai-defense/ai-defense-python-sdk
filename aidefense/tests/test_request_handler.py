@@ -55,7 +55,7 @@ def test_get_request_id():
 @patch("requests.Session.request")
 def test_request_invalid_method(mock_request):
     handler = RequestHandler(Config())
-    with pytest.raises(ValueError, match="Invalid HTTP method"):
+    with pytest.raises(ValidationError, match="Invalid HTTP method: INVALID"):
         handler.request(method="INVALID", url="https://api.example.com", auth=None)
 
 
@@ -65,7 +65,7 @@ def test_request_invalid_url(mock_request):
     mock_request.side_effect = requests.exceptions.InvalidURL("Invalid URL")
     handler = RequestHandler(Config())
     with pytest.raises(requests.exceptions.InvalidURL):
-        handler.request(method="GET", url="invalid-url", auth=None)
+        handler.request(method="GET", url="https://invalid-url", auth=None)
 
 
 @patch("requests.Session.request")
