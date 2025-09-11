@@ -63,7 +63,7 @@ class Config:
     DEFAULT_LOG_LEVEL = logging.INFO
     DEFAULT_LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s: %(message)s"
     DEFAULT_NAME = "aidefense_sdk"
-    DEFAULT_REGION = "us"
+    DEFAULT_REGION = "us-west-2"
     DEFAULT_TIMEOUT = 30
 
     def __new__(cls, *args, **kwargs):
@@ -108,6 +108,10 @@ class Config:
             "us": "https://us.api.inspect.aidefense.security.cisco.com",
             "eu": "https://eu.api.inspect.aidefense.security.cisco.com",
             "apj": "https://apj.api.inspect.aidefense.security.cisco.com",
+            "us-west-2": "https://us.api.inspect.aidefense.security.cisco.com",
+            "eu-central-1": "https://eu.api.inspect.aidefense.security.cisco.com",
+            "ap-northeast-1": "https://apj.api.inspect.aidefense.security.cisco.com",
+            "me-central-1": "https://uae.api.inspect.aidefense.security.cisco.com",
         }
         if runtime_base_url:
             if not runtime_base_url.startswith(("http://", "https://")):
