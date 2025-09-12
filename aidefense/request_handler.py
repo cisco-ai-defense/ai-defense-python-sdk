@@ -112,22 +112,26 @@ class RequestHandler(BaseRequestHandler):
             if not url or not url.startswith(("http://", "https://")):
                 raise ValidationError(f"Invalid URL: {url}")
 
-            headers = headers or {}
+            request_headers = dict(self._session.headers)
+            
+            # Update with any custom headers
+            if headers:
+                request_headers.update(headers)
+                
             request_id = request_id or self.get_request_id()
-
-            headers[REQUEST_ID_HEADER] = request_id
+            request_headers[REQUEST_ID_HEADER] = request_id
 
             if auth:
                 request = requests.Request(
-                    method=method, url=url, headers=headers, json=json_data
+                    method=method, url=url, headers=request_headers, json=json_data
                 )
                 prepared_request = auth(request.prepare())
-                headers.update(prepared_request.headers)
+                request_headers.update(prepared_request.headers)
 
             response = self._session.request(
                 method=method,
                 url=url,
-                headers=headers,
+                headers=request_headers,
                 json=json_data,
                 timeout=timeout or self.config.timeout,
             )
