@@ -24,7 +24,7 @@ from .base_client import BaseClient
 from ..request_handler import RequestHandler
 
 
-class ManagementClient(BaseClient):
+class ManagementClient:
     """
     Client for the AI Defense Management API.
 
@@ -49,7 +49,7 @@ class ManagementClient(BaseClient):
 
     def __init__(
         self,
-        api_key: str = None,
+        api_key: str,
         config: Optional[Config] = None,
     ):
         """
@@ -60,7 +60,8 @@ class ManagementClient(BaseClient):
             config (Config, optional): SDK configuration for endpoints, logging, retries, etc.
                 If not provided, a default singleton Config is used.
         """
-        super().__init__(api_key, config, None)
+        if not api_key or not isinstance(api_key, str) or api_key.strip() == "":
+            raise ValueError("API key is required")
 
         # Initialize resource clients lazily with thread safety
         self._applications_client = None
@@ -74,7 +75,9 @@ class ManagementClient(BaseClient):
         self._policies_lock = threading.RLock()
         self._events_lock = threading.RLock()
 
-        self._request_handler = RequestHandler(config)
+        self.config = config or Config()
+        self.api_key = api_key
+        self._request_handler = RequestHandler(self.config)
 
     @property
     def applications(self):
