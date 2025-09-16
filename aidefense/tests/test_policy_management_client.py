@@ -20,10 +20,24 @@ from datetime import datetime
 
 from aidefense.management.policies import PolicyManagementClient
 from aidefense.management.models.policy import (
-    Policy, Policies, PolicySortBy, Guardrail, Guardrails, GuardrailType,
-    ListPoliciesRequest, ListPoliciesResponse, UpdatePolicyRequest, UpdatePolicyResponse,
-    DeletePolicyResponse, AddOrUpdatePolicyConnectionsRequest, AddOrUpdatePolicyConnectionsResponse,
-    RuleStatus, Direction, Action, Entity, GuardrailRule
+    Policy,
+    Policies,
+    PolicySortBy,
+    Guardrail,
+    Guardrails,
+    GuardrailType,
+    ListPoliciesRequest,
+    ListPoliciesResponse,
+    UpdatePolicyRequest,
+    UpdatePolicyResponse,
+    DeletePolicyResponse,
+    AddOrUpdatePolicyConnectionsRequest,
+    AddOrUpdatePolicyConnectionsResponse,
+    RuleStatus,
+    Direction,
+    Action,
+    Entity,
+    GuardrailRule,
 )
 from aidefense.management.models.connection import ConnectionType
 from aidefense.management.models.common import Paging
@@ -56,8 +70,7 @@ def mock_request_handler():
 def policy_client(mock_request_handler):
     """Create a PolicyManagementClient with a mock request handler."""
     client = PolicyManagementClient(
-        api_key=TEST_API_KEY,
-        request_handler=mock_request_handler
+        api_key=TEST_API_KEY, request_handler=mock_request_handler
     )
     # Replace the make_request method with a mock
     client.make_request = MagicMock()
@@ -79,7 +92,7 @@ class TestPolicyManagementClient:
                     "status": "active",
                     "connection_type": "API",
                     "created_at": "2025-01-01T00:00:00Z",
-                    "updated_at": "2025-01-02T00:00:00Z"
+                    "updated_at": "2025-01-02T00:00:00Z",
                 },
                 {
                     "policy_id": "policy-456",
@@ -88,23 +101,16 @@ class TestPolicyManagementClient:
                     "status": "inactive",
                     "connection_type": "Gateway",
                     "created_at": "2025-01-03T00:00:00Z",
-                    "updated_at": "2025-01-04T00:00:00Z"
-                }
+                    "updated_at": "2025-01-04T00:00:00Z",
+                },
             ],
-            "paging": {
-                "total": 2,
-                "count": 2,
-                "offset": 0
-            }
+            "paging": {"total": 2, "count": 2, "offset": 0},
         }
         policy_client.make_request.return_value = mock_response
 
         # Create request
         request = ListPoliciesRequest(
-            limit=10,
-            offset=0,
-            sort_by=PolicySortBy.policy_name,
-            order="asc"
+            limit=10, offset=0, sort_by=PolicySortBy.policy_name, order="asc"
         )
 
         # Call the method
@@ -112,14 +118,9 @@ class TestPolicyManagementClient:
 
         # Verify the make_request call
         policy_client.make_request.assert_called_once_with(
-            "GET", 
-            "policies", 
-            params={
-                "limit": 10,
-                "offset": 0,
-                "sort_by": "policy_name",
-                "order": "asc"
-            }
+            "GET",
+            "policies",
+            params={"limit": 10, "offset": 0, "sort_by": "policy_name", "order": "asc"},
         )
 
         # Verify the response
@@ -156,23 +157,15 @@ class TestPolicyManagementClient:
                                 "action": "Block",
                                 "entity": {
                                     "name": "security_entity",
-                                    "desc": "Security entity description"
-                                }
+                                    "desc": "Security entity description",
+                                },
                             }
                         ],
-                        "paging": {
-                            "total": 1,
-                            "count": 1,
-                            "offset": 0
-                        }
+                        "paging": {"total": 1, "count": 1, "offset": 0},
                     }
                 ],
-                "paging": {
-                    "total": 1,
-                    "count": 1,
-                    "offset": 0
-                }
-            }
+                "paging": {"total": 1, "count": 1, "offset": 0},
+            },
         }
         policy_client.make_request.return_value = mock_response
 
@@ -182,9 +175,7 @@ class TestPolicyManagementClient:
 
         # Verify the make_request call
         policy_client.make_request.assert_called_once_with(
-            "GET", 
-            f"policies/{policy_id}", 
-            params={"expanded": True}
+            "GET", f"policies/{policy_id}", params={"expanded": True}
         )
 
         # Verify the response
@@ -213,7 +204,7 @@ class TestPolicyManagementClient:
         request = UpdatePolicyRequest(
             name="Updated Policy Name",
             description="Updated Description",
-            status="inactive"
+            status="inactive",
         )
 
         # Call the method
@@ -221,13 +212,13 @@ class TestPolicyManagementClient:
 
         # Verify the make_request call
         policy_client.make_request.assert_called_once_with(
-            "PUT", 
-            f"policies/{policy_id}", 
+            "PUT",
+            f"policies/{policy_id}",
             data={
                 "name": "Updated Policy Name",
                 "description": "Updated Description",
-                "status": "inactive"
-            }
+                "status": "inactive",
+            },
         )
 
         # Verify the response
@@ -244,8 +235,7 @@ class TestPolicyManagementClient:
 
         # Verify the make_request call
         policy_client.make_request.assert_called_once_with(
-            "DELETE", 
-            f"policies/{policy_id}"
+            "DELETE", f"policies/{policy_id}"
         )
 
         # Verify the response
@@ -260,7 +250,7 @@ class TestPolicyManagementClient:
         policy_id = "policy-123"
         request = AddOrUpdatePolicyConnectionsRequest(
             connections_to_associate=["conn-123", "conn-456"],
-            connections_to_disassociate=["conn-789"]
+            connections_to_disassociate=["conn-789"],
         )
 
         # Call the method
@@ -268,12 +258,12 @@ class TestPolicyManagementClient:
 
         # Verify the make_request call
         policy_client.make_request.assert_called_once_with(
-            "POST", 
-            f"policies/{policy_id}/connections", 
+            "POST",
+            f"policies/{policy_id}/connections",
             data={
                 "connections_to_associate": ["conn-123", "conn-456"],
-                "connections_to_disassociate": ["conn-789"]
-            }
+                "connections_to_disassociate": ["conn-789"],
+            },
         )
 
         # Verify the response
@@ -290,5 +280,5 @@ class TestPolicyManagementClient:
         # Verify that the exception is propagated
         with pytest.raises(ApiError) as excinfo:
             policy_client.list_policies(request)
-        
+
         assert "API Error" in str(excinfo.value)

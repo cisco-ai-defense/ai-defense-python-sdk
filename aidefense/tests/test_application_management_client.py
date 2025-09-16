@@ -20,9 +20,16 @@ from datetime import datetime
 
 from aidefense.management.applications import ApplicationManagementClient
 from aidefense.management.models.application import (
-    Application, Applications, ApplicationSortBy, ListApplicationsRequest, ListApplicationsResponse,
-    CreateApplicationRequest, CreateApplicationResponse,
-    UpdateApplicationRequest, UpdateApplicationResponse, DeleteApplicationResponse
+    Application,
+    Applications,
+    ApplicationSortBy,
+    ListApplicationsRequest,
+    ListApplicationsResponse,
+    CreateApplicationRequest,
+    CreateApplicationResponse,
+    UpdateApplicationRequest,
+    UpdateApplicationResponse,
+    DeleteApplicationResponse,
 )
 from aidefense.management.models.connection import ConnectionType
 from aidefense.management.models.common import Paging
@@ -55,8 +62,7 @@ def mock_request_handler():
 def application_client(mock_request_handler):
     """Create an ApplicationManagementClient with a mock request handler."""
     client = ApplicationManagementClient(
-        api_key=TEST_API_KEY,
-        request_handler=mock_request_handler
+        api_key=TEST_API_KEY, request_handler=mock_request_handler
     )
     # Replace the make_request method with a mock
     client.make_request = MagicMock()
@@ -78,7 +84,7 @@ class TestApplicationManagementClient:
                         "description": "Test Description 1",
                         "connection_type": "API",
                         "created_at": "2025-01-01T00:00:00Z",
-                        "updated_at": "2025-01-02T00:00:00Z"
+                        "updated_at": "2025-01-02T00:00:00Z",
                     },
                     {
                         "application_id": "app-456",
@@ -86,14 +92,10 @@ class TestApplicationManagementClient:
                         "description": "Test Description 2",
                         "connection_type": "Gateway",
                         "created_at": "2025-01-03T00:00:00Z",
-                        "updated_at": "2025-01-04T00:00:00Z"
-                    }
+                        "updated_at": "2025-01-04T00:00:00Z",
+                    },
                 ],
-                "paging": {
-                    "total": 2,
-                    "count": 2,
-                    "offset": 0
-                }
+                "paging": {"total": 2, "count": 2, "offset": 0},
             }
         }
         application_client.make_request.return_value = mock_response
@@ -104,7 +106,7 @@ class TestApplicationManagementClient:
             offset=0,
             expanded=True,
             sort_by=ApplicationSortBy.application_name,
-            order="asc"
+            order="asc",
         )
 
         # Call the method
@@ -112,15 +114,15 @@ class TestApplicationManagementClient:
 
         # Verify the make_request call
         application_client.make_request.assert_called_once_with(
-            "GET", 
-            "applications", 
+            "GET",
+            "applications",
             params={
                 "limit": 10,
                 "offset": 0,
                 "expanded": True,
                 "sort_by": "application_name",
-                "order": "asc"
-            }
+                "order": "asc",
+            },
         )
 
         # Verify the response
@@ -144,7 +146,7 @@ class TestApplicationManagementClient:
                 "description": "Test Description",
                 "connection_type": "API",
                 "created_at": "2025-01-01T00:00:00Z",
-                "updated_at": "2025-01-02T00:00:00Z"
+                "updated_at": "2025-01-02T00:00:00Z",
             }
         }
         application_client.make_request.return_value = mock_response
@@ -155,9 +157,7 @@ class TestApplicationManagementClient:
 
         # Verify the make_request call
         application_client.make_request.assert_called_once_with(
-            "GET", 
-            f"applications/{application_id}", 
-            params={"expanded": True}
+            "GET", f"applications/{application_id}", params={"expanded": True}
         )
 
         # Verify the response
@@ -170,16 +170,14 @@ class TestApplicationManagementClient:
     def test_create_application(self, application_client):
         """Test creating an application."""
         # Setup mock response
-        mock_response = {
-            "application_id": "app-123"
-        }
+        mock_response = {"application_id": "app-123"}
         application_client.make_request.return_value = mock_response
 
         # Create request
         request = CreateApplicationRequest(
             application_name="New Test App",
             description="New Test Description",
-            connection_type=ConnectionType.API
+            connection_type=ConnectionType.API,
         )
 
         # Call the method
@@ -187,13 +185,13 @@ class TestApplicationManagementClient:
 
         # Verify the make_request call
         application_client.make_request.assert_called_once_with(
-            "POST", 
-            "applications", 
+            "POST",
+            "applications",
             data={
                 "application_name": "New Test App",
                 "description": "New Test Description",
-                "connection_type": "API"
-            }
+                "connection_type": "API",
+            },
         )
 
         # Verify the response
@@ -208,8 +206,7 @@ class TestApplicationManagementClient:
         # Create request
         application_id = "app-123"
         request = UpdateApplicationRequest(
-            application_name="Updated App Name",
-            description="Updated Description"
+            application_name="Updated App Name", description="Updated Description"
         )
 
         # Call the method
@@ -217,12 +214,12 @@ class TestApplicationManagementClient:
 
         # Verify the make_request call
         application_client.make_request.assert_called_once_with(
-            "PUT", 
-            f"applications/{application_id}", 
+            "PUT",
+            f"applications/{application_id}",
             data={
                 "application_name": "Updated App Name",
-                "description": "Updated Description"
-            }
+                "description": "Updated Description",
+            },
         )
 
         # Verify the response
@@ -239,8 +236,7 @@ class TestApplicationManagementClient:
 
         # Verify the make_request call
         application_client.make_request.assert_called_once_with(
-            "DELETE", 
-            f"applications/{application_id}"
+            "DELETE", f"applications/{application_id}"
         )
 
         # Verify the response
@@ -257,5 +253,5 @@ class TestApplicationManagementClient:
         # Verify that the exception is propagated
         with pytest.raises(ApiError) as excinfo:
             application_client.list_applications(request)
-        
+
         assert "API Error" in str(excinfo.value)

@@ -671,7 +671,7 @@ class HttpInspectionClient(InspectionClient):
                 not in self._request_handler.VALID_HTTP_METHODS
             ):
                 raise ValidationError(
-                    f"'{HTTP_REQ}' must have a valid '{HTTP_METHOD}' (one of {self.VALID_HTTP_METHODS})."
+                    f"'{HTTP_REQ}' must have a valid '{HTTP_METHOD}' (one of {self._request_handler.VALID_HTTP_METHODS})."
                 )
         if http_res:
             if not isinstance(http_res, dict):

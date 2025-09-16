@@ -170,16 +170,14 @@ def main():
                 )
 
                 # Generate an API key for the connection
-                client.connections.update_api_key(created_connection_id, key_request)
+                result = client.connections.update_api_key(
+                    created_connection_id, key_request
+                )
 
-                # Note: With the updated API, the update_api_key method no longer returns the API key
-                # In a real application, you would need to retrieve the API key separately
-                # For this example, we'll use the previously generated API key
+                generated_api_key = result.api_key
+
                 print("API key operation completed successfully!")
-                if generated_api_key:
-                    print(
-                        f"Using previously generated API Key: {generated_api_key[:5]}...{generated_api_key[-5:]} (masked for security)"
-                    )
+
         except ValidationError as e:
             print(f"Validation error: {e}")
         except ApiError as e:

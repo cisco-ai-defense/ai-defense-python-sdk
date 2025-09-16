@@ -20,8 +20,12 @@ from datetime import datetime
 
 from aidefense.management.events import EventManagementClient
 from aidefense.management.models.event import (
-    Event, Events, EventSortBy, EventMessage, EventMessages,
-    ListEventsRequest
+    Event,
+    Events,
+    EventSortBy,
+    EventMessage,
+    EventMessages,
+    ListEventsRequest,
 )
 from aidefense.management.models.common import Paging
 from aidefense.config import Config
@@ -53,8 +57,7 @@ def mock_request_handler():
 def event_client(mock_request_handler):
     """Create an EventManagementClient with a mock request handler."""
     client = EventManagementClient(
-        api_key=TEST_API_KEY,
-        request_handler=mock_request_handler
+        api_key=TEST_API_KEY, request_handler=mock_request_handler
     )
     # Replace the make_request method with a mock
     client.make_request = MagicMock()
@@ -79,7 +82,7 @@ class TestEventManagementClient:
                         "event_action": "block",
                         "message_id": "msg-123",
                         "direction": "outbound",
-                        "model_name": "gpt-4"
+                        "model_name": "gpt-4",
                     },
                     {
                         "event_id": "event-456",
@@ -90,14 +93,10 @@ class TestEventManagementClient:
                         "event_action": "allow",
                         "message_id": "msg-456",
                         "direction": "inbound",
-                        "model_name": "gpt-3.5-turbo"
-                    }
+                        "model_name": "gpt-3.5-turbo",
+                    },
                 ],
-                "paging": {
-                    "total": 2,
-                    "count": 2,
-                    "offset": 0
-                }
+                "paging": {"total": 2, "count": 2, "offset": 0},
             }
         }
         event_client.make_request.return_value = mock_response
@@ -112,7 +111,7 @@ class TestEventManagementClient:
             end_date=end_date,
             expanded=True,
             sort_by=EventSortBy.event_timestamp,
-            order="desc"
+            order="desc",
         )
 
         # Call the method
@@ -120,8 +119,8 @@ class TestEventManagementClient:
 
         # Verify the make_request call
         event_client.make_request.assert_called_once_with(
-            "POST", 
-            "events", 
+            "POST",
+            "events",
             data={
                 "limit": 10,
                 "offset": 0,
@@ -129,8 +128,8 @@ class TestEventManagementClient:
                 "end_date": "2025-01-31T00:00:00Z",
                 "expanded": True,
                 "sort_by": "event_timestamp",
-                "order": "desc"
-            }
+                "order": "desc",
+            },
         )
 
         # Verify the response
@@ -167,11 +166,11 @@ class TestEventManagementClient:
                             "guardrail_action": "block",
                             "metadata": {
                                 "standards": ["PCI DSS", "GDPR"],
-                                "techniques": ["T1234"]
-                            }
+                                "techniques": ["T1234"],
+                            },
                         }
                     ]
-                }
+                },
             }
         }
         event_client.make_request.return_value = mock_response
@@ -182,9 +181,7 @@ class TestEventManagementClient:
 
         # Verify the make_request call
         event_client.make_request.assert_called_once_with(
-            "GET", 
-            f"events/{event_id}", 
-            params={"expanded": True}
+            "GET", f"events/{event_id}", params={"expanded": True}
         )
 
         # Verify the response
@@ -213,7 +210,7 @@ class TestEventManagementClient:
                         "message_date": "2025-01-01T00:00:00Z",
                         "content": "Hello, how can I help you?",
                         "direction": "inbound",
-                        "role": "assistant"
+                        "role": "assistant",
                     },
                     {
                         "message_id": "msg-456",
@@ -221,15 +218,11 @@ class TestEventManagementClient:
                         "message_date": "2025-01-01T00:01:00Z",
                         "content": "I need help with security.",
                         "direction": "outbound",
-                        "role": "user"
-                    }
+                        "role": "user",
+                    },
                 ],
-                "paging": {
-                    "total": 2,
-                    "count": 2,
-                    "offset": 0
-                }
-            }
+                "paging": {"total": 2, "count": 2, "offset": 0},
+            },
         }
         event_client.make_request.return_value = mock_response
 
@@ -239,9 +232,7 @@ class TestEventManagementClient:
 
         # Verify the make_request call
         event_client.make_request.assert_called_once_with(
-            "GET", 
-            f"events/{event_id}/conversation", 
-            params={"expanded": True}
+            "GET", f"events/{event_id}/conversation", params={"expanded": True}
         )
 
         # Verify the response
@@ -271,5 +262,5 @@ class TestEventManagementClient:
         # Verify that the exception is propagated
         with pytest.raises(ApiError) as excinfo:
             event_client.list_events(request)
-        
+
         assert "API Error" in str(excinfo.value)

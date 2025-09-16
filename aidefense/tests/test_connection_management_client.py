@@ -20,10 +20,21 @@ from datetime import datetime
 
 from aidefense.management.connections import ConnectionManagementClient
 from aidefense.management.models.connection import (
-    Connection, Connections, ConnectionSortBy, ConnectionType, ConnectionStatus,
-    EditConnectionOperationType, ApiKeys, ApiKey, ApiKeyRequest, ApiKeyResponse,
-    ListConnectionsRequest, CreateConnectionRequest, CreateConnectionResponse,
-    DeleteConnectionByIDResponse, UpdateConnectionRequest
+    Connection,
+    Connections,
+    ConnectionSortBy,
+    ConnectionType,
+    ConnectionStatus,
+    EditConnectionOperationType,
+    ApiKeys,
+    ApiKey,
+    ApiKeyRequest,
+    ApiKeyResponse,
+    ListConnectionsRequest,
+    CreateConnectionRequest,
+    CreateConnectionResponse,
+    DeleteConnectionByIDResponse,
+    UpdateConnectionRequest,
 )
 from aidefense.management.models.common import Paging
 from aidefense.config import Config
@@ -55,8 +66,7 @@ def mock_request_handler():
 def connection_client(mock_request_handler):
     """Create a ConnectionManagementClient with a mock request handler."""
     client = ConnectionManagementClient(
-        api_key=TEST_API_KEY,
-        request_handler=mock_request_handler
+        api_key=TEST_API_KEY, request_handler=mock_request_handler
     )
     # Replace the make_request method with a mock
     client.make_request = MagicMock()
@@ -79,7 +89,7 @@ class TestConnectionManagementClient:
                         "endpoint_id": "endpoint-123",
                         "connection_status": "Connected",
                         "created_at": "2025-01-01T00:00:00Z",
-                        "updated_at": "2025-01-02T00:00:00Z"
+                        "updated_at": "2025-01-02T00:00:00Z",
                     },
                     {
                         "connection_id": "conn-456",
@@ -88,14 +98,10 @@ class TestConnectionManagementClient:
                         "endpoint_id": "endpoint-456",
                         "connection_status": "Disconnected",
                         "created_at": "2025-01-03T00:00:00Z",
-                        "updated_at": "2025-01-04T00:00:00Z"
-                    }
+                        "updated_at": "2025-01-04T00:00:00Z",
+                    },
                 ],
-                "paging": {
-                    "total": 2,
-                    "count": 2,
-                    "offset": 0
-                }
+                "paging": {"total": 2, "count": 2, "offset": 0},
             }
         }
         connection_client.make_request.return_value = mock_response
@@ -106,7 +112,7 @@ class TestConnectionManagementClient:
             offset=0,
             expanded=True,
             sort_by=ConnectionSortBy.connection_name,
-            order="asc"
+            order="asc",
         )
 
         # Call the method
@@ -114,15 +120,15 @@ class TestConnectionManagementClient:
 
         # Verify the make_request call
         connection_client.make_request.assert_called_once_with(
-            "GET", 
-            f"{connection_client.api_version}/connections", 
+            "GET",
+            f"{connection_client.api_version}/connections",
             params={
                 "limit": 10,
                 "offset": 0,
                 "expanded": True,
                 "sort_by": "connection_name",
-                "order": "asc"
-            }
+                "order": "asc",
+            },
         )
 
         # Verify the response
@@ -147,7 +153,7 @@ class TestConnectionManagementClient:
                 "endpoint_id": "endpoint-123",
                 "connection_status": "Connected",
                 "created_at": "2025-01-01T00:00:00Z",
-                "updated_at": "2025-01-02T00:00:00Z"
+                "updated_at": "2025-01-02T00:00:00Z",
             }
         }
         connection_client.make_request.return_value = mock_response
@@ -158,9 +164,7 @@ class TestConnectionManagementClient:
 
         # Verify the make_request call
         connection_client.make_request.assert_called_once_with(
-            "GET", 
-            f"connections/{connection_id}", 
-            params={"expanded": True}
+            "GET", f"connections/{connection_id}", params={"expanded": True}
         )
 
         # Verify the response
@@ -175,10 +179,7 @@ class TestConnectionManagementClient:
         # Setup mock response
         mock_response = {
             "connection_id": "conn-123",
-            "key": {
-                "key_id": "key-123",
-                "api_key": "test-api-key-value"
-            }
+            "key": {"key_id": "key-123", "api_key": "test-api-key-value"},
         }
         connection_client.make_request.return_value = mock_response
 
@@ -187,10 +188,7 @@ class TestConnectionManagementClient:
             application_id="app-123",
             connection_name="New Test Connection",
             connection_type=ConnectionType.API,
-            key=ApiKeyRequest(
-                name="Test API Key",
-                expiry=datetime(2026, 1, 1)
-            )
+            key=ApiKeyRequest(name="Test API Key", expiry=datetime(2026, 1, 1)),
         )
 
         # Call the method
@@ -198,17 +196,14 @@ class TestConnectionManagementClient:
 
         # Verify the make_request call
         connection_client.make_request.assert_called_once_with(
-            "POST", 
-            "connections", 
+            "POST",
+            "connections",
             data={
                 "application_id": "app-123",
                 "connection_name": "New Test Connection",
                 "connection_type": "API",
-                "key": {
-                    "name": "Test API Key",
-                    "expiry": "2026-01-01T00:00:00Z"
-                }
-            }
+                "key": {"name": "Test API Key", "expiry": "2026-01-01T00:00:00Z"},
+            },
         )
 
         # Verify the response
@@ -228,8 +223,7 @@ class TestConnectionManagementClient:
 
         # Verify the make_request call
         connection_client.make_request.assert_called_once_with(
-            "DELETE", 
-            f"connections/{connection_id}"
+            "DELETE", f"connections/{connection_id}"
         )
 
         # Verify the response
@@ -245,20 +239,16 @@ class TestConnectionManagementClient:
                         "id": "key-123",
                         "name": "Test API Key 1",
                         "status": "active",
-                        "expiry": "2026-01-01T00:00:00Z"
+                        "expiry": "2026-01-01T00:00:00Z",
                     },
                     {
                         "id": "key-456",
                         "name": "Test API Key 2",
                         "status": "revoked",
-                        "expiry": "2026-02-01T00:00:00Z"
-                    }
+                        "expiry": "2026-02-01T00:00:00Z",
+                    },
                 ],
-                "paging": {
-                    "total": 2,
-                    "count": 2,
-                    "offset": 0
-                }
+                "paging": {"total": 2, "count": 2, "offset": 0},
             }
         }
         connection_client.make_request.return_value = mock_response
@@ -269,8 +259,7 @@ class TestConnectionManagementClient:
 
         # Verify the make_request call
         connection_client.make_request.assert_called_once_with(
-            "GET", 
-            f"connections/{connection_id}/keys"
+            "GET", f"connections/{connection_id}/keys"
         )
 
         # Verify the response
@@ -287,12 +276,7 @@ class TestConnectionManagementClient:
     def test_update_api_key_generate(self, connection_client):
         """Test generating a new API key."""
         # Setup mock response
-        mock_response = {
-            "key": {
-                "key_id": "key-123",
-                "api_key": "test-api-key-value"
-            }
-        }
+        mock_response = {"key": {"key_id": "key-123", "api_key": "test-api-key-value"}}
         connection_client.make_request.return_value = mock_response
 
         # Create request
@@ -300,10 +284,7 @@ class TestConnectionManagementClient:
         request = UpdateConnectionRequest(
             key_id="",
             operation_type=EditConnectionOperationType.GENERATE_API_KEY,
-            key=ApiKeyRequest(
-                name="New API Key",
-                expiry=datetime(2026, 1, 1)
-            )
+            key=ApiKeyRequest(name="New API Key", expiry=datetime(2026, 1, 1)),
         )
 
         # Call the method
@@ -311,15 +292,12 @@ class TestConnectionManagementClient:
 
         # Verify the make_request call
         connection_client.make_request.assert_called_once_with(
-            "POST", 
-            f"connections/{connection_id}/keys", 
+            "POST",
+            f"connections/{connection_id}/keys",
             data={
                 "op": "GENERATE_API_KEY",
-                "key": {
-                    "name": "New API Key",
-                    "expiry": "2026-01-01T00:00:00Z"
-                }
-            }
+                "key": {"name": "New API Key", "expiry": "2026-01-01T00:00:00Z"},
+            },
         )
 
         # Verify the response
@@ -338,27 +316,23 @@ class TestConnectionManagementClient:
         request = UpdateConnectionRequest(
             key_id="key-123",
             operation_type=EditConnectionOperationType.REVOKE_API_KEY,
-            key=None
+            key=None,
         )
 
         # Mock the parse_obj method to avoid validation errors
-        with patch('aidefense.management.models.connection.ApiKeyResponse.parse_obj') as mock_parse_obj:
-            mock_parse_obj.return_value = ApiKeyResponse(
-                key_id="key-123",
-                api_key=""
-            )
-            
+        with patch(
+            "aidefense.management.models.connection.ApiKeyResponse.parse_obj"
+        ) as mock_parse_obj:
+            mock_parse_obj.return_value = ApiKeyResponse(key_id="key-123", api_key="")
+
             # Call the method
             response = connection_client.update_api_key(connection_id, request)
 
         # Verify the make_request call
         connection_client.make_request.assert_called_once_with(
-            "POST", 
-            f"connections/{connection_id}/keys", 
-            data={
-                "op": "REVOKE_API_KEY",
-                "key_id": "key-123"
-            }
+            "POST",
+            f"connections/{connection_id}/keys",
+            data={"op": "REVOKE_API_KEY", "key_id": "key-123"},
         )
 
         # Verify the response
@@ -375,5 +349,5 @@ class TestConnectionManagementClient:
         # Verify that the exception is propagated
         with pytest.raises(ApiError) as excinfo:
             connection_client.list_connections(request)
-        
+
         assert "API Error" in str(excinfo.value)
