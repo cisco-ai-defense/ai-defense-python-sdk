@@ -27,6 +27,7 @@ from .connection import ConnectionType, Connections
 
 class ApplicationSortBy(str, Enum):
     """Application sort by enum."""
+
     ApplicationSortBy_Unspecified = "ApplicationSortBy_Unspecified"
     application_name = "application_name"
     description = "description"
@@ -35,7 +36,7 @@ class ApplicationSortBy(str, Enum):
 
 class Application(BaseModel):
     """Application model."""
-    
+
     application_id: str = Field(description="Application ID")
     application_name: str = Field(description="Application name")
     description: str = Field(description="Description")
@@ -43,19 +44,23 @@ class Application(BaseModel):
     connection_type: ConnectionType = Field(description="Connection type")
     created_at: Optional[datetime] = Field(None, description="Created timestamp")
     updated_by: Optional[str] = Field(None, description="Updated by")
-    connections: Optional[Connections] = Field(None, description="Connections associated with this application")
+    connections: Optional[Connections] = Field(
+        None, description="Connections associated with this application"
+    )
 
 
 class Applications(BaseModel):
     """Applications model."""
-    
-    items: List[Application] = Field(default_factory=list, description="List of applications")
+
+    items: List[Application] = Field(
+        default_factory=list, description="List of applications"
+    )
     paging: Paging = Field(default=None, description="Pagination information")
 
 
 class CreateApplicationRequest(BaseModel):
     """Create application request model."""
-    
+
     application_name: str = Field(description="Application name")
     description: str = Field(description="Description")
     connection_type: ConnectionType = Field(description="Connection type")
@@ -69,46 +74,58 @@ class CreateApplicationResponse(BaseModel):
 
 class ListApplicationsRequest(BaseModel):
     """List applications request model."""
-    
-    limit: Optional[int] = Field(None, description="Number of records to retrieve, default and max value is 100")
+
+    limit: Optional[int] = Field(
+        None, description="Number of records to retrieve, default and max value is 100"
+    )
     offset: Optional[int] = Field(None, description="Offset for pagination")
     expanded: Optional[bool] = Field(None, description="Whether to expand connections")
-    sort_by: Optional[ApplicationSortBy] = Field(None, description="Field name to sort the applications returned")
-    order: Optional[str] = Field(None, description="Sort order of the applications returned")
+    sort_by: Optional[ApplicationSortBy] = Field(
+        None, description="Field name to sort the applications returned"
+    )
+    order: Optional[str] = Field(
+        None, description="Sort order of the applications returned"
+    )
 
 
 class ListApplicationsResponse(BaseModel):
     """List applications response model."""
-    
-    applications: Applications = Field(description="List of applications with pagination")
+
+    applications: Applications = Field(
+        description="List of applications with pagination"
+    )
 
 
 class UpdateApplicationRequest(BaseModel):
     """Update application request model."""
-    
-    application_name: Optional[str] = Field(None, description="Application name (optional)")
+
+    application_name: Optional[str] = Field(
+        None, description="Application name (optional)"
+    )
     description: Optional[str] = Field(None, description="Description (optional)")
 
 
 class UpdateApplicationResponse(BaseModel):
     """
     Update application response model.
-    
+
     This is an empty response as the API returns no content for this operation.
     """
-    
+
     class Config:
         """Pydantic configuration."""
+
         frozen = True  # Make the model immutable
 
 
 class DeleteApplicationResponse(BaseModel):
     """
     Delete application response model.
-    
+
     This is an empty response as the API returns no content for this operation.
     """
-    
+
     class Config:
         """Pydantic configuration."""
+
         frozen = True  # Make the model immutable

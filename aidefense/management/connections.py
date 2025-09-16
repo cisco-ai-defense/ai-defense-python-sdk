@@ -21,10 +21,18 @@ from typing import Optional, Dict
 
 from .base_client import BaseClient
 from .models.connection import (
-    Connection, Connections, ConnectionSortBy, ConnectionType,
-    EditConnectionOperationType, ApiKeys, ListConnectionsRequest,
-    CreateConnectionRequest, CreateConnectionResponse, DeleteConnectionByIDResponse, UpdateConnectionRequest,
-    ApiKeyResponse
+    Connection,
+    Connections,
+    ConnectionSortBy,
+    ConnectionType,
+    EditConnectionOperationType,
+    ApiKeys,
+    ListConnectionsRequest,
+    CreateConnectionRequest,
+    CreateConnectionResponse,
+    DeleteConnectionByIDResponse,
+    UpdateConnectionRequest,
+    ApiKeyResponse,
 )
 from ..config import Config
 
@@ -38,14 +46,11 @@ class ConnectionManagementClient(BaseClient):
     """
 
     def __init__(
-            self,
-            api_key: str,
-            config: Optional[Config] = None,
-            request_handler=None
+        self, api_key: str, config: Optional[Config] = None, request_handler=None
     ):
         """
         Initialize the ConnectionManagementClient.
-        
+
         Args:
             api_key (str): Your AI Defense Management API key for authentication.
             config (Config, optional): SDK configuration for endpoints, logging, retries, etc.
@@ -54,10 +59,7 @@ class ConnectionManagementClient(BaseClient):
         """
         super().__init__(api_key, config, request_handler)
 
-    def list_connections(
-            self,
-            request: ListConnectionsRequest
-    ) -> Connections:
+    def list_connections(self, request: ListConnectionsRequest) -> Connections:
         """
         List connections.
 
@@ -87,21 +89,34 @@ class ConnectionManagementClient(BaseClient):
                 for conn in connections.items:
                     print(f"{conn.connection_id}: {conn.connection_name}")
         """
-        params = self._filter_none({
-            "limit": request.limit,
-            "offset": request.offset,
-            "expanded": request.expanded,
-            "sort_by": request.sort_by.value if isinstance(request.sort_by, ConnectionSortBy) else request.sort_by,
-            "order": request.order.value if hasattr(request.order, "value") else request.order
-        })
+        params = self._filter_none(
+            {
+                "limit": request.limit,
+                "offset": request.offset,
+                "expanded": request.expanded,
+                "sort_by": (
+                    request.sort_by.value
+                    if isinstance(request.sort_by, ConnectionSortBy)
+                    else request.sort_by
+                ),
+                "order": (
+                    request.order.value
+                    if hasattr(request.order, "value")
+                    else request.order
+                ),
+            }
+        )
 
-        response = self.make_request("GET", f"{self.api_version}/connections", params=params)
-        connections = self._parse_response(Connections, response.get("connections", {}), "connections response")
+        response = self.make_request(
+            "GET", f"{self.api_version}/connections", params=params
+        )
+        connections = self._parse_response(
+            Connections, response.get("connections", {}), "connections response"
+        )
         return connections
-    
+
     def create_connection(
-            self,
-            request: CreateConnectionRequest
+        self, request: CreateConnectionRequest
     ) -> CreateConnectionResponse:
         """
         Create a connection.
@@ -140,44 +155,49 @@ class ConnectionManagementClient(BaseClient):
                 if response.key:
                     print(f"API Key: {response.key.api_key}")
         """
-        data = self._filter_none({
-            "application_id": request.application_id,
-            "connection_name": request.connection_name,
-            "connection_type": request.connection_type.value if isinstance(request.connection_type, ConnectionType) else request.connection_type,
-            "endpoint_id": request.endpoint_id,
-            "connection_guide_id": request.connection_guide_id
-        })
-        
+        data = self._filter_none(
+            {
+                "application_id": request.application_id,
+                "connection_name": request.connection_name,
+                "connection_type": (
+                    request.connection_type.value
+                    if isinstance(request.connection_type, ConnectionType)
+                    else request.connection_type
+                ),
+                "endpoint_id": request.endpoint_id,
+                "connection_guide_id": request.connection_guide_id,
+            }
+        )
+
         # Add key information if provided
         if request.key:
             data["key"] = {
                 "name": request.key.name,
-                "expiry": "2026-01-01T00:00:00Z" if request.key.expiry.year == 2026 and request.key.expiry.month == 1 and request.key.expiry.day == 1 else request.key.expiry.strftime("%Y-%m-%dT%H:%M:%SZ")
+                "expiry": (
+                    "2026-01-01T00:00:00Z"
+                    if request.key.expiry.year == 2026
+                    and request.key.expiry.month == 1
+                    and request.key.expiry.day == 1
+                    else request.key.expiry.strftime("%Y-%m-%dT%H:%M:%SZ")
+                ),
             }
 
         response = self.make_request("POST", "connections", data=data)
-        
+
         # Create the response object
         connection_id = response.get("connection_id", "")
         key_response = None
-        
+
         # If there's a key in the response, parse it
         if "key" in response:
             key_response = ApiKeyResponse(
                 key_id=response["key"].get("key_id", ""),
-                api_key=response["key"].get("api_key", "")
+                api_key=response["key"].get("api_key", ""),
             )
-            
-        return CreateConnectionResponse(
-            connection_id=connection_id,
-            key=key_response
-        )
-    
-    def get_connection(
-            self,
-            connection_id: str,
-            expanded: bool = None
-    ) -> Connection:
+
+        return CreateConnectionResponse(connection_id=connection_id, key=key_response)
+
+    def get_connection(self, connection_id: str, expanded: bool = None) -> Connection:
         """
         Get a connection by ID.
 
@@ -199,14 +219,15 @@ class ConnectionManagementClient(BaseClient):
                 print(f"Connection name: {connection.connection_name}")
         """
         params = self._filter_none({"expanded": expanded})
-        response = self.make_request("GET", f"connections/{connection_id}", params=params)
-        connection = self._parse_response(Connection, response.get("connection", {}), "connection response")
+        response = self.make_request(
+            "GET", f"connections/{connection_id}", params=params
+        )
+        connection = self._parse_response(
+            Connection, response.get("connection", {}), "connection response"
+        )
         return connection
-    
-    def delete_connection(
-            self,
-            connection_id: str
-    ) -> None:
+
+    def delete_connection(self, connection_id: str) -> None:
         """
         Delete a connection.
 
@@ -227,11 +248,8 @@ class ConnectionManagementClient(BaseClient):
         """
         self.make_request("DELETE", f"connections/{connection_id}")
         return DeleteConnectionByIDResponse()
-    
-    def get_api_keys(
-            self,
-            connection_id: str
-    ) -> ApiKeys:
+
+    def get_api_keys(self, connection_id: str) -> ApiKeys:
         """
         Get API keys for a connection.
 
@@ -253,13 +271,13 @@ class ConnectionManagementClient(BaseClient):
                     print(f"{key.id}: {key.name} ({key.status})")
         """
         response = self.make_request("GET", f"connections/{connection_id}/keys")
-        keys = self._parse_response(ApiKeys, response.get("keys", {}), "API keys response")
+        keys = self._parse_response(
+            ApiKeys, response.get("keys", {}), "API keys response"
+        )
         return keys
-    
+
     def update_api_key(
-            self,
-            connection_id: str,
-            request: UpdateConnectionRequest
+        self, connection_id: str, request: UpdateConnectionRequest
     ) -> ApiKeyResponse:
         """
         Update an API key for a connection.
@@ -295,17 +313,27 @@ class ConnectionManagementClient(BaseClient):
                     print(f"API Key: {result['key']['api_key']}")
         """
         data = {
-            "op": request.operation_type.value if isinstance(request.operation_type, EditConnectionOperationType) else request.operation_type
+            "op": (
+                request.operation_type.value
+                if isinstance(request.operation_type, EditConnectionOperationType)
+                else request.operation_type
+            )
         }
-        
+
         if request.key_id:
             data["key_id"] = request.key_id
-            
+
         if request.key:
             data["key"] = {
                 "name": request.key.name,
-                "expiry": request.key.expiry.strftime("%Y-%m-%dT%H:%M:%SZ") if isinstance(request.key.expiry, datetime) else request.key.expiry
+                "expiry": (
+                    request.key.expiry.strftime("%Y-%m-%dT%H:%M:%SZ")
+                    if isinstance(request.key.expiry, datetime)
+                    else request.key.expiry
+                ),
             }
 
-        response = self.make_request("POST", f"connections/{connection_id}/keys", data=data)
+        response = self.make_request(
+            "POST", f"connections/{connection_id}/keys", data=data
+        )
         return ApiKeyResponse.parse_obj(response.get("key"))

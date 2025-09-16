@@ -29,5 +29,5 @@ from .management import (
     ApplicationManagementClient,
     ConnectionManagementClient,
     PolicyManagementClient,
-    EventManagementClient
+    EventManagementClient,
 )

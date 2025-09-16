@@ -19,9 +19,16 @@ from typing import Optional
 
 from .base_client import BaseClient
 from .models.application import (
-    Application, Applications, ApplicationSortBy, ListApplicationsRequest, ListApplicationsResponse,
-    CreateApplicationRequest, CreateApplicationResponse,
-    UpdateApplicationRequest, UpdateApplicationResponse, DeleteApplicationResponse
+    Application,
+    Applications,
+    ApplicationSortBy,
+    ListApplicationsRequest,
+    ListApplicationsResponse,
+    CreateApplicationRequest,
+    CreateApplicationResponse,
+    UpdateApplicationRequest,
+    UpdateApplicationResponse,
+    DeleteApplicationResponse,
 )
 from ..config import Config
 
@@ -35,10 +42,7 @@ class ApplicationManagementClient(BaseClient):
     """
 
     def __init__(
-            self,
-            api_key: str,
-            config: Optional[Config] = None,
-            request_handler=None
+        self, api_key: str, config: Optional[Config] = None, request_handler=None
     ):
         """
         Initialize the ApplicationManagementClient.
@@ -52,8 +56,7 @@ class ApplicationManagementClient(BaseClient):
         super().__init__(api_key, config, request_handler)
 
     def list_applications(
-            self,
-            request: ListApplicationsRequest
+        self, request: ListApplicationsRequest
     ) -> ListApplicationsResponse:
         """
         List applications.
@@ -85,22 +88,32 @@ class ApplicationManagementClient(BaseClient):
                     print(f"{app.application_id}: {app.application_name}")
         """
         # Prepare parameters for API call
-        params = self._filter_none({
-            "limit": request.limit,
-            "offset": request.offset,
-            "expanded": request.expanded,
-            "sort_by": request.sort_by.value if isinstance(request.sort_by, ApplicationSortBy) else request.sort_by,
-            "order": request.order.value if hasattr(request.order, "value") else request.order
-        })
+        params = self._filter_none(
+            {
+                "limit": request.limit,
+                "offset": request.offset,
+                "expanded": request.expanded,
+                "sort_by": (
+                    request.sort_by.value
+                    if isinstance(request.sort_by, ApplicationSortBy)
+                    else request.sort_by
+                ),
+                "order": (
+                    request.order.value
+                    if hasattr(request.order, "value")
+                    else request.order
+                ),
+            }
+        )
 
         response = self.make_request("GET", "applications", params=params)
-        applications = self._parse_response(Applications, response.get("applications", {}), "applications response")
+        applications = self._parse_response(
+            Applications, response.get("applications", {}), "applications response"
+        )
         return ListApplicationsResponse(applications=applications)
 
     def get_application(
-            self,
-            application_id: str,
-            expanded: bool = None
+        self, application_id: str, expanded: bool = None
     ) -> Application:
         """
         Get an application by ID.
@@ -123,13 +136,16 @@ class ApplicationManagementClient(BaseClient):
                 print(f"Application name: {application.application_name}")
         """
         params = self._filter_none({"expanded": expanded})
-        response = self.make_request("GET", f"applications/{application_id}", params=params)
-        application = self._parse_response(Application, response.get("application", {}), "application response")
+        response = self.make_request(
+            "GET", f"applications/{application_id}", params=params
+        )
+        application = self._parse_response(
+            Application, response.get("application", {}), "application response"
+        )
         return application
 
     def create_application(
-            self,
-            request: CreateApplicationRequest
+        self, request: CreateApplicationRequest
     ) -> CreateApplicationResponse:
         """
         Create an application.
@@ -157,19 +173,25 @@ class ApplicationManagementClient(BaseClient):
                 response = client.applications.create_application(request)
                 print(f"Created application with ID: {response.application_id}")
         """
-        data = self._filter_none({
-            "application_name": request.application_name,
-            "description": request.description,
-            "connection_type": request.connection_type.value if hasattr(request.connection_type, "value") else request.connection_type
-        })
-        
+        data = self._filter_none(
+            {
+                "application_name": request.application_name,
+                "description": request.description,
+                "connection_type": (
+                    request.connection_type.value
+                    if hasattr(request.connection_type, "value")
+                    else request.connection_type
+                ),
+            }
+        )
+
         response = self.make_request("POST", "applications", data=data)
-        return CreateApplicationResponse(application_id=response.get("application_id", ""))
+        return CreateApplicationResponse(
+            application_id=response.get("application_id", "")
+        )
 
     def update_application(
-            self,
-            application_id: str,
-            request: UpdateApplicationRequest
+        self, application_id: str, request: UpdateApplicationRequest
     ) -> UpdateApplicationResponse:
         """
         Update an application.
@@ -196,17 +218,16 @@ class ApplicationManagementClient(BaseClient):
                 )
                 response = client.applications.update_application(application_id, request)
         """
-        data = self._filter_none({
-            "application_name": request.application_name,
-            "description": request.description
-        })
+        data = self._filter_none(
+            {
+                "application_name": request.application_name,
+                "description": request.description,
+            }
+        )
         self.make_request("PUT", f"applications/{application_id}", data=data)
         return UpdateApplicationResponse()
 
-    def delete_application(
-            self,
-            application_id: str
-    ) -> DeleteApplicationResponse:
+    def delete_application(self, application_id: str) -> DeleteApplicationResponse:
         """
         Delete an application.
 

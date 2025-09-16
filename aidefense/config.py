@@ -125,7 +125,7 @@ class Config:
             "eu": "https://eu.api.manage.aidefense.security.cisco.com",
             "apj": "https://apj.api.manage.aidefense.security.cisco.com",
         }
-        
+
         # Set runtime base URL
         if runtime_base_url:
             if not runtime_base_url.startswith(("http://", "https://")):
@@ -133,7 +133,7 @@ class Config:
             self.runtime_base_url = runtime_base_url
         else:
             self.runtime_base_url = self.runtime_region_endpoints.get(region)
-            
+
         # Set management base URL
         if management_base_url:
             if not management_base_url.startswith(("http://", "https://")):

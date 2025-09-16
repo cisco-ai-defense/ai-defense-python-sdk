@@ -43,7 +43,7 @@ class ManagementClient(BaseClient):
         config (Config): The runtime configuration object.
         API_BASE_PATH (str): Base path for the management API.
     """
-    
+
     # Base URL for the management API
     API_BASE_PATH = "/api/ai-defense/v1"
 
@@ -61,13 +61,13 @@ class ManagementClient(BaseClient):
                 If not provided, a default singleton Config is used.
         """
         super().__init__(api_key, config, None)
-        
+
         # Initialize resource clients lazily with thread safety
         self._applications_client = None
         self._connections_client = None
         self._policies_client = None
         self._events_client = None
-        
+
         # Locks for thread-safe lazy initialization
         self._applications_lock = threading.RLock()
         self._connections_lock = threading.RLock()
@@ -89,13 +89,14 @@ class ManagementClient(BaseClient):
                 if self._applications_client is None:
                     # Import here to avoid circular imports
                     from .applications import ApplicationManagementClient
+
                     self._applications_client = ApplicationManagementClient(
                         api_key=self.api_key,
                         config=self.config,
-                        request_handler=self._request_handler
+                        request_handler=self._request_handler,
                     )
         return self._applications_client
-    
+
     @property
     def connections(self):
         """
@@ -109,13 +110,14 @@ class ManagementClient(BaseClient):
                 if self._connections_client is None:
                     # Import here to avoid circular imports
                     from .connections import ConnectionManagementClient
+
                     self._connections_client = ConnectionManagementClient(
                         api_key=self.api_key,
                         config=self.config,
-                        request_handler=self._request_handler
+                        request_handler=self._request_handler,
                     )
         return self._connections_client
-    
+
     @property
     def policies(self):
         """
@@ -129,13 +131,14 @@ class ManagementClient(BaseClient):
                 if self._policies_client is None:
                     # Import here to avoid circular imports
                     from .policies import PolicyManagementClient
+
                     self._policies_client = PolicyManagementClient(
                         api_key=self.api_key,
                         config=self.config,
-                        request_handler=self._request_handler
+                        request_handler=self._request_handler,
                     )
         return self._policies_client
-    
+
     @property
     def events(self):
         """
@@ -149,9 +152,10 @@ class ManagementClient(BaseClient):
                 if self._events_client is None:
                     # Import here to avoid circular imports
                     from .events import EventManagementClient
+
                     self._events_client = EventManagementClient(
                         api_key=self.api_key,
                         config=self.config,
-                        request_handler=self._request_handler
+                        request_handler=self._request_handler,
                     )
         return self._events_client

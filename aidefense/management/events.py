@@ -20,8 +20,12 @@ from typing import Optional, Dict, Any
 
 from .base_client import BaseClient
 from .models.event import (
-    Event, Events, EventSortBy, EventMessage, EventMessages,
-    ListEventsRequest
+    Event,
+    Events,
+    EventSortBy,
+    EventMessage,
+    EventMessages,
+    ListEventsRequest,
 )
 from ..config import Config
 
@@ -35,14 +39,11 @@ class EventManagementClient(BaseClient):
     """
 
     def __init__(
-            self,
-            api_key: str,
-            config: Optional[Config] = None,
-            request_handler=None
+        self, api_key: str, config: Optional[Config] = None, request_handler=None
     ):
         """
         Initialize the EventManagementClient.
-        
+
         Args:
             api_key (str): Your AI Defense Management API key for authentication.
             config (Config, optional): SDK configuration for endpoints, logging, retries, etc.
@@ -50,11 +51,8 @@ class EventManagementClient(BaseClient):
             request_handler: Request handler for making API requests (should be an instance of ManagementClient).
         """
         super().__init__(api_key, config, request_handler)
-    
-    def list_events(
-            self,
-            request: ListEventsRequest
-    ) -> Events:
+
+    def list_events(self, request: ListEventsRequest) -> Events:
         """
         List events.
 
@@ -89,29 +87,41 @@ class EventManagementClient(BaseClient):
                     print(f"{event.event_id}: {event.event_date}")
         """
         # Convert datetime objects to ISO format strings if needed
-        start_date = request.start_date.strftime("%Y-%m-%dT%H:%M:%SZ") if request.start_date else None
-        end_date = request.end_date.strftime("%Y-%m-%dT%H:%M:%SZ") if request.end_date else None
+        start_date = (
+            request.start_date.strftime("%Y-%m-%dT%H:%M:%SZ")
+            if request.start_date
+            else None
+        )
+        end_date = (
+            request.end_date.strftime("%Y-%m-%dT%H:%M:%SZ")
+            if request.end_date
+            else None
+        )
 
         # Prepare data for the POST request
-        data = self._filter_none({
-            "limit": request.limit,
-            "offset": request.offset,
-            "start_date": start_date,
-            "end_date": end_date,
-            "expanded": request.expanded,
-            "sort_by": request.sort_by.value if isinstance(request.sort_by, EventSortBy) else request.sort_by,
-            "order": request.order
-        })
+        data = self._filter_none(
+            {
+                "limit": request.limit,
+                "offset": request.offset,
+                "start_date": start_date,
+                "end_date": end_date,
+                "expanded": request.expanded,
+                "sort_by": (
+                    request.sort_by.value
+                    if isinstance(request.sort_by, EventSortBy)
+                    else request.sort_by
+                ),
+                "order": request.order,
+            }
+        )
 
         response = self.make_request("POST", "events", data=data)
-        events = self._parse_response(Events, response.get("events", {}), "events response")
+        events = self._parse_response(
+            Events, response.get("events", {}), "events response"
+        )
         return events
-    
-    def get_event(
-            self,
-            event_id: str,
-            expanded: bool = None
-    ) -> Event:
+
+    def get_event(self, event_id: str, expanded: bool = None) -> Event:
         """
         Get an event by ID.
 
@@ -136,11 +146,9 @@ class EventManagementClient(BaseClient):
         response = self.make_request("GET", f"events/{event_id}", params=params)
         event = self._parse_response(Event, response.get("event", {}), "event response")
         return event
-    
+
     def get_event_conversation(
-        self,
-        event_id: str,
-        expanded: bool = None
+        self, event_id: str, expanded: bool = None
     ) -> Dict[str, Any]:
         """
         Get conversation for an event.
@@ -167,16 +175,17 @@ class EventManagementClient(BaseClient):
                     print(f"{message.direction}: {message.content}")
         """
         params = self._filter_none({"expanded": expanded})
-        response = self.make_request("GET", f"events/{event_id}/conversation", params=params)
-        
+        response = self.make_request(
+            "GET", f"events/{event_id}/conversation", params=params
+        )
+
         # Extract the event_conversation_id from the response
         event_conversation_id = response.get("event_conversation_id", "")
-        
+
         # Parse the messages from the response
-        messages = self._parse_response(EventMessages, response.get("messages", {}), "event messages response")
-        
+        messages = self._parse_response(
+            EventMessages, response.get("messages", {}), "event messages response"
+        )
+
         # Return a dictionary with both the ID and messages
-        return {
-            "event_conversation_id": event_conversation_id,
-            "messages": messages
-        }
+        return {"event_conversation_id": event_conversation_id, "messages": messages}

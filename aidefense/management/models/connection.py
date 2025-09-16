@@ -35,6 +35,7 @@ class EditConnectionOperationType(str, Enum):
 
 class ConnectionStatus(str, Enum):
     """Connection status enum."""
+
     ConnectionStatusUnspecified = "ConnectionStatusUnspecified"
     Connected = "Connected"
     Disconnected = "Disconnected"
@@ -43,6 +44,7 @@ class ConnectionStatus(str, Enum):
 
 class ConnectionType(str, Enum):
     """Connection type enum."""
+
     Unspecified = "Unspecified"
     API = "API"
     Gateway = "Gateway"
@@ -80,7 +82,9 @@ class ApiKeyResponse(BaseModel):
     """
 
     key_id: str = Field(..., description="ID of the API key created")
-    api_key: str = Field(..., description="The generated API key (only for connection of type API)")
+    api_key: str = Field(
+        ..., description="The generated API key (only for connection of type API)"
+    )
 
 
 class ApiKey(BaseModel):
@@ -165,14 +169,28 @@ class Connection(BaseModel):
     connection_name: str = Field(..., description="Name of the connection")
     application_id: str = Field(..., description="ID of the associated application")
     endpoint_id: str = Field(..., description="ID of the associated endpoint")
-    connection_status: ConnectionStatus = Field(..., description="Status of the connection")
-    created_at: datetime = Field(..., description="Timestamp when the connection was created")
-    last_active: Optional[datetime] = Field(None, description="Timestamp when the connection was last active")
-    updated_at: datetime = Field(..., description="Timestamp when the connection was last updated")
-    updated_by: Optional[str] = Field(None, description="User who last updated the connection")
-    application: Optional[Any] = Field(None, description="Associated application details")
+    connection_status: ConnectionStatus = Field(
+        ..., description="Status of the connection"
+    )
+    created_at: datetime = Field(
+        ..., description="Timestamp when the connection was created"
+    )
+    last_active: Optional[datetime] = Field(
+        None, description="Timestamp when the connection was last active"
+    )
+    updated_at: datetime = Field(
+        ..., description="Timestamp when the connection was last updated"
+    )
+    updated_by: Optional[str] = Field(
+        None, description="User who last updated the connection"
+    )
+    application: Optional[Any] = Field(
+        None, description="Associated application details"
+    )
     policies: Optional[Any] = Field(None, description="Associated policies")
-    endpoint: Optional[Endpoint] = Field(None, description="Associated endpoint details")
+    endpoint: Optional[Endpoint] = Field(
+        None, description="Associated endpoint details"
+    )
     models: Optional[Models] = Field(None, description="Associated models")
 
 
@@ -184,61 +202,81 @@ class Connections(BaseModel):
         items (List[Connection]): List of connections.
         paging (Paging): Pagination information.
     """
-    
+
     items: List[Connection] = Field(..., description="List of connections")
     paging: Paging = Field(..., description="Pagination information")
 
 
 class ListConnectionsRequest(BaseModel):
     """List connections request model."""
-    
-    limit: Optional[int] = Field(None, description="Number of records to retrieve, default and max value is 100")
+
+    limit: Optional[int] = Field(
+        None, description="Number of records to retrieve, default and max value is 100"
+    )
     offset: Optional[int] = Field(None, description="Offset for pagination")
     expanded: Optional[bool] = Field(None, description="Whether to expand connections")
-    sort_by: Optional[ConnectionSortBy] = Field(None, description="Field name to sort the connections returned")
-    order: Optional[str] = Field(None, description="Sort order of the connections returned")
+    sort_by: Optional[ConnectionSortBy] = Field(
+        None, description="Field name to sort the connections returned"
+    )
+    order: Optional[str] = Field(
+        None, description="Sort order of the connections returned"
+    )
 
 
 class ListConnectionsResponse(BaseModel):
     """List connections response model."""
-    
+
     connections: List[Connection] = Field(..., description="List of connections")
 
 
 class CreateConnectionRequest(BaseModel):
     """Create connection request model."""
-    
+
     application_id: str = Field(..., description="Application ID")
     connection_name: str = Field(..., description="Connection name")
     connection_type: ConnectionType = Field(..., description="Connection type")
-    endpoint_id: Optional[str] = Field(None, description="Endpoint ID (optional for API flow)")
-    connection_guide_id: Optional[str] = Field(None, description="Connection guide ID (optional)")
+    endpoint_id: Optional[str] = Field(
+        None, description="Endpoint ID (optional for API flow)"
+    )
+    connection_guide_id: Optional[str] = Field(
+        None, description="Connection guide ID (optional)"
+    )
     key: Optional[ApiKeyRequest] = Field(None, description="API key request (optional)")
 
 
 class CreateConnectionResponse(BaseModel):
     """Create connection response model."""
-    
+
     connection_id: str = Field(..., description="ID of the created connection")
-    key: Optional[ApiKeyResponse] = Field(None, description="API key response (if key was requested)")
+    key: Optional[ApiKeyResponse] = Field(
+        None, description="API key response (if key was requested)"
+    )
 
 
 class GetConnectionByIDRequest(BaseModel):
     """Get connection by ID request model."""
-    
-    expanded: Optional[bool] = Field(None, description="Whether to return expanded information")
+
+    expanded: Optional[bool] = Field(
+        None, description="Whether to return expanded information"
+    )
 
 
 class DeleteConnectionByIDResponse(BaseModel):
     """Delete connection by ID response model."""
-    
+
     class Config:
         """Pydantic configuration."""
+
         frozen = True  # Make the model immutable
+
 
 class UpdateConnectionRequest(BaseModel):
     """Update connection request model."""
-    
+
     key_id: str = Field(..., description="Key ID to update/revoke")
-    operation_type: EditConnectionOperationType = Field(..., description="Operation type")
-    key: Optional[ApiKeyRequest] = Field(None, description="API key request for generation")
+    operation_type: EditConnectionOperationType = Field(
+        ..., description="Operation type"
+    )
+    key: Optional[ApiKeyRequest] = Field(
+        None, description="API key request for generation"
+    )

@@ -92,7 +92,13 @@ class ResponseParseError(SDKError):
         original_error (Exception, optional): The original exception that caused the parsing failure.
     """
 
-    def __init__(self, message: str, status_code: int = None, response_data: dict = None, original_error: Exception = None):
+    def __init__(
+        self,
+        message: str,
+        status_code: int = None,
+        response_data: dict = None,
+        original_error: Exception = None,
+    ):
         """
         Initialize the ResponseParseError.
 

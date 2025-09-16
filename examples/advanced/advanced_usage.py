@@ -138,9 +138,7 @@ def metadata_usage_example():
 
     # Create metadata for the request
     metadata = Metadata(
-        user="user-123",
-        src_app="example-app",
-        client_transaction_id=str(uuid.uuid4())
+        user="user-123", src_app="example-app", client_transaction_id=str(uuid.uuid4())
     )
 
     # Use metadata with the inspection request

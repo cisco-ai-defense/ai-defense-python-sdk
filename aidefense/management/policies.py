@@ -20,11 +20,18 @@ from typing import Optional, List
 
 from .base_client import BaseClient
 from .models.policy import (
-    Policy, Policies, PolicySortBy, Guardrail, Guardrails,
-    ListPoliciesRequest, ListPoliciesResponse,
-    UpdatePolicyRequest, UpdatePolicyResponse,
-    DeletePolicyResponse, AddOrUpdatePolicyConnectionsRequest,
-    AddOrUpdatePolicyConnectionsResponse
+    Policy,
+    Policies,
+    PolicySortBy,
+    Guardrail,
+    Guardrails,
+    ListPoliciesRequest,
+    ListPoliciesResponse,
+    UpdatePolicyRequest,
+    UpdatePolicyResponse,
+    DeletePolicyResponse,
+    AddOrUpdatePolicyConnectionsRequest,
+    AddOrUpdatePolicyConnectionsResponse,
 )
 from ..config import Config
 
@@ -38,14 +45,11 @@ class PolicyManagementClient(BaseClient):
     """
 
     def __init__(
-            self,
-            api_key: str,
-            config: Optional[Config] = None,
-            request_handler=None
+        self, api_key: str, config: Optional[Config] = None, request_handler=None
     ):
         """
         Initialize the PolicyManagementClient.
-        
+
         Args:
             api_key (str): Your AI Defense Management API key for authentication.
             config (Config, optional): SDK configuration for endpoints, logging, retries, etc.
@@ -53,11 +57,8 @@ class PolicyManagementClient(BaseClient):
             request_handler: Request handler for making API requests (should be an instance of ManagementClient).
         """
         super().__init__(api_key, config, request_handler)
-    
-    def list_policies(
-            self,
-            request: ListPoliciesRequest
-    ) -> Policies:
+
+    def list_policies(self, request: ListPoliciesRequest) -> Policies:
         """
         List policies.
 
@@ -86,22 +87,28 @@ class PolicyManagementClient(BaseClient):
                 for policy in response.policies.items:
                     print(f"{policy.policy_id}: {policy.policy_name}")
         """
-        params = self._filter_none({
-            "limit": request.limit,
-            "offset": request.offset,
-            "sort_by": request.sort_by.value if isinstance(request.sort_by, PolicySortBy) else request.sort_by,
-            "order": request.order.value if hasattr(request.order, "value") else request.order
-        })
+        params = self._filter_none(
+            {
+                "limit": request.limit,
+                "offset": request.offset,
+                "sort_by": (
+                    request.sort_by.value
+                    if isinstance(request.sort_by, PolicySortBy)
+                    else request.sort_by
+                ),
+                "order": (
+                    request.order.value
+                    if hasattr(request.order, "value")
+                    else request.order
+                ),
+            }
+        )
 
         response = self.make_request("GET", "policies", params=params)
         policies = self._parse_response(Policies, response, "policies response")
         return policies
 
-    def get_policy(
-            self,
-            policy_id: str,
-            expanded: bool = None
-    ) -> Policy:
+    def get_policy(self, policy_id: str, expanded: bool = None) -> Policy:
         """
         Get a policy by ID.
 
@@ -126,11 +133,9 @@ class PolicyManagementClient(BaseClient):
         response = self.make_request("GET", f"policies/{policy_id}", params=params)
         policy = self._parse_response(Policy, response, "policy response")
         return policy
-    
+
     def update_policy(
-            self,
-            policy_id: str,
-            request: UpdatePolicyRequest
+        self, policy_id: str, request: UpdatePolicyRequest
     ) -> UpdatePolicyResponse:
         """
         Update a policy.
@@ -159,19 +164,18 @@ class PolicyManagementClient(BaseClient):
                 )
                 response = client.policies.update_policy(policy_id, request)
         """
-        data = self._filter_none({
-            "name": request.name,
-            "description": request.description,
-            "status": request.status
-        })
+        data = self._filter_none(
+            {
+                "name": request.name,
+                "description": request.description,
+                "status": request.status,
+            }
+        )
 
         self.make_request("PUT", f"policies/{policy_id}", data=data)
         return UpdatePolicyResponse()
-    
-    def delete_policy(
-            self,
-            policy_id: str
-    ) -> DeletePolicyResponse:
+
+    def delete_policy(self, policy_id: str) -> DeletePolicyResponse:
         """
         Delete a policy.
 
@@ -192,11 +196,9 @@ class PolicyManagementClient(BaseClient):
         """
         self.make_request("DELETE", f"policies/{policy_id}")
         return DeletePolicyResponse()
-    
+
     def update_policy_connections(
-            self,
-            policy_id: str,
-            request: AddOrUpdatePolicyConnectionsRequest
+        self, policy_id: str, request: AddOrUpdatePolicyConnectionsRequest
     ) -> AddOrUpdatePolicyConnectionsResponse:
         """
         Add or update connections for a policy.
@@ -224,12 +226,12 @@ class PolicyManagementClient(BaseClient):
                 response = client.policies.update_policy_connections(policy_id, request)
         """
         data = {}
-        
+
         if request.connections_to_associate:
             data["connections_to_associate"] = request.connections_to_associate
-            
+
         if request.connections_to_disassociate:
             data["connections_to_disassociate"] = request.connections_to_disassociate
-        
+
         self.make_request("POST", f"policies/{policy_id}/connections", data=data)
         return AddOrUpdatePolicyConnectionsResponse()

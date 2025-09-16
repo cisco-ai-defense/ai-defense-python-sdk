@@ -29,6 +29,7 @@ from .connection import Connection
 
 class EventSortBy(str, Enum):
     """Event sort by enum."""
+
     EventSortBy_Unspecified = "EventSortBy_Unspecified"
     rule_action = "rule_action"
     event_timestamp = "event_timestamp"
@@ -37,37 +38,47 @@ class EventSortBy(str, Enum):
 
 class ViolationMetadata(BaseModel):
     """Violation metadata model."""
-    
-    standards: Optional[List[str]] = Field(default_factory=list, description="List of standards violated")
-    techniques: Optional[List[str]] = Field(default_factory=list, description="List of techniques")
+
+    standards: Optional[List[str]] = Field(
+        default_factory=list, description="List of standards violated"
+    )
+    techniques: Optional[List[str]] = Field(
+        default_factory=list, description="List of techniques"
+    )
 
 
 class MatchFeedback(BaseModel):
     """Match feedback model."""
-    
+
     rating: Optional[str] = Field(None, description="Rating of the match")
 
 
 class EventRuleMatch(BaseModel):
     """Event rule match model."""
-    
+
     guardrail_type: Optional[str] = Field(None, description="Guardrail type")
-    guardrail_ruleset_type: Optional[str] = Field(None, description="Guardrail ruleset type")
+    guardrail_ruleset_type: Optional[str] = Field(
+        None, description="Guardrail ruleset type"
+    )
     guardrail_entity: Optional[str] = Field(None, description="Guardrail entity")
     guardrail_action: Optional[str] = Field(None, description="Guardrail action")
-    metadata: Optional[ViolationMetadata] = Field(None, description="Violation metadata")
+    metadata: Optional[ViolationMetadata] = Field(
+        None, description="Violation metadata"
+    )
     feedback: Optional[MatchFeedback] = Field(None, description="Match feedback")
 
 
 class EventRuleMatches(BaseModel):
     """Event rule matches model."""
-    
-    items: List[EventRuleMatch] = Field(default_factory=list, description="List of rule matches")
+
+    items: List[EventRuleMatch] = Field(
+        default_factory=list, description="List of rule matches"
+    )
 
 
 class Event(BaseModel):
     """Event model."""
-    
+
     event_id: str = Field(description="Event ID")
     event_date: Optional[datetime] = Field(None, description="Event date")
     application_id: Optional[str] = Field(None, description="Application ID")
@@ -85,14 +96,14 @@ class Event(BaseModel):
 
 class Events(BaseModel):
     """Events model."""
-    
+
     items: List[Event] = Field(default_factory=list, description="List of events")
     paging: Paging = Field(default=None, description="Pagination information")
 
 
 class EventMessage(BaseModel):
     """Event message model."""
-    
+
     message_id: str = Field(description="Message ID")
     event_id: str = Field(description="Event ID")
     message_date: Optional[datetime] = Field(None, description="Message date")
@@ -103,18 +114,26 @@ class EventMessage(BaseModel):
 
 class EventMessages(BaseModel):
     """Event messages model."""
-    
-    items: List[EventMessage] = Field(default_factory=list, description="List of event messages")
+
+    items: List[EventMessage] = Field(
+        default_factory=list, description="List of event messages"
+    )
     paging: Paging = Field(default=None, description="Pagination information")
 
 
 class ListEventsRequest(BaseModel):
     """List events request model."""
-    
+
     limit: Optional[int] = Field(None, description="Number of records to retrieve")
     offset: Optional[int] = Field(None, description="Offset for pagination")
-    start_date: Optional[datetime] = Field(None, description="Start date for filtering events")
-    end_date: Optional[datetime] = Field(None, description="End date for filtering events")
+    start_date: Optional[datetime] = Field(
+        None, description="Start date for filtering events"
+    )
+    end_date: Optional[datetime] = Field(
+        None, description="End date for filtering events"
+    )
     expanded: Optional[bool] = Field(None, description="Whether to expand events")
-    sort_by: Optional[EventSortBy] = Field(None, description="Field name to sort the events returned")
+    sort_by: Optional[EventSortBy] = Field(
+        None, description="Field name to sort the events returned"
+    )
     order: Optional[str] = Field(None, description="Sort order of the events returned")

@@ -115,11 +115,11 @@ class RequestHandler(BaseRequestHandler):
                 raise ValidationError(f"Invalid URL: {url}")
 
             request_headers = dict(self._session.headers)
-            
+
             # Update with any custom headers
             if headers:
                 request_headers.update(headers)
-                
+
             request_id = request_id or self.get_request_id()
             request_headers[REQUEST_ID_HEADER] = request_id
 
