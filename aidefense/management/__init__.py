@@ -15,19 +15,20 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-AI Defense Python SDK
-Convenient imports for all major SDK components.
+AI Defense Management API
+Provides access to the AI Defense Management API for managing applications, connections, policies, and events.
 """
 
-from .runtime import *
-from .config import Config
-from .exceptions import ValidationError, ApiError, SDKError
+from .management_client import ManagementClient
+from .applications import ApplicationManagementClient
+from .connections import ConnectionManagementClient
+from .policies import PolicyManagementClient
+from .events import EventManagementClient
 
-# Import management API components
-from .management import (
-    ManagementClient,
-    ApplicationManagementClient,
-    ConnectionManagementClient,
-    PolicyManagementClient,
-    EventManagementClient
-)
+__all__ = [
+    "ManagementClient",
+    "ApplicationManagementClient",
+    "ConnectionManagementClient",
+    "PolicyManagementClient",
+    "EventManagementClient",
+]

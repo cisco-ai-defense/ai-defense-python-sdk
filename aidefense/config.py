@@ -23,6 +23,8 @@ import threading
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
+from aidefense.exceptions import ValidationError
+
 
 class Config:
     """
@@ -36,7 +38,8 @@ class Config:
 
     Args:
         region (str, optional): Region for API endpoint selection. One of 'us', 'eu', or 'apj'. Default is 'us'.
-        runtime_base_url (str, optional): Custom base URL for API endpoint. If provided, takes precedence over region.
+        runtime_base_url (str, optional): Custom base URL for runtime API endpoint. If provided, takes precedence over region.
+        management_base_url (str, optional): Custom base URL for management API endpoint. If provided, takes precedence over region.
         timeout (int, optional): Timeout for HTTP requests in seconds. Default is 30.
         logger (logging.Logger, optional): Optional custom logger instance. If not provided, one is created.
         logger_params (dict, optional): Parameters for logger creation (`name`, `level`, `format`).
@@ -48,6 +51,7 @@ class Config:
         region (str): Selected region.
         timeout (int): HTTP timeout.
         runtime_base_url (str): Base API URL for the selected region.
+        management_base_url (str): Base API URL for the selected region.
         logger (logging.Logger): Logger instance.
         retry_config (dict): Retry configuration.
         connection_pool (requests.adapters.HTTPAdapter): HTTP connection pool adapter.
@@ -78,6 +82,7 @@ class Config:
         self,
         region: str = None,
         runtime_base_url: str = None,
+        management_base_url: str = None,
         timeout: int = None,
         logger: logging.Logger = None,
         logger_params: dict = None,
@@ -90,7 +95,8 @@ class Config:
 
         Args:
             region (str, optional): Region for API endpoint selection. Default is 'us'.
-            runtime_base_url (str, optional): Custom base URL for API endpoint.
+            runtime_base_url (str, optional): Custom base URL for runtime API endpoint.
+            management_base_url (str, optional): Custom base URL for management API endpoint.
             timeout (int, optional): Timeout for HTTP requests in seconds. Default is 30.
             logger (logging.Logger, optional): Optional custom logger instance.
             logger_params (dict, optional): Parameters for logger creation.
@@ -113,12 +119,28 @@ class Config:
             "ap-northeast-1": "https://apj.api.inspect.aidefense.security.cisco.com",
             "me-central-1": "https://uae.api.inspect.aidefense.security.cisco.com",
         }
+        self.management_region_endpoints = {
+            "us": "https://api.security.cisco.com",
+            # TODO - Update base management URLs
+            "eu": "https://eu.api.manage.aidefense.security.cisco.com",
+            "apj": "https://apj.api.manage.aidefense.security.cisco.com",
+        }
+        
+        # Set runtime base URL
         if runtime_base_url:
             if not runtime_base_url.startswith(("http://", "https://")):
                 raise ValidationError(f"Invalid URL: {runtime_base_url}")
             self.runtime_base_url = runtime_base_url
         else:
             self.runtime_base_url = self.runtime_region_endpoints.get(region)
+            
+        # Set management base URL
+        if management_base_url:
+            if not management_base_url.startswith(("http://", "https://")):
+                raise ValidationError(f"Invalid URL: {management_base_url}")
+            self.management_base_url = management_base_url
+        else:
+            self.management_base_url = self.management_region_endpoints.get(region)
 
         # --- Logger ---
         if logger:

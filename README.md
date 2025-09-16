@@ -16,6 +16,10 @@ Integrate AI-powered security, privacy, and safety inspections into your Python 
   - [Chat Inspection](#chat-inspection)
   - [HTTP Inspection](#http-inspection)
 - [Configuration](#configuration)
+- [Enhanced Logging and Resource Management](#enhanced-logging-and-resource-management)
+  - [Structured Logging](#structured-logging)
+  - [Context Managers for Resource Cleanup](#context-managers-for-resource-cleanup)
+  - [Logging Best Practices](#logging-best-practices)
 - [Advanced Usage](#advanced-usage)
 - [Error Handling](#error-handling)
 - [Contributing](#contributing)
@@ -189,25 +193,98 @@ The SDK uses a `Config` object for global settings:
 - **Connection Pool**: Control HTTP connection pooling for performance.
 
 ```python
-from aidefense import Config
+from aidefense import Config, ChatInspectionClient
 
-# Basic configuration
+# Create a custom configuration
 config = Config(
-    logger_params={"level": "DEBUG"},
-    retry_config={"total": 5, "backoff_factor": 1.0},
+    region="us",
+    timeout=60,
+    logger_params={
+        "name": "my-app-aidefense",
+        "level": "DEBUG",
+        "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    },
+    retry_config={
+        "total": 3,
+        "backoff_factor": 0.5,
+        "status_forcelist": [429, 500, 502, 503, 504]
+    }
 )
 
-# Configuration with custom API endpoint
-custom_endpoint_config = Config(
-    runtime_base_url="https://custom-api-endpoint.example.com",
-    logger_params={"level": "INFO"},
-    retry_config={"total": 3, "backoff_factor": 2.0},
-)
-
-# Initialize clients with custom configuration
-chat_client = ChatInspectionClient(api_key="YOUR_API_KEY", config=custom_endpoint_config)
-http_client = HttpInspectionClient(api_key="YOUR_API_KEY", config=custom_endpoint_config)
+# Use the configuration with a client
+client = ChatInspectionClient(api_key="YOUR_API_KEY", config=config)
 ```
+
+## Enhanced Logging and Resource Management
+
+The SDK provides comprehensive logging and resource management capabilities to help you monitor and debug your applications.
+
+### Structured Logging
+
+All SDK operations include structured logging with contextual information:
+
+```python
+# Configure the SDK with detailed logging
+config = Config(
+    logger_params={
+        "name": "aidefense-app",
+        "level": "DEBUG",
+        "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s - %(extra)s"
+    }
+)
+
+# The SDK will now log detailed information about operations
+client = ManagementClient(management_api_key="YOUR_API_KEY", config=config)
+applications = client.applications.list_applications()
+# DEBUG logs will include details about request parameters, response times, and result counts
+```
+
+Key logging features:
+- **Request/Response Tracking**: Each API request is logged with a unique request ID
+- **Performance Metrics**: Response times are logged for performance monitoring
+- **Error Context**: Detailed error information including validation errors
+- **Operation Context**: Relevant parameters and results for each operation
+
+### Context Managers for Resource Cleanup
+
+All client classes support context managers for automatic resource cleanup:
+
+```python
+# Using context managers for automatic cleanup
+with ManagementClient(management_api_key="YOUR_API_KEY") as client:
+    # All operations within this block
+    applications = client.applications.list_applications()
+    # Session is automatically closed when exiting the block
+```
+
+This ensures that HTTP sessions and other resources are properly cleaned up, even if exceptions occur.
+
+### Logging Best Practices
+
+To get the most out of the SDK's logging capabilities:
+
+1. **Set Appropriate Log Levels**:
+   - `INFO`: For tracking normal operations
+   - `DEBUG`: For detailed request/response information
+   - `WARNING`: For potential issues that don't prevent operation
+
+2. **Use Structured Log Handlers**:
+   ```python
+   import logging
+   import json_log_formatter
+   
+   formatter = json_log_formatter.JSONFormatter()
+   json_handler = logging.FileHandler(filename='aidefense.log')
+   json_handler.setFormatter(formatter)
+   
+   logger = logging.getLogger('aidefense')
+   logger.addHandler(json_handler)
+   logger.setLevel(logging.DEBUG)
+   
+   config = Config(logger=logger)
+   ```
+
+3. **Monitor Request IDs**: Each request has a unique ID that can be used to trace operations across logs.
 
 ---
 
