@@ -107,32 +107,6 @@ class TestPolicyManagementClient:
             order="asc"
         )
 
-        # Mock the _parse_response method to avoid validation errors
-        policy_client._parse_response = MagicMock()
-        policy_client._parse_response.return_value = Policies(
-            items=[
-                Policy(
-                    policy_id="policy-123",
-                    policy_name="Test Policy 1",
-                    description="Test Description 1",
-                    status="active",
-                    connection_type=ConnectionType.API,
-                    created_at=datetime(2025, 1, 1),
-                    updated_at=datetime(2025, 1, 2)
-                ),
-                Policy(
-                    policy_id="policy-456",
-                    policy_name="Test Policy 2",
-                    description="Test Description 2",
-                    status="inactive",
-                    connection_type=ConnectionType.Gateway,
-                    created_at=datetime(2025, 1, 3),
-                    updated_at=datetime(2025, 1, 4)
-                )
-            ],
-            paging=Paging(total=2, count=2, offset=0)
-        )
-
         # Call the method
         response = policy_client.list_policies(request)
 
@@ -148,11 +122,6 @@ class TestPolicyManagementClient:
             }
         )
 
-        # Verify the _parse_response call
-        policy_client._parse_response.assert_called_once_with(
-            Policies, mock_response, "policies response"
-        )
-
         # Verify the response
         assert isinstance(response, Policies)
         assert len(response.items) == 2
@@ -161,6 +130,8 @@ class TestPolicyManagementClient:
         assert response.items[1].policy_id == "policy-456"
         assert response.items[1].policy_name == "Test Policy 2"
         assert response.paging.total == 2
+        assert response.paging.count == 2
+        assert response.paging.offset == 0
 
     def test_get_policy(self, policy_client):
         """Test getting a policy by ID."""
@@ -205,43 +176,6 @@ class TestPolicyManagementClient:
         }
         policy_client.make_request.return_value = mock_response
 
-        # Mock the _parse_response method to avoid validation errors
-        policy_client._parse_response = MagicMock()
-        guardrail_rule = GuardrailRule(
-            ruleset_type="security_ruleset",
-            status=RuleStatus.Enabled,
-            direction=Direction.Both,
-            action=Action.Block,
-            entity=Entity(
-                name="security_entity",
-                desc="Security entity description"
-            )
-        )
-        
-        guardrail = Guardrail(
-            guardrails_type=GuardrailType.Security,
-            items=[guardrail_rule],
-            paging=Paging(total=1, count=1, offset=0)
-        )
-        
-        guardrails = Guardrails(
-            items=[guardrail],
-            paging=Paging(total=1, count=1, offset=0)
-        )
-        
-        policy = Policy(
-            policy_id="policy-123",
-            policy_name="Test Policy",
-            description="Test Description",
-            status="active",
-            connection_type=ConnectionType.API,
-            created_at=datetime(2025, 1, 1),
-            updated_at=datetime(2025, 1, 2),
-            guardrails=guardrails
-        )
-        
-        policy_client._parse_response.return_value = policy
-
         # Call the method
         policy_id = "policy-123"
         response = policy_client.get_policy(policy_id, expanded=True)
@@ -253,18 +187,13 @@ class TestPolicyManagementClient:
             params={"expanded": True}
         )
 
-        # Verify the _parse_response call
-        policy_client._parse_response.assert_called_once_with(
-            Policy, mock_response, "policy response"
-        )
-
         # Verify the response
         assert isinstance(response, Policy)
         assert response.policy_id == "policy-123"
         assert response.policy_name == "Test Policy"
         assert response.description == "Test Description"
         assert response.status == "active"
-        assert response.connection_type == ConnectionType.API
+        assert response.connection_type == "API"
         assert response.guardrails is not None
         assert len(response.guardrails.items) == 1
         assert response.guardrails.items[0].guardrails_type == GuardrailType.Security

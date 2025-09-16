@@ -95,7 +95,7 @@ class TestEventManagementClient:
                 ],
                 "paging": {
                     "total": 2,
-                    "limit": 10,
+                    "count": 2,
                     "offset": 0
                 }
             }
@@ -113,36 +113,6 @@ class TestEventManagementClient:
             expanded=True,
             sort_by=EventSortBy.event_timestamp,
             order="desc"
-        )
-
-        # Mock the _parse_response method to avoid validation errors
-        event_client._parse_response = MagicMock()
-        event_client._parse_response.return_value = Events(
-            items=[
-                Event(
-                    event_id="event-123",
-                    event_date=datetime(2025, 1, 1),
-                    application_id="app-123",
-                    policy_id="policy-123",
-                    connection_id="conn-123",
-                    event_action="block",
-                    message_id="msg-123",
-                    direction="outbound",
-                    model_name="gpt-4"
-                ),
-                Event(
-                    event_id="event-456",
-                    event_date=datetime(2025, 1, 2),
-                    application_id="app-456",
-                    policy_id="policy-456",
-                    connection_id="conn-456",
-                    event_action="allow",
-                    message_id="msg-456",
-                    direction="inbound",
-                    model_name="gpt-3.5-turbo"
-                )
-            ],
-            paging=Paging(total=2, count=2, offset=0)
         )
 
         # Call the method
@@ -163,11 +133,6 @@ class TestEventManagementClient:
             }
         )
 
-        # Verify the _parse_response call
-        event_client._parse_response.assert_called_once_with(
-            Events, mock_response.get("events", {}), "events response"
-        )
-
         # Verify the response
         assert isinstance(response, Events)
         assert len(response.items) == 2
@@ -176,6 +141,8 @@ class TestEventManagementClient:
         assert response.items[1].event_id == "event-456"
         assert response.items[1].event_action == "allow"
         assert response.paging.total == 2
+        assert response.paging.count == 2
+        assert response.paging.offset == 0
 
     def test_get_event(self, event_client):
         """Test getting an event by ID."""
@@ -259,36 +226,12 @@ class TestEventManagementClient:
                 ],
                 "paging": {
                     "total": 2,
-                    "limit": 10,
+                    "count": 2,
                     "offset": 0
                 }
             }
         }
         event_client.make_request.return_value = mock_response
-
-        # Mock the _parse_response method to avoid validation errors
-        event_client._parse_response = MagicMock()
-        event_client._parse_response.return_value = EventMessages(
-            items=[
-                EventMessage(
-                    message_id="msg-123",
-                    event_id="event-123",
-                    message_date=datetime(2025, 1, 1),
-                    content="Hello, how can I help you?",
-                    direction="inbound",
-                    role="assistant"
-                ),
-                EventMessage(
-                    message_id="msg-456",
-                    event_id="event-123",
-                    message_date=datetime(2025, 1, 1, 0, 1),
-                    content="I need help with security.",
-                    direction="outbound",
-                    role="user"
-                )
-            ],
-            paging=Paging(total=2, count=2, offset=0)
-        )
 
         # Call the method
         event_id = "event-123"
@@ -299,11 +242,6 @@ class TestEventManagementClient:
             "GET", 
             f"events/{event_id}/conversation", 
             params={"expanded": True}
-        )
-
-        # Verify the _parse_response call
-        event_client._parse_response.assert_called_once_with(
-            EventMessages, mock_response.get("messages", {}), "event messages response"
         )
 
         # Verify the response
@@ -318,6 +256,9 @@ class TestEventManagementClient:
         assert response["messages"].items[1].message_id == "msg-456"
         assert response["messages"].items[1].content == "I need help with security."
         assert response["messages"].items[1].role == "user"
+        assert response["messages"].paging.total == 2
+        assert response["messages"].paging.count == 2
+        assert response["messages"].paging.offset == 0
 
     def test_error_handling(self, event_client):
         """Test error handling in the client."""

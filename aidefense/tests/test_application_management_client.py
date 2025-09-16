@@ -91,7 +91,7 @@ class TestApplicationManagementClient:
                 ],
                 "paging": {
                     "total": 2,
-                    "limit": 10,
+                    "count": 2,
                     "offset": 0
                 }
             }
@@ -105,26 +105,6 @@ class TestApplicationManagementClient:
             expanded=True,
             sort_by=ApplicationSortBy.application_name,
             order="asc"
-        )
-
-        # Mock the _parse_response method to avoid validation errors
-        application_client._parse_response = MagicMock()
-        application_client._parse_response.return_value = Applications(
-            items=[
-                Application(
-                    application_id="app-123",
-                    application_name="Test App 1",
-                    description="Test Description 1",
-                    connection_type=ConnectionType.API
-                ),
-                Application(
-                    application_id="app-456",
-                    application_name="Test App 2",
-                    description="Test Description 2",
-                    connection_type=ConnectionType.Gateway
-                )
-            ],
-            paging=Paging(total=2, count=2, offset=0)
         )
 
         # Call the method
@@ -143,11 +123,6 @@ class TestApplicationManagementClient:
             }
         )
 
-        # Verify the _parse_response call
-        application_client._parse_response.assert_called_once_with(
-            Applications, mock_response.get("applications", {}), "applications response"
-        )
-
         # Verify the response
         assert isinstance(response, ListApplicationsResponse)
         assert len(response.applications.items) == 2
@@ -156,6 +131,8 @@ class TestApplicationManagementClient:
         assert response.applications.items[1].application_id == "app-456"
         assert response.applications.items[1].application_name == "Test App 2"
         assert response.applications.paging.total == 2
+        assert response.applications.paging.count == 2
+        assert response.applications.paging.offset == 0
 
     def test_get_application(self, application_client):
         """Test getting an application by ID."""

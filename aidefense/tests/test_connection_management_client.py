@@ -109,32 +109,6 @@ class TestConnectionManagementClient:
             order="asc"
         )
 
-        # Mock the _parse_response method to avoid validation errors
-        connection_client._parse_response = MagicMock()
-        connection_client._parse_response.return_value = Connections(
-            items=[
-                Connection(
-                    connection_id="conn-123",
-                    connection_name="Test Connection 1",
-                    application_id="app-123",
-                    endpoint_id="endpoint-123",
-                    connection_status=ConnectionStatus.Connected,
-                    created_at=datetime(2025, 1, 1),
-                    updated_at=datetime(2025, 1, 2)
-                ),
-                Connection(
-                    connection_id="conn-456",
-                    connection_name="Test Connection 2",
-                    application_id="app-456",
-                    endpoint_id="endpoint-456",
-                    connection_status=ConnectionStatus.Disconnected,
-                    created_at=datetime(2025, 1, 3),
-                    updated_at=datetime(2025, 1, 4)
-                )
-            ],
-            paging=Paging(total=2, count=2, offset=0)
-        )
-
         # Call the method
         response = connection_client.list_connections(request)
 
@@ -151,11 +125,6 @@ class TestConnectionManagementClient:
             }
         )
 
-        # Verify the _parse_response call
-        connection_client._parse_response.assert_called_once_with(
-            Connections, mock_response.get("connections", {}), "connections response"
-        )
-
         # Verify the response
         assert isinstance(response, Connections)
         assert len(response.items) == 2
@@ -164,6 +133,8 @@ class TestConnectionManagementClient:
         assert response.items[1].connection_id == "conn-456"
         assert response.items[1].connection_name == "Test Connection 2"
         assert response.paging.total == 2
+        assert response.paging.count == 2
+        assert response.paging.offset == 0
 
     def test_get_connection(self, connection_client):
         """Test getting a connection by ID."""
@@ -292,26 +263,6 @@ class TestConnectionManagementClient:
         }
         connection_client.make_request.return_value = mock_response
 
-        # Mock the _parse_response method to avoid validation errors
-        connection_client._parse_response = MagicMock()
-        connection_client._parse_response.return_value = ApiKeys(
-            items=[
-                ApiKey(
-                    id="key-123",
-                    name="Test API Key 1",
-                    status="active",
-                    expiry=datetime(2026, 1, 1)
-                ),
-                ApiKey(
-                    id="key-456",
-                    name="Test API Key 2",
-                    status="revoked",
-                    expiry=datetime(2026, 2, 1)
-                )
-            ],
-            paging=Paging(total=2, count=2, offset=0)
-        )
-
         # Call the method
         connection_id = "conn-123"
         response = connection_client.get_api_keys(connection_id)
@@ -322,11 +273,6 @@ class TestConnectionManagementClient:
             f"connections/{connection_id}/keys"
         )
 
-        # Verify the _parse_response call
-        connection_client._parse_response.assert_called_once_with(
-            ApiKeys, mock_response.get("keys", {}), "API keys response"
-        )
-
         # Verify the response
         assert isinstance(response, ApiKeys)
         assert len(response.items) == 2
@@ -335,6 +281,8 @@ class TestConnectionManagementClient:
         assert response.items[1].id == "key-456"
         assert response.items[1].name == "Test API Key 2"
         assert response.paging.total == 2
+        assert response.paging.count == 2
+        assert response.paging.offset == 0
 
     def test_update_api_key_generate(self, connection_client):
         """Test generating a new API key."""
