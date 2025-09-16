@@ -44,7 +44,14 @@ class ValidationError(SDKError):
     Raised when input validation fails.
     """
 
-    pass
+    def __init__(self, message: str, status_code: int = None):
+        """
+        Initialize the SDKError.
+
+        Args:
+            message (str): The error message.
+        """
+        super().__init__(message, status_code)
 
 
 class ApiError(SDKError):
@@ -70,3 +77,37 @@ class ApiError(SDKError):
         """
         super().__init__(message, status_code)
         self.request_id = request_id
+
+
+class ResponseParseError(SDKError):
+    """
+    Exception for response parsing errors.
+
+    Raised when the SDK fails to parse the API response into the expected model.
+
+    Attributes:
+        message (str): The error message.
+        status_code (int, optional): The HTTP status code associated with the error.
+        response_data (dict, optional): The raw response data that failed to parse.
+        original_error (Exception, optional): The original exception that caused the parsing failure.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        status_code: int = None,
+        response_data: dict = None,
+        original_error: Exception = None,
+    ):
+        """
+        Initialize the ResponseParseError.
+
+        Args:
+            message (str): The error message.
+            status_code (int, optional): The HTTP status code associated with the error.
+            response_data (dict, optional): The raw response data that failed to parse.
+            original_error (Exception, optional): The original exception that caused the parsing failure.
+        """
+        super().__init__(message, status_code)
+        self.response_data = response_data
+        self.original_error = original_error

@@ -18,6 +18,7 @@ packages = [{include = "aidefense"}]
 python = "^3.8"
 requests = "^2.32.3"
 uuid = "^1.30"
+pydantic = "1.10.8"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"
