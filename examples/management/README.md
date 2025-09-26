@@ -69,11 +69,10 @@ Connections link your applications to AI Defense. You can:
 Policies define the security rules applied to your applications. You can:
 
 - List policies
-- Create new policies
 - Get policy details
-- Update policies
-- Delete policies
-- Add or update connections for policies
+- Update policy
+- Delete policy
+- Add or update connections for a policy
 
 ### Events
 
