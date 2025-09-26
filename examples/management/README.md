@@ -51,8 +51,8 @@ Applications represent AI systems that you want to protect with AI Defense. You 
 - List applications
 - Create an application
 - Get application details
-- Update applications
-- Delete applications
+- Update application
+- Delete application
 
 ### Connections
 
