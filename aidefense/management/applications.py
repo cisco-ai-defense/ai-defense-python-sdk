@@ -22,17 +22,14 @@ from .base_client import BaseClient
 from .models.application import (
     Application,
     Applications,
-    ApplicationSortBy,
     ListApplicationsRequest,
     ListApplicationsResponse,
     CreateApplicationRequest,
     CreateApplicationResponse,
     UpdateApplicationRequest,
-    UpdateApplicationResponse,
-    DeleteApplicationResponse,
 )
 from ..config import Config
-from ._routes import APPLICATIONS, application_by_id
+from .routes import APPLICATIONS, application_by_id
 
 
 class ApplicationManagementClient(BaseClient):
@@ -97,7 +94,7 @@ class ApplicationManagementClient(BaseClient):
 
         response = self.make_request("GET", APPLICATIONS, params=params)
         applications = self._parse_response(
-            Applications, response.get("applications", {}), "applications response"
+            Applications, response.get("applications", {}), "list applications response"
         )
         return ListApplicationsResponse(applications=applications)
 
@@ -131,7 +128,7 @@ class ApplicationManagementClient(BaseClient):
             "GET", application_by_id(application_id), params=params
         )
         application = self._parse_response(
-            Application, response.get("application", {}), "application response"
+            Application, response.get("application", {}), "get application response"
         )
         return application
 

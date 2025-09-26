@@ -159,24 +159,6 @@ class UpdatePolicyRequest(AIDefenseModel):
     status: Optional[str] = Field(None, description="Status of the policy")
 
 
-class UpdatePolicyResponse(AIDefenseModel):
-    """Update policy response model."""
-
-    class Config:
-        """Pydantic configuration."""
-
-        frozen = True  # Make the model immutable
-
-
-class DeletePolicyResponse(AIDefenseModel):
-    """Delete policy response model."""
-
-    class Config:
-        """Pydantic configuration."""
-
-        frozen = True  # Make the model immutable
-
-
 class AddOrUpdatePolicyConnectionsRequest(AIDefenseModel):
     """Add or update policy connections request model."""
 
@@ -186,12 +168,3 @@ class AddOrUpdatePolicyConnectionsRequest(AIDefenseModel):
     connections_to_disassociate: Optional[List[str]] = Field(
         None, description="List of connection IDs to be removed from a policy"
     )
-
-
-class AddOrUpdatePolicyConnectionsResponse(AIDefenseModel):
-    """Add or update policy connections response model."""
-
-    class Config:
-        """Pydantic configuration."""
-
-        frozen = True  # Make the model immutable

@@ -16,7 +16,7 @@
 
 import pytest
 
-from aidefense.management._routes import (
+from aidefense.management.routes import (
     APPLICATIONS,
     CONNECTIONS,
     POLICIES,

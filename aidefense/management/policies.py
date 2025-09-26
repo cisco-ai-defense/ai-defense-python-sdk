@@ -23,19 +23,13 @@ from .base_client import BaseClient
 from .models.policy import (
     Policy,
     Policies,
-    PolicySortBy,
-    Guardrail,
-    Guardrails,
     ListPoliciesRequest,
     ListPoliciesResponse,
     UpdatePolicyRequest,
-    UpdatePolicyResponse,
-    DeletePolicyResponse,
     AddOrUpdatePolicyConnectionsRequest,
-    AddOrUpdatePolicyConnectionsResponse,
 )
 from ..config import Config
-from ._routes import POLICIES, policy_by_id, policy_connections
+from .routes import POLICIES, policy_by_id, policy_connections
 
 
 class PolicyManagementClient(BaseClient):
@@ -96,7 +90,7 @@ class PolicyManagementClient(BaseClient):
 
         response = self.make_request("GET", POLICIES, params=params)
         policies = self._parse_response(
-            Policies, response.get("policies"), "policies response"
+            Policies, response.get("policies"), "list policies response"
         )
         return policies
 
@@ -125,12 +119,12 @@ class PolicyManagementClient(BaseClient):
         self._ensure_uuid(policy_id, "policy_id")
         params = {"expanded": expanded} if expanded is not None else None
         response = self.make_request("GET", policy_by_id(policy_id), params=params)
-        policy = self._parse_response(Policy, response.get("policy"), "policy response")
+        policy = self._parse_response(
+            Policy, response.get("policy"), "get policy response"
+        )
         return policy
 
-    def update_policy(
-        self, policy_id: str, request: UpdatePolicyRequest
-    ) -> UpdatePolicyResponse:
+    def update_policy(self, policy_id: str, request: UpdatePolicyRequest) -> None:
         """
         Update a policy.
 
@@ -142,7 +136,7 @@ class PolicyManagementClient(BaseClient):
                 - status: New status for the policy (optional)
 
         Returns:
-            UpdatePolicyResponse: Empty response object.
+            None
 
         Raises:
             ValidationError, ApiError, SDKError
@@ -165,7 +159,7 @@ class PolicyManagementClient(BaseClient):
             raise ValueError("No fields to update in UpdatePolicyRequest")
 
         self.make_request("PUT", policy_by_id(policy_id), data=data)
-        return UpdatePolicyResponse()
+        return None
 
     def delete_policy(self, policy_id: str) -> None:
         """

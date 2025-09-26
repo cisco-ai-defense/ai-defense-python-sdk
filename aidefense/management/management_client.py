@@ -16,8 +16,7 @@
 
 """Management client for the AI Defense Management API."""
 
-from typing import Optional, Dict, Any
-import threading
+from typing import Optional
 
 from .auth import ManagementAuth
 from .applications import ApplicationManagementClient
@@ -25,7 +24,6 @@ from .connections import ConnectionManagementClient
 from .policies import PolicyManagementClient
 from .events import EventManagementClient
 from ..config import Config
-from .base_client import BaseClient
 from ..request_handler import RequestHandler
 
 

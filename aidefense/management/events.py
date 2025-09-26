@@ -23,13 +23,11 @@ from .base_client import BaseClient
 from .models.event import (
     Event,
     Events,
-    EventSortBy,
-    EventMessage,
     EventMessages,
     ListEventsRequest,
 )
 from ..config import Config
-from ._routes import EVENTS, event_by_id, event_conversation
+from .routes import EVENTS, event_by_id, event_conversation
 
 
 class EventManagementClient(BaseClient):
@@ -96,7 +94,7 @@ class EventManagementClient(BaseClient):
 
         response = self.make_request("POST", EVENTS, data=data)
         events = self._parse_response(
-            Events, response.get("events", {}), "events response"
+            Events, response.get("events", {}), "list events response"
         )
         return events
 
@@ -125,7 +123,9 @@ class EventManagementClient(BaseClient):
         self._ensure_uuid(event_id, "event_id")
         params = {"expanded": expanded} if expanded is not None else None
         response = self.make_request("GET", event_by_id(event_id), params=params)
-        event = self._parse_response(Event, response.get("event", {}), "event response")
+        event = self._parse_response(
+            Event, response.get("event", {}), "get event response"
+        )
         return event
 
     def get_event_conversation(self, event_id: str) -> Dict[str, Any]:
@@ -159,7 +159,9 @@ class EventManagementClient(BaseClient):
 
         # Parse the messages from the response
         messages = self._parse_response(
-            EventMessages, response.get("messages", {}), "event messages response"
+            EventMessages,
+            response.get("messages", {}),
+            "get event conversation response",
         )
 
         # Return a dictionary with both the ID and messages

@@ -25,16 +25,13 @@ from aidefense.management.models.connection import (
     Connections,
     ConnectionSortBy,
     ConnectionType,
-    ConnectionStatus,
     EditConnectionOperationType,
     ApiKeys,
-    ApiKey,
     ApiKeyRequest,
     ApiKeyResponse,
     ListConnectionsRequest,
     CreateConnectionRequest,
     CreateConnectionResponse,
-    DeleteConnectionByIDResponse,
     UpdateConnectionRequest,
 )
 from aidefense.management.models.common import Paging

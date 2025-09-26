@@ -16,29 +16,23 @@
 
 """Connection management client for the AI Defense Management API."""
 
-from datetime import datetime
 from typing import Optional, Dict
-
-from requests.auth import AuthBase
 
 from .auth import ManagementAuth
 from .base_client import BaseClient
 from .models.connection import (
     Connection,
     Connections,
-    ConnectionSortBy,
-    ConnectionType,
     EditConnectionOperationType,
     ApiKeys,
     ListConnectionsRequest,
     CreateConnectionRequest,
     CreateConnectionResponse,
-    DeleteConnectionByIDResponse,
     UpdateConnectionRequest,
     ApiKeyResponse,
 )
 from ..config import Config
-from ._routes import CONNECTIONS, connection_by_id, connection_keys
+from .routes import CONNECTIONS, connection_by_id, connection_keys
 
 
 class ConnectionManagementClient(BaseClient):
@@ -100,7 +94,7 @@ class ConnectionManagementClient(BaseClient):
 
         response = self.make_request("GET", CONNECTIONS, params=params)
         connections = self._parse_response(
-            Connections, response.get("connections", {}), "connections response"
+            Connections, response.get("connections", {}), "list connections response"
         )
         return connections
 
@@ -191,7 +185,7 @@ class ConnectionManagementClient(BaseClient):
             "GET", connection_by_id(connection_id), params=params
         )
         connection = self._parse_response(
-            Connection, response.get("connection", {}), "connection response"
+            Connection, response.get("connection", {}), "get connection response"
         )
         return connection
 
@@ -244,7 +238,7 @@ class ConnectionManagementClient(BaseClient):
         self._ensure_uuid(connection_id, "connection_id")
         response = self.make_request("GET", connection_keys(connection_id))
         keys = self._parse_response(
-            ApiKeys, response.get("keys", {}), "API keys response"
+            ApiKeys, response.get("keys", {}), "list api keys response"
         )
         return keys
 
@@ -311,5 +305,5 @@ class ConnectionManagementClient(BaseClient):
         if op == EditConnectionOperationType.REVOKE_API_KEY.value:
             return ApiKeyResponse(key_id=data.get("key_id", ""), api_key="")
         return self._parse_response(
-            ApiKeyResponse, response.get("key"), "API key response"
+            ApiKeyResponse, response.get("key"), "update api key response"
         )

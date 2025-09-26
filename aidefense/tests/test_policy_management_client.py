@@ -24,21 +24,13 @@ from aidefense.management.models.policy import (
     Policy,
     Policies,
     PolicySortBy,
-    Guardrail,
-    Guardrails,
     GuardrailType,
     ListPoliciesRequest,
-    ListPoliciesResponse,
     UpdatePolicyRequest,
-    UpdatePolicyResponse,
-    DeletePolicyResponse,
     AddOrUpdatePolicyConnectionsRequest,
-    AddOrUpdatePolicyConnectionsResponse,
     RuleStatus,
     Direction,
     Action,
-    Entity,
-    GuardrailRule,
 )
 from aidefense.management.models.connection import ConnectionType
 from aidefense.management.models.common import Paging
@@ -227,7 +219,7 @@ class TestPolicyManagementClient:
         )
 
         # Verify the response
-        assert isinstance(response, UpdatePolicyResponse)
+        assert response is None
 
     def test_update_policy_failfast_empty(self, policy_client):
         """Fail fast when no fields are provided to update."""

@@ -296,15 +296,6 @@ class GetConnectionByIDRequest(AIDefenseModel):
     )
 
 
-class DeleteConnectionByIDResponse(AIDefenseModel):
-    """Delete connection by ID response model."""
-
-    class Config:
-        """Pydantic configuration."""
-
-        frozen = True  # Make the model immutable
-
-
 class UpdateConnectionRequest(AIDefenseModel):
     """Update connection request model."""
 

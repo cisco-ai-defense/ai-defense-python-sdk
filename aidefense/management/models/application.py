@@ -109,29 +109,3 @@ class UpdateApplicationRequest(AIDefenseModel):
         None, description="Application name (optional)"
     )
     description: Optional[str] = Field(None, description="Description (optional)")
-
-
-class UpdateApplicationResponse(AIDefenseModel):
-    """
-    Update application response model.
-
-    This is an empty response as the API returns no content for this operation.
-    """
-
-    class Config:
-        """Pydantic configuration."""
-
-        frozen = True  # Make the model immutable
-
-
-class DeleteApplicationResponse(AIDefenseModel):
-    """
-    Delete application response model.
-
-    This is an empty response as the API returns no content for this operation.
-    """
-
-    class Config:
-        """Pydantic configuration."""
-
-        frozen = True  # Make the model immutable

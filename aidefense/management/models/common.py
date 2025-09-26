@@ -17,7 +17,6 @@
 """Common models for the AI Defense Management API."""
 
 from enum import Enum
-from typing import Optional
 from pydantic import Field
 from ...models.base import AIDefenseModel
 
