@@ -124,6 +124,8 @@ class Config:
             "ap": "https://ap.api.aidefense.security.cisco.com",
             "eu": "https://eu.api.aidefense.security.cisco.com",
             "us-west-2": "https://us.api.aidefense.security.cisco.com",
+            "eu-central-1": "https://eu.api.aidefense.security.cisco.com",
+            "ap-northeast-1": "https://ap.api.aidefense.security.cisco.com",
         }
 
         # Set runtime base URL
