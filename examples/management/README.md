@@ -59,9 +59,9 @@ Applications represent AI systems that you want to protect with AI Defense. You 
 Connections link your applications to AI Defense. You can:
 
 - List connections
-- Create new connections
+- Create a connection
 - Get connection details
-- Delete connections
+- Delete connection
 - Manage API keys for connections
 
 ### Policies
