@@ -39,7 +39,7 @@ class BaseClient:
     and resource management. Resource-specific clients should inherit from this class.
 
     Args:
-        api_key (str): Your AI Defense Management API key for authentication.
+        auth (ManagementAuth): Your AI Defense Management API authentication object.
         config (Config, optional): SDK configuration for endpoints, logging, retries, etc.
             If not provided, a default singleton Config is used.
         request_handler: The request handler to use for making API requests.
@@ -47,13 +47,13 @@ class BaseClient:
         api_version (str, optional): API version to use. Default is "v1".
 
     Attributes:
-        api_key (str): The API key used for management API authentication.
         config (Config): The runtime configuration object.
         api_version (str): The API version being used.
     """
 
     # Default API version
     DEFAULT_API_VERSION = "v1"
+    AI_DEFENSE_API_PREFIX = "api/ai-defense"
 
     def __init__(
         self,
@@ -78,7 +78,7 @@ class BaseClient:
         self.api_version = api_version or self.DEFAULT_API_VERSION
         # Precompute the API prefix once to avoid repeated strip/concat on every request
         base_url = self.config.management_base_url
-        self._api_prefix = f"{base_url}/api/ai-defense/{self.api_version}"
+        self._api_prefix = f"{base_url}/{self.AI_DEFENSE_API_PREFIX}/{self.api_version}"
 
         self._request_handler = request_handler or RequestHandler(self.config)
 
