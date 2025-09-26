@@ -1,3 +1,5 @@
+from aidefense.tests.test_ai_validation_client import validation_client
+
 # cisco-aidefense-sdk
 
 **Cisco AI Defense Python SDK**
@@ -16,6 +18,7 @@ Integrate AI-powered security, privacy, and safety inspections into your Python 
   - [Chat Inspection](#chat-inspection)
   - [HTTP Inspection](#http-inspection)
   - [Management API](#management-api)
+  - [Validation API](#validation-api)
 - [Configuration](#configuration)
 - [Advanced Usage](#advanced-usage)
 - [Error Handling](#error-handling)
@@ -137,6 +140,33 @@ result = client.applications.create_application(create_app_request)
 print(f"Created application with ID: {result.application_id}")
 ```
 
+### Validation API
+
+The Validation API is implemented on top of the Management API stack and is provided as a separate client (`AiValidationClient`). It is not part of the `ManagementClient` aggregator.
+
+```python
+from aidefense import Config
+from aidefense.management.validation_client import AiValidationClient
+from aidefense.management.models.validation import (
+    StartAiValidationRequest,
+    AssetType,
+    AWSRegion,
+)
+
+client = AiValidationClient(api_key="YOUR_MANAGEMENT_API_KEY", config=Config())
+
+start_req = StartAiValidationRequest(
+    asset_type=AssetType.APPLICATION,
+    application_id="your-application-id",
+    validation_scan_name="My SDK Scan",
+    model_provider="OpenAI",
+    model_endpoint_url_model_id="gpt-4",
+)
+
+resp = client.start_ai_validation(start_req)
+print(resp.task_id)
+```
+
 ---
 
 ## SDK Structure
@@ -153,6 +183,8 @@ print(f"Created application with ID: {result.application_id}")
 - `management/policies.py` — PolicyManagementClient for managing policies
 - `management/events.py` — EventManagementClient for retrieving events
 - `management/models/` — Data models for all management resources
+  - `management/validation_client.py` — AiValidationClient for starting/listing validation jobs
+  - `management/models/validation.py` — Validation-related request/response models and enums
 
 ### Common
 - `config.py` — SDK-wide configuration (logging, retries, connection pool)
@@ -344,6 +376,7 @@ custom_endpoint_config = Config(
 chat_client = ChatInspectionClient(api_key="YOUR_INSPECTION_API_KEY", config=custom_endpoint_config)
 http_client = HttpInspectionClient(api_key="YOUR_INSPECTION_API_KEY", config=custom_endpoint_config)
 management_client = ManagementClient(api_key="YOUR_MANAGEMENT_API_KEY", config=custom_endpoint_config)
+validation_client = AiValidationClient(api_key="YOUR_MANAGEMENT_API_KEY", config=custom_endpoint_config)
 ```
 
 ---

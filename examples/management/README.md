@@ -82,6 +82,35 @@ Events are security incidents detected by AI Defense. You can:
 - Get event details
 - Get event conversation history
 
+### Validation (under Management stack)
+
+The Validation API is implemented on top of the Management API stack and is provided as a separate client (`AiValidationClient`). It is not part of the `ManagementClient` aggregator.
+
+- Start an AI validation job
+- Get job status/details
+- List all validation configs
+- Get a specific validation config by task_id
+
+See the example: [`validation_client_usage.py`](./validation_client_usage.py)
+
+Imports you will need:
+
+```python
+from aidefense.management.validation_client import AiValidationClient
+from aidefense.management.models.validation import (
+    StartAiValidationRequest,
+    AssetType,
+    AWSRegion,
+    Header,
+)
+```
+
+Run the example:
+
+```bash
+python validation_client_usage.py
+```
+
 ## Best Practices
 
 1. **Resource Management**: Always close the ManagementClient when you're done to release resources:
