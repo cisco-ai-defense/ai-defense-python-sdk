@@ -49,7 +49,7 @@ The Management API provides access to the following resources:
 Applications represent AI systems that you want to protect with AI Defense. You can:
 
 - List applications
-- Create new applications
+- Create an application
 - Get application details
 - Update applications
 - Delete applications
