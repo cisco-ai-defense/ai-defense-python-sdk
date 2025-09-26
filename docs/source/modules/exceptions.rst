@@ -29,7 +29,7 @@ Handling Validation Errors
     from aidefense import HttpInspectionClient
     from aidefense.exceptions import ValidationError
 
-    client = HttpInspectionClient(api_key="YOUR_API_KEY")
+    client = HttpInspectionClient(api_key="YOUR_INSPECTION_API_KEY")
 
     try:
         result = client.inspect_request(

@@ -23,8 +23,8 @@ from aidefense.runtime.utils import to_base64_bytes
 
 config = Config(logger_params={"level": "INFO"})
 
-client1 = HttpInspectionClient(api_key="YOUR_API_KEY", config=config)
-client2 = HttpInspectionClient(api_key="YOUR_API_KEY", config=config)
+client1 = HttpInspectionClient(api_key="YOUR_INSPECTION_API_KEY", config=config)
+client2 = HttpInspectionClient(api_key="YOUR_INSPECTION_API_KEY", config=config)
 
 # Use client1 to inspect a raw HTTP request (inspect)
 json_bytes = b'{"key": "value"}'

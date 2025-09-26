@@ -19,6 +19,9 @@
 from datetime import datetime
 from typing import Optional, Dict
 
+from requests.auth import AuthBase
+
+from .auth import ManagementAuth
 from .base_client import BaseClient
 from .models.connection import (
     Connection,
@@ -35,6 +38,7 @@ from .models.connection import (
     ApiKeyResponse,
 )
 from ..config import Config
+from ._routes import CONNECTIONS, connection_by_id, connection_keys
 
 
 class ConnectionManagementClient(BaseClient):
@@ -46,18 +50,21 @@ class ConnectionManagementClient(BaseClient):
     """
 
     def __init__(
-        self, api_key: str, config: Optional[Config] = None, request_handler=None
+        self,
+        auth: ManagementAuth,
+        config: Optional[Config] = None,
+        request_handler=None,
     ):
         """
         Initialize the ConnectionManagementClient.
 
         Args:
-            api_key (str): Your AI Defense Management API key for authentication.
+            auth (ManagementAuth): Your AI Defense Management API authentication object.
             config (Config, optional): SDK configuration for endpoints, logging, retries, etc.
                 Defaults to the singleton Config if not provided.
             request_handler: Request handler for making API requests
         """
-        super().__init__(api_key, config, request_handler)
+        super().__init__(auth, config, request_handler)
 
     def list_connections(self, request: ListConnectionsRequest) -> Connections:
         """
@@ -89,27 +96,9 @@ class ConnectionManagementClient(BaseClient):
                 for conn in connections.items:
                     print(f"{conn.connection_id}: {conn.connection_name}")
         """
-        params = self._filter_none(
-            {
-                "limit": request.limit,
-                "offset": request.offset,
-                "expanded": request.expanded,
-                "sort_by": (
-                    request.sort_by.value
-                    if isinstance(request.sort_by, ConnectionSortBy)
-                    else request.sort_by
-                ),
-                "order": (
-                    request.order.value
-                    if hasattr(request.order, "value")
-                    else request.order
-                ),
-            }
-        )
+        params = request.to_params()
 
-        response = self.make_request(
-            "GET", f"{self.api_version}/connections", params=params
-        )
+        response = self.make_request("GET", CONNECTIONS, params=params)
         connections = self._parse_response(
             Connections, response.get("connections", {}), "connections response"
         )
@@ -155,34 +144,11 @@ class ConnectionManagementClient(BaseClient):
                 if response.key:
                     print(f"API Key: {response.key.api_key}")
         """
-        data = self._filter_none(
-            {
-                "application_id": request.application_id,
-                "connection_name": request.connection_name,
-                "connection_type": (
-                    request.connection_type.value
-                    if isinstance(request.connection_type, ConnectionType)
-                    else request.connection_type
-                ),
-                "endpoint_id": request.endpoint_id,
-                "connection_guide_id": request.connection_guide_id,
-            }
-        )
+        # Validate referenced IDs
+        self._ensure_uuid(request.application_id, "application_id")
+        data = request.to_body_dict()
 
-        # Add key information if provided
-        if request.key:
-            data["key"] = {
-                "name": request.key.name,
-                "expiry": (
-                    "2026-01-01T00:00:00Z"
-                    if request.key.expiry.year == 2026
-                    and request.key.expiry.month == 1
-                    and request.key.expiry.day == 1
-                    else request.key.expiry.strftime("%Y-%m-%dT%H:%M:%SZ")
-                ),
-            }
-
-        response = self.make_request("POST", "connections", data=data)
+        response = self.make_request("POST", CONNECTIONS, data=data)
 
         # Create the response object
         connection_id = response.get("connection_id", "")
@@ -218,9 +184,11 @@ class ConnectionManagementClient(BaseClient):
                 connection = client.connections.get_connection(connection_id, expanded=True)
                 print(f"Connection name: {connection.connection_name}")
         """
-        params = self._filter_none({"expanded": expanded})
+        # Validate IDs
+        self._ensure_uuid(connection_id, "connection_id")
+        params = {"expanded": expanded} if expanded is not None else None
         response = self.make_request(
-            "GET", f"connections/{connection_id}", params=params
+            "GET", connection_by_id(connection_id), params=params
         )
         connection = self._parse_response(
             Connection, response.get("connection", {}), "connection response"
@@ -235,7 +203,7 @@ class ConnectionManagementClient(BaseClient):
             connection_id (str): ID of the connection to delete
 
         Returns:
-            DeleteConnectionByIDResponse: Empty response object.
+            None
 
         Raises:
             ValidationError, ApiError, SDKError
@@ -246,8 +214,10 @@ class ConnectionManagementClient(BaseClient):
                 connection_id = "323e4567-e89b-12d3-a456-426614174333"
                 response = client.connections.delete_connection(connection_id)
         """
-        self.make_request("DELETE", f"connections/{connection_id}")
-        return DeleteConnectionByIDResponse()
+        # Validate IDs
+        self._ensure_uuid(connection_id, "connection_id")
+        self.make_request("DELETE", connection_by_id(connection_id))
+        return None
 
     def get_api_keys(self, connection_id: str) -> ApiKeys:
         """
@@ -270,7 +240,9 @@ class ConnectionManagementClient(BaseClient):
                 for key in api_keys.items:
                     print(f"{key.id}: {key.name} ({key.status})")
         """
-        response = self.make_request("GET", f"connections/{connection_id}/keys")
+        # Validate IDs
+        self._ensure_uuid(connection_id, "connection_id")
+        response = self.make_request("GET", connection_keys(connection_id))
         keys = self._parse_response(
             ApiKeys, response.get("keys", {}), "API keys response"
         )
@@ -312,28 +284,32 @@ class ConnectionManagementClient(BaseClient):
                 if 'key' in result:
                     print(f"API Key: {result['key']['api_key']}")
         """
-        data = {
-            "op": (
-                request.operation_type.value
-                if isinstance(request.operation_type, EditConnectionOperationType)
-                else request.operation_type
-            )
-        }
+        # Validate IDs
+        self._ensure_uuid(connection_id, "connection_id")
+        data = request.to_body_dict(patch=True)
+        if not data:
+            raise ValueError("No fields to update in UpdateConnectionRequest")
 
-        if request.key_id:
-            data["key_id"] = request.key_id
+        # Fail-fast: validate required fields based on operation type
+        op = data.get("op")
+        if op in (
+            EditConnectionOperationType.GENERATE_API_KEY.value,
+            EditConnectionOperationType.REGENERATE_API_KEY.value,
+        ):
+            if "key" not in data or data["key"] is None:
+                raise ValueError(
+                    "'key' must be provided for API key generation/regeneration"
+                )
+        elif op == EditConnectionOperationType.REVOKE_API_KEY.value:
+            if not data.get("key_id"):
+                raise ValueError(
+                    "'key_id' must be provided for API key revoke operation"
+                )
 
-        if request.key:
-            data["key"] = {
-                "name": request.key.name,
-                "expiry": (
-                    request.key.expiry.strftime("%Y-%m-%dT%H:%M:%SZ")
-                    if isinstance(request.key.expiry, datetime)
-                    else request.key.expiry
-                ),
-            }
-
-        response = self.make_request(
-            "POST", f"connections/{connection_id}/keys", data=data
+        response = self.make_request("POST", connection_keys(connection_id), data=data)
+        # For revoke, API may return empty body. Synthesize a minimal response using input key_id.
+        if op == EditConnectionOperationType.REVOKE_API_KEY.value:
+            return ApiKeyResponse(key_id=data.get("key_id", ""), api_key="")
+        return self._parse_response(
+            ApiKeyResponse, response.get("key"), "API key response"
         )
-        return ApiKeyResponse.parse_obj(response.get("key"))

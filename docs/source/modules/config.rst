@@ -51,8 +51,8 @@ Basic Configuration
     # Use this config when initializing clients
     from aidefense import ChatInspectionClient, HttpInspectionClient
 
-    chat_client = ChatInspectionClient(api_key="YOUR_API_KEY", config=config)
-    http_client = HttpInspectionClient(api_key="YOUR_API_KEY", config=config)
+    chat_client = ChatInspectionClient(api_key="YOUR_INSPECTION_API_KEY", config=config)
+    http_client = HttpInspectionClient(api_key="YOUR_INSPECTION_API_KEY", config=config)
 
 Custom Logging
 ^^^^^^^^^^^^^
@@ -103,8 +103,8 @@ Customizing API Endpoints
     )
 
     # Both clients will use the custom endpoint
-    chat_client = ChatInspectionClient(api_key="YOUR_API_KEY", config=config)
-    http_client = HttpInspectionClient(api_key="YOUR_API_KEY", config=config)
+    chat_client = ChatInspectionClient(api_key="YOUR_INSPECTION_API_KEY", config=config)
+    http_client = HttpInspectionClient(api_key="YOUR_INSPECTION_API_KEY", config=config)
 
 Configuration for Multiple Environments
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -140,7 +140,7 @@ Configuration for Multiple Environments
     config = get_config(env)
 
     # Initialize client with the environment-specific config
-    client = ChatInspectionClient(api_key="YOUR_API_KEY", config=config)
+    client = ChatInspectionClient(api_key="YOUR_INSPECTION_API_KEY", config=config)
 
 See the `/examples/advanced/custom_configuration.py` example in the SDK's well-organized examples directory for more advanced configuration scenarios.
 

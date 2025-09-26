@@ -99,7 +99,7 @@ class HttpInspectionClient(InspectionClient):
             from aidefense.runtime import HttpInspectionClient
 
             # Initialize client
-            client = HttpInspectionClient(api_key="your_api_key")
+            client = HttpInspectionClient(api_key="your_inspection_api_key")
 
             # Prepare HTTP request with base64 encoded body
             body = "Hello, world!"
@@ -167,7 +167,7 @@ class HttpInspectionClient(InspectionClient):
             from aidefense.runtime import HttpInspectionClient
 
             # Initialize client
-            client = HttpInspectionClient(api_key="your_api_key")
+            client = HttpInspectionClient(api_key="your_inspection_api_key")
 
             # Create a requests.Request object
             req = requests.Request(
@@ -254,7 +254,7 @@ class HttpInspectionClient(InspectionClient):
             from aidefense.runtime import InspectionConfig, Rule, RuleName
 
             # Initialize client
-            client = HttpInspectionClient(api_key="your_api_key")
+            client = HttpInspectionClient(api_key="your_inspection_api_key")
 
             # Make a request to an API
             response = requests.get("https://api.example.com/data") # this should be a valid url to model provider.
@@ -355,7 +355,7 @@ class HttpInspectionClient(InspectionClient):
             from aidefense.runtime import HttpInspectionClient
 
             # Initialize client
-            client = HttpInspectionClient(api_key="your_api_key")
+            client = HttpInspectionClient(api_key="your_inspection_api_key")
 
             # Define request parameters
             method = "POST"
@@ -454,7 +454,7 @@ class HttpInspectionClient(InspectionClient):
             from aidefense.runtime import InspectionConfig, Rule, RuleName
 
             # Initialize client
-            client = HttpInspectionClient(api_key="your_api_key")
+            client = HttpInspectionClient(api_key="your_inspection_api_key")
 
             # Define API response details
             status_code = 200

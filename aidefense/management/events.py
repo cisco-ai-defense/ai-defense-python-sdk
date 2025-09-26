@@ -18,6 +18,7 @@
 
 from typing import Optional, Dict, Any
 
+from .auth import ManagementAuth
 from .base_client import BaseClient
 from .models.event import (
     Event,
@@ -28,6 +29,7 @@ from .models.event import (
     ListEventsRequest,
 )
 from ..config import Config
+from ._routes import EVENTS, event_by_id, event_conversation
 
 
 class EventManagementClient(BaseClient):
@@ -39,18 +41,21 @@ class EventManagementClient(BaseClient):
     """
 
     def __init__(
-        self, api_key: str, config: Optional[Config] = None, request_handler=None
+        self,
+        auth: ManagementAuth,
+        config: Optional[Config] = None,
+        request_handler=None,
     ):
         """
         Initialize the EventManagementClient.
 
         Args:
-            api_key (str): Your AI Defense Management API key for authentication.
+            auth (ManagementAuth): Your AI Defense Management API authentication object.
             config (Config, optional): SDK configuration for endpoints, logging, retries, etc.
                 Defaults to the singleton Config if not provided.
             request_handler: Request handler for making API requests (should be an instance of ManagementClient).
         """
-        super().__init__(api_key, config, request_handler)
+        super().__init__(auth, config, request_handler)
 
     def list_events(self, request: ListEventsRequest) -> Events:
         """
@@ -86,36 +91,10 @@ class EventManagementClient(BaseClient):
                 for event in events.items:
                     print(f"{event.event_id}: {event.event_date}")
         """
-        # Convert datetime objects to ISO format strings if needed
-        start_date = (
-            request.start_date.strftime("%Y-%m-%dT%H:%M:%SZ")
-            if request.start_date
-            else None
-        )
-        end_date = (
-            request.end_date.strftime("%Y-%m-%dT%H:%M:%SZ")
-            if request.end_date
-            else None
-        )
+        # Prepare data for the POST request using model serializer
+        data = request.to_body_dict()
 
-        # Prepare data for the POST request
-        data = self._filter_none(
-            {
-                "limit": request.limit,
-                "offset": request.offset,
-                "start_date": start_date,
-                "end_date": end_date,
-                "expanded": request.expanded,
-                "sort_by": (
-                    request.sort_by.value
-                    if isinstance(request.sort_by, EventSortBy)
-                    else request.sort_by
-                ),
-                "order": request.order,
-            }
-        )
-
-        response = self.make_request("POST", "events", data=data)
+        response = self.make_request("POST", EVENTS, data=data)
         events = self._parse_response(
             Events, response.get("events", {}), "events response"
         )
@@ -142,20 +121,19 @@ class EventManagementClient(BaseClient):
                 event = client.events.get_event(event_id, expanded=True)
                 print(f"Event action: {event.event_action}")
         """
-        params = self._filter_none({"expanded": expanded})
-        response = self.make_request("GET", f"events/{event_id}", params=params)
+        # Validate IDs
+        self._ensure_uuid(event_id, "event_id")
+        params = {"expanded": expanded} if expanded is not None else None
+        response = self.make_request("GET", event_by_id(event_id), params=params)
         event = self._parse_response(Event, response.get("event", {}), "event response")
         return event
 
-    def get_event_conversation(
-        self, event_id: str, expanded: bool = None
-    ) -> Dict[str, Any]:
+    def get_event_conversation(self, event_id: str) -> Dict[str, Any]:
         """
         Get conversation for an event.
 
         Args:
             event_id (str): ID of the event
-            expanded (bool, optional): Whether to include expanded details
 
         Returns:
             Dict[str, Any]: Dictionary containing:
@@ -174,10 +152,7 @@ class EventManagementClient(BaseClient):
                 for message in result['messages'].items:
                     print(f"{message.direction}: {message.content}")
         """
-        params = self._filter_none({"expanded": expanded})
-        response = self.make_request(
-            "GET", f"events/{event_id}/conversation", params=params
-        )
+        response = self.make_request("GET", event_conversation(event_id))
 
         # Extract the event_conversation_id from the response
         event_conversation_id = response.get("event_conversation_id", "")

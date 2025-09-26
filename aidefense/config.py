@@ -120,10 +120,10 @@ class Config:
             "me-central-1": "https://uae.api.inspect.aidefense.security.cisco.com",
         }
         self.management_region_endpoints = {
-            "us": "https://api.security.cisco.com",
-            # TODO - Update base management URLs
-            "eu": "https://eu.api.manage.aidefense.security.cisco.com",
-            "apj": "https://apj.api.manage.aidefense.security.cisco.com",
+            "us": "https://us.api.aidefense.security.cisco.com",
+            "ap": "https://ap.api.aidefense.security.cisco.com",
+            "eu": "https://eu.api.aidefense.security.cisco.com",
+            "us-west-2": "https://us.api.aidefense.security.cisco.com",
         }
 
         # Set runtime base URL
@@ -141,6 +141,9 @@ class Config:
             self.management_base_url = management_base_url
         else:
             self.management_base_url = self.management_region_endpoints.get(region)
+
+        self.runtime_base_url.rstrip("/")
+        self.management_base_url.rstrip("/")
 
         # --- Logger ---
         if logger:

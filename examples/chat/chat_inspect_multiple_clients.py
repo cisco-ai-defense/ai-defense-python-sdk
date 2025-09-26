@@ -23,8 +23,8 @@ from aidefense.runtime import Message, Role
 
 config = Config(logger_params={"level": "DEBUG"})
 
-client1 = ChatInspectionClient(api_key="YOUR_API_KEY", config=config)
-client2 = ChatInspectionClient(api_key="YOUR_API_KEY", config=config)
+client1 = ChatInspectionClient(api_key="YOUR_INSPECTION_API_KEY", config=config)
+client2 = ChatInspectionClient(api_key="YOUR_INSPECTION_API_KEY", config=config)
 
 # Use client1 to inspect a prompt
 result1 = client1.inspect_prompt("Is this a safe prompt?")

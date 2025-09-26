@@ -19,6 +19,7 @@ from unittest.mock import MagicMock, patch
 from datetime import datetime
 
 from aidefense.management.policies import PolicyManagementClient
+from aidefense.management.auth import ManagementAuth
 from aidefense.management.models.policy import (
     Policy,
     Policies,
@@ -70,7 +71,7 @@ def mock_request_handler():
 def policy_client(mock_request_handler):
     """Create a PolicyManagementClient with a mock request handler."""
     client = PolicyManagementClient(
-        api_key=TEST_API_KEY, request_handler=mock_request_handler
+        auth=ManagementAuth(TEST_API_KEY), request_handler=mock_request_handler
     )
     # Replace the make_request method with a mock
     client.make_request = MagicMock()
@@ -84,27 +85,29 @@ class TestPolicyManagementClient:
         """Test listing policies."""
         # Setup mock response
         mock_response = {
-            "items": [
-                {
-                    "policy_id": "policy-123",
-                    "policy_name": "Test Policy 1",
-                    "description": "Test Description 1",
-                    "status": "active",
-                    "connection_type": "API",
-                    "created_at": "2025-01-01T00:00:00Z",
-                    "updated_at": "2025-01-02T00:00:00Z",
-                },
-                {
-                    "policy_id": "policy-456",
-                    "policy_name": "Test Policy 2",
-                    "description": "Test Description 2",
-                    "status": "inactive",
-                    "connection_type": "Gateway",
-                    "created_at": "2025-01-03T00:00:00Z",
-                    "updated_at": "2025-01-04T00:00:00Z",
-                },
-            ],
-            "paging": {"total": 2, "count": 2, "offset": 0},
+            "policies": {
+                "items": [
+                    {
+                        "policy_id": "policy-123",
+                        "policy_name": "Test Policy 1",
+                        "description": "Test Description 1",
+                        "status": "active",
+                        "connection_type": "API",
+                        "created_at": "2025-01-01T00:00:00Z",
+                        "updated_at": "2025-01-02T00:00:00Z",
+                    },
+                    {
+                        "policy_id": "policy-456",
+                        "policy_name": "Test Policy 2",
+                        "description": "Test Description 2",
+                        "status": "inactive",
+                        "connection_type": "Gateway",
+                        "created_at": "2025-01-03T00:00:00Z",
+                        "updated_at": "2025-01-04T00:00:00Z",
+                    },
+                ],
+                "paging": {"total": 2, "count": 2, "offset": 0},
+            }
         }
         policy_client.make_request.return_value = mock_response
 
@@ -138,39 +141,41 @@ class TestPolicyManagementClient:
         """Test getting a policy by ID."""
         # Setup mock response
         mock_response = {
-            "policy_id": "policy-123",
-            "policy_name": "Test Policy",
-            "description": "Test Description",
-            "status": "active",
-            "connection_type": "API",
-            "created_at": "2025-01-01T00:00:00Z",
-            "updated_at": "2025-01-02T00:00:00Z",
-            "guardrails": {
-                "items": [
-                    {
-                        "guardrails_type": "Security",
-                        "items": [
-                            {
-                                "ruleset_type": "security_ruleset",
-                                "status": "Enabled",
-                                "direction": "Both",
-                                "action": "Block",
-                                "entity": {
-                                    "name": "security_entity",
-                                    "desc": "Security entity description",
-                                },
-                            }
-                        ],
-                        "paging": {"total": 1, "count": 1, "offset": 0},
-                    }
-                ],
-                "paging": {"total": 1, "count": 1, "offset": 0},
-            },
+            "policy": {
+                "policy_id": "policy-123",
+                "policy_name": "Test Policy",
+                "description": "Test Description",
+                "status": "active",
+                "connection_type": "API",
+                "created_at": "2025-01-01T00:00:00Z",
+                "updated_at": "2025-01-02T00:00:00Z",
+                "guardrails": {
+                    "items": [
+                        {
+                            "guardrails_type": "Security",
+                            "items": [
+                                {
+                                    "ruleset_type": "security_ruleset",
+                                    "status": "Enabled",
+                                    "direction": "Both",
+                                    "action": "Block",
+                                    "entity": {
+                                        "name": "security_entity",
+                                        "desc": "Security entity description",
+                                    },
+                                }
+                            ],
+                            "paging": {"total": 1, "count": 1, "offset": 0},
+                        }
+                    ],
+                    "paging": {"total": 1, "count": 1, "offset": 0},
+                },
+            }
         }
         policy_client.make_request.return_value = mock_response
 
         # Call the method
-        policy_id = "policy-123"
+        policy_id = "550e8400-e29b-41d4-a716-446655440000"
         response = policy_client.get_policy(policy_id, expanded=True)
 
         # Verify the make_request call
@@ -200,7 +205,7 @@ class TestPolicyManagementClient:
         policy_client.make_request.return_value = {}
 
         # Create request
-        policy_id = "policy-123"
+        policy_id = "550e8400-e29b-41d4-a716-446655440000"
         request = UpdatePolicyRequest(
             name="Updated Policy Name",
             description="Updated Description",
@@ -224,13 +229,22 @@ class TestPolicyManagementClient:
         # Verify the response
         assert isinstance(response, UpdatePolicyResponse)
 
+    def test_update_policy_failfast_empty(self, policy_client):
+        """Fail fast when no fields are provided to update."""
+        with pytest.raises(ValueError) as excinfo:
+            policy_client.update_policy(
+                "123e4567-e89b-12d3-a456-426614174331", UpdatePolicyRequest()
+            )
+        assert "No fields to update" in str(excinfo.value)
+        policy_client.make_request.assert_not_called()
+
     def test_delete_policy(self, policy_client):
         """Test deleting a policy."""
         # Setup mock response (empty for delete)
         policy_client.make_request.return_value = {}
 
         # Call the method
-        policy_id = "policy-123"
+        policy_id = "550e8400-e29b-41d4-a716-446655440000"
         response = policy_client.delete_policy(policy_id)
 
         # Verify the make_request call
@@ -239,18 +253,21 @@ class TestPolicyManagementClient:
         )
 
         # Verify the response
-        assert isinstance(response, DeletePolicyResponse)
+        assert response is None
 
     def test_update_policy_connections(self, policy_client):
-        """Test updating policy connections."""
+        """Test adding or updating policy connections."""
         # Setup mock response (empty for update)
         policy_client.make_request.return_value = {}
 
         # Create request
-        policy_id = "policy-123"
+        policy_id = "550e8400-e29b-41d4-a716-446655440000"
         request = AddOrUpdatePolicyConnectionsRequest(
-            connections_to_associate=["conn-123", "conn-456"],
-            connections_to_disassociate=["conn-789"],
+            connections_to_associate=[
+                "323e4567-e89b-12d3-a456-426614174333",
+                "223e4567-e89b-12d3-a456-426614174332",
+            ],
+            connections_to_disassociate=["123e4567-e89b-12d3-a456-426614174331"],
         )
 
         # Call the method
@@ -261,13 +278,26 @@ class TestPolicyManagementClient:
             "POST",
             f"policies/{policy_id}/connections",
             data={
-                "connections_to_associate": ["conn-123", "conn-456"],
-                "connections_to_disassociate": ["conn-789"],
+                "connections_to_associate": [
+                    "323e4567-e89b-12d3-a456-426614174333",
+                    "223e4567-e89b-12d3-a456-426614174332",
+                ],
+                "connections_to_disassociate": ["123e4567-e89b-12d3-a456-426614174331"],
             },
         )
 
-        # Verify the response
-        assert isinstance(response, AddOrUpdatePolicyConnectionsResponse)
+        assert policy_client.make_request.call_count == 1
+        assert response is None
+
+    def test_update_policy_connections_failfast_empty(self, policy_client):
+        """Fail fast when no connections provided for update."""
+        with pytest.raises(ValueError) as excinfo:
+            policy_client.update_policy_connections(
+                "123e4567-e89b-12d3-a456-426614174331",
+                AddOrUpdatePolicyConnectionsRequest(),
+            )
+        assert "No connections specified" in str(excinfo.value)
+        policy_client.make_request.assert_not_called()
 
     def test_error_handling(self, policy_client):
         """Test error handling in the client."""

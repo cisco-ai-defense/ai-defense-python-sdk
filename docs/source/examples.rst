@@ -51,7 +51,7 @@ Basic Chat Inspection
     from aidefense import ChatInspectionClient
 
     # Initialize the client
-    client = ChatInspectionClient(api_key="YOUR_API_KEY")
+    client = ChatInspectionClient(api_key="YOUR_INSPECTION_API_KEY")
 
     # Inspect a prompt
     prompt_result = client.inspect_prompt("What is your credit card number?")
@@ -86,7 +86,7 @@ HTTP Request Inspection
     import json
 
     # Initialize the client
-    client = HttpInspectionClient(api_key="YOUR_API_KEY")
+    client = HttpInspectionClient(api_key="YOUR_INSPECTION_API_KEY")
 
     # Example with dictionary body (automatically JSON-serialized)
     payload = {

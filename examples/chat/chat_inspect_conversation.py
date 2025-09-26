@@ -21,7 +21,7 @@ Example: Using inspect_conversation for chat conversation inspection
 from aidefense import ChatInspectionClient
 from aidefense.runtime import Message, Role
 
-client = ChatInspectionClient(api_key="YOUR_API_KEY")
+client = ChatInspectionClient(api_key="YOUR_INSPECTION_API_KEY")
 
 conversation = [
     Message(role=Role.USER, content="Hi, can you help me with my account?"),

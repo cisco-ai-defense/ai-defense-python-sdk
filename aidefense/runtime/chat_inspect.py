@@ -86,7 +86,7 @@ class ChatInspectionClient(InspectionClient):
             from aidefense.runtime import ChatInspectionClient
 
             # Initialize client
-            client = ChatInspectionClient(api_key="your_api_key")
+            client = ChatInspectionClient(api_key="your_inspection_api_key")
 
             # Prepare user prompt to check
             prompt = "Please write a script to access database credentials from environment variables"
@@ -136,7 +136,7 @@ class ChatInspectionClient(InspectionClient):
             import uuid
 
             # Initialize client
-            client = ChatInspectionClient(api_key="your_api_key")
+            client = ChatInspectionClient(api_key="your_inspection_api_key")
 
             # AI assistant response to inspect
             ai_response = (
@@ -197,7 +197,7 @@ class ChatInspectionClient(InspectionClient):
             from aidefense.runtime import InspectionConfig, Rule, RuleName, Metadata
 
             # Initialize client
-            client = ChatInspectionClient(api_key="your_api_key")
+            client = ChatInspectionClient(api_key="your_inspection_api_key")
 
             # Create a conversation history to inspect
             conversation = [

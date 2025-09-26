@@ -16,13 +16,16 @@
 
 """Base client for the AI Defense Management API."""
 
-from typing import Dict, Any, Optional, Type, TypeVar, cast, Protocol, runtime_checkable
-from pydantic import BaseModel, ValidationError as PydanticValidationError
+from typing import Dict, Any, Optional, Type, TypeVar, cast, Union
+import uuid
 
-from ..config import Config
+from pydantic import BaseModel, ValidationError as PydanticValidationError
+from requests.auth import AuthBase
+
 from .auth import ManagementAuth
+from ..config import Config
+from ..exceptions import ResponseParseError
 from ..request_handler import RequestHandler
-from ..exceptions import ResponseParseError, ValidationError
 
 # Type variable for Pydantic models
 T = TypeVar("T", bound=BaseModel)
@@ -54,7 +57,7 @@ class BaseClient:
 
     def __init__(
         self,
-        api_key: str,
+        auth: ManagementAuth,
         config: Optional[Config] = None,
         request_handler: Optional[RequestHandler] = None,
         api_version: Optional[str] = None,
@@ -63,19 +66,21 @@ class BaseClient:
         Initialize the BaseClient.
 
         Args:
-            api_key (str): Your AI Defense Management API key for authentication.
+            auth (ManagementAuth): Your AI Defense Management API authentication object.
             config (Config, optional): SDK configuration for endpoints, logging, retries, etc.
                 If not provided, a default singleton Config is used.
             request_handler: The request handler to use for making API requests.
                 This should be an instance of ManagementClient.
             api_version (str, optional): API version to use. Default is "v1".
         """
-        self.api_key = api_key
+        self._auth = auth
         self.config = config or Config()
-        self._auth = ManagementAuth(api_key)
         self.api_version = api_version or self.DEFAULT_API_VERSION
+        # Precompute the API prefix once to avoid repeated strip/concat on every request
+        base_url = self.config.management_base_url
+        self._api_prefix = f"{base_url}/api/ai-defense/{self.api_version}"
 
-        self._request_handler = request_handler or RequestHandler(config)
+        self._request_handler = request_handler or RequestHandler(self.config)
 
     def _get_url(self, path: str) -> str:
         """
@@ -87,24 +92,25 @@ class BaseClient:
         Returns:
             str: The full URL for the API endpoint.
         """
-        # Use the management_base_url from config and append the API path
-        base_url = self.config.management_base_url.rstrip("/")
-        api_path = f"/api/ai-defense/{self.api_version}".rstrip("/")
+        # Join the precomputed API prefix with the relative path
         path = path.lstrip("/")
+        return f"{self._api_prefix}/{path}"
 
-        return f"{base_url}{api_path}/{path}"
-
-    def _filter_none(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Filter out None values from a dictionary.
+    # ---- Validation helpers ----
+    def _ensure_uuid(self, value: str, field_name: str) -> None:
+        """Validate that the given value is a UUID string.
 
         Args:
-            data: Dictionary to filter
+            value: The string to validate.
+            field_name: Name of the field for error context.
 
-        Returns:
-            Dictionary with None values removed
+        Raises:
+            ValueError: If value is not a valid UUID string.
         """
-        return {k: v for k, v in data.items() if v is not None}
+        try:
+            uuid.UUID(str(value))
+        except Exception:
+            raise ValueError(f"Invalid {field_name}: must be a UUID string")
 
     def _parse_response(self, model_class: Type[T], data: Any, context: str) -> T:
         """

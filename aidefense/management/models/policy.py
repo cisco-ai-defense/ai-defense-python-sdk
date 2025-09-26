@@ -19,7 +19,8 @@
 from enum import Enum
 from typing import List, Optional, Dict, Any
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import Field
+from ...models.base import AIDefenseModel
 
 from .common import Paging
 from .connection import ConnectionType
@@ -28,14 +29,12 @@ from .connection import ConnectionType
 class PolicySortBy(str, Enum):
     """Policy sort by enum."""
 
-    PolicySortBy_Unspecified = "PolicySortBy_Unspecified"
     policy_name = "policy_name"
 
 
 class RuleStatus(str, Enum):
     """Rule status enum."""
 
-    RuleStatusUnspecified = "RuleStatusUnspecified"
     Enabled = "Enabled"
     Disabled = "Disabled"
 
@@ -43,7 +42,6 @@ class RuleStatus(str, Enum):
 class Direction(str, Enum):
     """Direction enum."""
 
-    DirectionUnspecified = "DirectionUnspecified"
     Prompt = "Prompt"
     Response = "Response"
     Both = "Both"
@@ -52,7 +50,6 @@ class Direction(str, Enum):
 class Action(str, Enum):
     """Action enum."""
 
-    ActionUnspecified = "ActionUnspecified"
     Block = "Block"
     Allow = "Allow"
 
@@ -60,20 +57,19 @@ class Action(str, Enum):
 class GuardrailType(str, Enum):
     """Guardrail type enum."""
 
-    GuardrailTypeUnspecified = "GuardrailTypeUnspecified"
     Security = "Security"
     Privacy = "Privacy"
     Safety = "Safety"
 
 
-class Entity(BaseModel):
+class Entity(AIDefenseModel):
     """Entity model."""
 
     name: str = Field(description="Entity name")
     desc: str = Field(description="Entity description")
 
 
-class GuardrailRule(BaseModel):
+class GuardrailRule(AIDefenseModel):
     """Guardrail rule model."""
 
     ruleset_type: str = Field(description="Ruleset type")
@@ -83,7 +79,7 @@ class GuardrailRule(BaseModel):
     entity: Optional[Entity] = Field(None, description="Entity")
 
 
-class Guardrail(BaseModel):
+class Guardrail(AIDefenseModel):
     """Guardrail model."""
 
     guardrails_type: GuardrailType = Field(description="Guardrails type")
@@ -93,7 +89,7 @@ class Guardrail(BaseModel):
     paging: Paging = Field(default=None, description="Pagination information")
 
 
-class Guardrails(BaseModel):
+class Guardrails(AIDefenseModel):
     """Guardrails model."""
 
     items: List[Guardrail] = Field(
@@ -102,7 +98,7 @@ class Guardrails(BaseModel):
     paging: Paging = Field(default=None, description="Pagination information")
 
 
-class Policy(BaseModel):
+class Policy(AIDefenseModel):
     """Policy model."""
 
     policy_id: str = Field(description="Policy ID")
@@ -121,14 +117,14 @@ class Policy(BaseModel):
     )
 
 
-class Policies(BaseModel):
+class Policies(AIDefenseModel):
     """Policies model."""
 
     items: List[Policy] = Field(default_factory=list, description="List of policies")
     paging: Paging = Field(default=None, description="Pagination information")
 
 
-class ListPoliciesRequest(BaseModel):
+class ListPoliciesRequest(AIDefenseModel):
     """List policies request model."""
 
     limit: Optional[int] = Field(
@@ -141,15 +137,21 @@ class ListPoliciesRequest(BaseModel):
     order: Optional[str] = Field(
         None, description="Sort order of the policies returned"
     )
+    language_type: Optional[str] = Field(None, description="Filter by language type")
+    connection_type: Optional[ConnectionType] = Field(
+        None, description="Filter by connection type"
+    )
+    policy_status: Optional[str] = Field(None, description="Filter by policy status")
+    policy_name: Optional[str] = Field(None, description="Filter by policy name")
 
 
-class ListPoliciesResponse(BaseModel):
+class ListPoliciesResponse(AIDefenseModel):
     """List policies response model."""
 
     policies: Policies = Field(..., description="List of policies with pagination")
 
 
-class UpdatePolicyRequest(BaseModel):
+class UpdatePolicyRequest(AIDefenseModel):
     """Update policy request model."""
 
     name: Optional[str] = Field(None, description="Policy name")
@@ -157,7 +159,7 @@ class UpdatePolicyRequest(BaseModel):
     status: Optional[str] = Field(None, description="Status of the policy")
 
 
-class UpdatePolicyResponse(BaseModel):
+class UpdatePolicyResponse(AIDefenseModel):
     """Update policy response model."""
 
     class Config:
@@ -166,7 +168,7 @@ class UpdatePolicyResponse(BaseModel):
         frozen = True  # Make the model immutable
 
 
-class DeletePolicyResponse(BaseModel):
+class DeletePolicyResponse(AIDefenseModel):
     """Delete policy response model."""
 
     class Config:
@@ -175,7 +177,7 @@ class DeletePolicyResponse(BaseModel):
         frozen = True  # Make the model immutable
 
 
-class AddOrUpdatePolicyConnectionsRequest(BaseModel):
+class AddOrUpdatePolicyConnectionsRequest(AIDefenseModel):
     """Add or update policy connections request model."""
 
     connections_to_associate: Optional[List[str]] = Field(
@@ -186,7 +188,7 @@ class AddOrUpdatePolicyConnectionsRequest(BaseModel):
     )
 
 
-class AddOrUpdatePolicyConnectionsResponse(BaseModel):
+class AddOrUpdatePolicyConnectionsResponse(AIDefenseModel):
     """Add or update policy connections response model."""
 
     class Config:

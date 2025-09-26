@@ -24,7 +24,7 @@ Chat Inspection
    from aidefense import ChatInspectionClient
 
    # Initialize the client
-   client = ChatInspectionClient(api_key="your_api_key")
+   client = ChatInspectionClient(api_key="your_inspection_api_key")
 
    # Inspect a chat message
    result = client.inspect_prompt(
@@ -45,7 +45,7 @@ HTTP Inspection
    from aidefense import HttpInspectionClient
 
    # Initialize the client
-   client = HttpInspectionClient(api_key="your_api_key")
+   client = HttpInspectionClient(api_key="your_inspection_api_key")
 
    # Inspect an HTTP request/response pair
    result = client.inspect_request(

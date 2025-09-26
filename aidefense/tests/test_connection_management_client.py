@@ -19,6 +19,7 @@ from unittest.mock import MagicMock, patch
 from datetime import datetime
 
 from aidefense.management.connections import ConnectionManagementClient
+from aidefense.management.auth import ManagementAuth
 from aidefense.management.models.connection import (
     Connection,
     Connections,
@@ -66,7 +67,7 @@ def mock_request_handler():
 def connection_client(mock_request_handler):
     """Create a ConnectionManagementClient with a mock request handler."""
     client = ConnectionManagementClient(
-        api_key=TEST_API_KEY, request_handler=mock_request_handler
+        auth=ManagementAuth(TEST_API_KEY), request_handler=mock_request_handler
     )
     # Replace the make_request method with a mock
     client.make_request = MagicMock()
@@ -121,7 +122,7 @@ class TestConnectionManagementClient:
         # Verify the make_request call
         connection_client.make_request.assert_called_once_with(
             "GET",
-            f"{connection_client.api_version}/connections",
+            "connections",
             params={
                 "limit": 10,
                 "offset": 0,
@@ -159,7 +160,7 @@ class TestConnectionManagementClient:
         connection_client.make_request.return_value = mock_response
 
         # Call the method
-        connection_id = "conn-123"
+        connection_id = "323e4567-e89b-12d3-a456-426614174333"
         response = connection_client.get_connection(connection_id, expanded=True)
 
         # Verify the make_request call
@@ -178,14 +179,14 @@ class TestConnectionManagementClient:
         """Test creating a connection."""
         # Setup mock response
         mock_response = {
-            "connection_id": "conn-123",
+            "connection_id": "123e4567-e89b-12d3-a456-426614174331",
             "key": {"key_id": "key-123", "api_key": "test-api-key-value"},
         }
         connection_client.make_request.return_value = mock_response
 
         # Create request
         request = CreateConnectionRequest(
-            application_id="app-123",
+            application_id="123e4567-e89b-12d3-a456-426614174000",
             connection_name="New Test Connection",
             connection_type=ConnectionType.API,
             key=ApiKeyRequest(name="Test API Key", expiry=datetime(2026, 1, 1)),
@@ -199,8 +200,8 @@ class TestConnectionManagementClient:
             "POST",
             "connections",
             data={
-                "application_id": "app-123",
-                "connection_name": "New Test Connection",
+                "application_id": "123e4567-e89b-12d3-a456-426614174000",
+                "connectionName": "New Test Connection",
                 "connection_type": "API",
                 "key": {"name": "Test API Key", "expiry": "2026-01-01T00:00:00Z"},
             },
@@ -208,7 +209,7 @@ class TestConnectionManagementClient:
 
         # Verify the response
         assert isinstance(response, CreateConnectionResponse)
-        assert response.connection_id == "conn-123"
+        assert response.connection_id == "123e4567-e89b-12d3-a456-426614174331"
         assert response.key.key_id == "key-123"
         assert response.key.api_key == "test-api-key-value"
 
@@ -218,7 +219,7 @@ class TestConnectionManagementClient:
         connection_client.make_request.return_value = {}
 
         # Call the method
-        connection_id = "conn-123"
+        connection_id = "323e4567-e89b-12d3-a456-426614174333"
         response = connection_client.delete_connection(connection_id)
 
         # Verify the make_request call
@@ -227,7 +228,7 @@ class TestConnectionManagementClient:
         )
 
         # Verify the response
-        assert isinstance(response, DeleteConnectionByIDResponse)
+        assert response is None
 
     def test_get_api_keys(self, connection_client):
         """Test getting API keys for a connection."""
@@ -254,7 +255,7 @@ class TestConnectionManagementClient:
         connection_client.make_request.return_value = mock_response
 
         # Call the method
-        connection_id = "conn-123"
+        connection_id = "323e4567-e89b-12d3-a456-426614174333"
         response = connection_client.get_api_keys(connection_id)
 
         # Verify the make_request call
@@ -280,9 +281,9 @@ class TestConnectionManagementClient:
         connection_client.make_request.return_value = mock_response
 
         # Create request
-        connection_id = "conn-123"
+        connection_id = "323e4567-e89b-12d3-a456-426614174333"
         request = UpdateConnectionRequest(
-            key_id="",
+            key_id="123",
             operation_type=EditConnectionOperationType.GENERATE_API_KEY,
             key=ApiKeyRequest(name="New API Key", expiry=datetime(2026, 1, 1)),
         )
@@ -295,6 +296,7 @@ class TestConnectionManagementClient:
             "POST",
             f"connections/{connection_id}/keys",
             data={
+                "key_id": "123",
                 "op": "GENERATE_API_KEY",
                 "key": {"name": "New API Key", "expiry": "2026-01-01T00:00:00Z"},
             },
@@ -312,7 +314,7 @@ class TestConnectionManagementClient:
         connection_client.make_request.return_value = mock_response
 
         # Create request
-        connection_id = "conn-123"
+        connection_id = "323e4567-e89b-12d3-a456-426614174333"
         request = UpdateConnectionRequest(
             key_id="key-123",
             operation_type=EditConnectionOperationType.REVOKE_API_KEY,
@@ -351,3 +353,27 @@ class TestConnectionManagementClient:
             connection_client.list_connections(request)
 
         assert "API Error" in str(excinfo.value)
+
+    def test_update_api_key_generate_without_key(self, connection_client):
+        """Fail fast when GENERATE_API_KEY op is missing key payload."""
+        req = UpdateConnectionRequest(
+            operation_type=EditConnectionOperationType.GENERATE_API_KEY
+        )
+        with pytest.raises(ValueError) as excinfo:
+            connection_client.update_api_key(
+                "123e4567-e89b-12d3-a456-426614174331", req
+            )
+        assert "must be provided for API key generation" in str(excinfo.value)
+        connection_client.make_request.assert_not_called()
+
+    def test_update_api_key_revoke_without_key_id(self, connection_client):
+        """Fail fast when REVOKE_API_KEY op is missing key_id."""
+        req = UpdateConnectionRequest(
+            operation_type=EditConnectionOperationType.REVOKE_API_KEY
+        )
+        with pytest.raises(ValueError) as excinfo:
+            connection_client.update_api_key(
+                "123e4567-e89b-12d3-a456-426614174331", req
+            )
+        assert "key_id' must be provided" in str(excinfo.value)
+        connection_client.make_request.assert_not_called()

@@ -19,7 +19,7 @@ pip install ai-defense-python-sdk
 Set your API key as an environment variable:
 
 ```bash
-export AIDEFENSE_API_KEY="your-api-key-here"
+export MANAGEMENT_API_KEY="your-api-management-key"
 ```
 
 ## Examples
@@ -118,5 +118,5 @@ response = client.applications.list_applications(limit=10, offset=10)
 
 ## Additional Resources
 
-- [AI Defense SDK Documentation](https://github.com/AkhilBhavanam-Cisco/ai-defense-python-sdk)
+- [AI Defense SDK Documentation](https://github.com/cisco-ai-defense/ai-defense-python-sdk)
 - [AI Defense Management API Reference](https://api.security.cisco.com/api/ai-defense/v1)

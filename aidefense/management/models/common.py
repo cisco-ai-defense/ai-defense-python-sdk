@@ -18,18 +18,18 @@
 
 from enum import Enum
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import Field
+from ...models.base import AIDefenseModel
 
 
 class SortOrder(str, Enum):
     """Sort order for list operations."""
 
-    UNSPECIFIED = "SortOrder_Unspecified"
     ASCENDING = "asc"
     DESCENDING = "desc"
 
 
-class Paging(BaseModel):
+class Paging(AIDefenseModel):
     """
     Pagination information for list operations.
 

@@ -19,24 +19,24 @@
 from enum import Enum
 from typing import List, Optional, Dict, Any
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import Field
+from ...models.base import AIDefenseModel
 
 from .common import Paging
 from .application import Application
 from .policy import Policy
-from .connection import Connection
+from .connection import Connection, ConnectorDetails
 
 
 class EventSortBy(str, Enum):
     """Event sort by enum."""
 
-    EventSortBy_Unspecified = "EventSortBy_Unspecified"
     rule_action = "rule_action"
     event_timestamp = "event_timestamp"
     message_type = "message_type"
 
 
-class ViolationMetadata(BaseModel):
+class ViolationMetadata(AIDefenseModel):
     """Violation metadata model."""
 
     standards: Optional[List[str]] = Field(
@@ -47,13 +47,13 @@ class ViolationMetadata(BaseModel):
     )
 
 
-class MatchFeedback(BaseModel):
+class MatchFeedback(AIDefenseModel):
     """Match feedback model."""
 
     rating: Optional[str] = Field(None, description="Rating of the match")
 
 
-class EventRuleMatch(BaseModel):
+class EventRuleMatch(AIDefenseModel):
     """Event rule match model."""
 
     guardrail_type: Optional[str] = Field(None, description="Guardrail type")
@@ -68,7 +68,7 @@ class EventRuleMatch(BaseModel):
     feedback: Optional[MatchFeedback] = Field(None, description="Match feedback")
 
 
-class EventRuleMatches(BaseModel):
+class EventRuleMatches(AIDefenseModel):
     """Event rule matches model."""
 
     items: List[EventRuleMatch] = Field(
@@ -76,7 +76,7 @@ class EventRuleMatches(BaseModel):
     )
 
 
-class Event(BaseModel):
+class Event(AIDefenseModel):
     """Event model."""
 
     event_id: str = Field(description="Event ID")
@@ -92,16 +92,19 @@ class Event(BaseModel):
     application: Optional[Application] = Field(None, description="Application details")
     policy: Optional[Policy] = Field(None, description="Policy details")
     connection: Optional[Connection] = Field(None, description="Connection details")
+    connector_details: Optional[ConnectorDetails] = Field(
+        None, description="Connector information"
+    )
 
 
-class Events(BaseModel):
+class Events(AIDefenseModel):
     """Events model."""
 
     items: List[Event] = Field(default_factory=list, description="List of events")
     paging: Paging = Field(default=None, description="Pagination information")
 
 
-class EventMessage(BaseModel):
+class EventMessage(AIDefenseModel):
     """Event message model."""
 
     message_id: str = Field(description="Message ID")
@@ -112,7 +115,7 @@ class EventMessage(BaseModel):
     role: Optional[str] = Field(None, description="Message role")
 
 
-class EventMessages(BaseModel):
+class EventMessages(AIDefenseModel):
     """Event messages model."""
 
     items: List[EventMessage] = Field(
@@ -121,7 +124,7 @@ class EventMessages(BaseModel):
     paging: Paging = Field(default=None, description="Pagination information")
 
 
-class ListEventsRequest(BaseModel):
+class ListEventsRequest(AIDefenseModel):
     """List events request model."""
 
     limit: Optional[int] = Field(None, description="Number of records to retrieve")

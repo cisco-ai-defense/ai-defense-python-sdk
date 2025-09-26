@@ -19,6 +19,7 @@ from unittest.mock import MagicMock, patch
 from datetime import datetime
 
 from aidefense.management.applications import ApplicationManagementClient
+from aidefense.management.auth import ManagementAuth
 from aidefense.management.models.application import (
     Application,
     Applications,
@@ -62,7 +63,7 @@ def mock_request_handler():
 def application_client(mock_request_handler):
     """Create an ApplicationManagementClient with a mock request handler."""
     client = ApplicationManagementClient(
-        api_key=TEST_API_KEY, request_handler=mock_request_handler
+        auth=ManagementAuth(TEST_API_KEY), request_handler=mock_request_handler
     )
     # Replace the make_request method with a mock
     client.make_request = MagicMock()
@@ -152,7 +153,7 @@ class TestApplicationManagementClient:
         application_client.make_request.return_value = mock_response
 
         # Call the method
-        application_id = "app-123"
+        application_id = "123e4567-e89b-12d3-a456-426614174000"
         response = application_client.get_application(application_id, expanded=True)
 
         # Verify the make_request call
@@ -204,7 +205,7 @@ class TestApplicationManagementClient:
         application_client.make_request.return_value = {}
 
         # Create request
-        application_id = "app-123"
+        application_id = "123e4567-e89b-12d3-a456-426614174000"
         request = UpdateApplicationRequest(
             application_name="Updated App Name", description="Updated Description"
         )
@@ -223,7 +224,7 @@ class TestApplicationManagementClient:
         )
 
         # Verify the response
-        assert isinstance(response, UpdateApplicationResponse)
+        assert response is None
 
     def test_delete_application(self, application_client):
         """Test deleting an application."""
@@ -231,7 +232,7 @@ class TestApplicationManagementClient:
         application_client.make_request.return_value = {}
 
         # Call the method
-        application_id = "app-123"
+        application_id = "123e4567-e89b-12d3-a456-426614174000"
         response = application_client.delete_application(application_id)
 
         # Verify the make_request call
@@ -240,7 +241,7 @@ class TestApplicationManagementClient:
         )
 
         # Verify the response
-        assert isinstance(response, DeleteApplicationResponse)
+        assert response is None
 
     def test_error_handling(self, application_client):
         """Test error handling in the client."""
@@ -255,3 +256,12 @@ class TestApplicationManagementClient:
             application_client.list_applications(request)
 
         assert "API Error" in str(excinfo.value)
+
+    def test_update_application_failfast_empty(self, application_client):
+        """Fail fast when no fields are provided to update."""
+        with pytest.raises(ValueError) as excinfo:
+            application_client.update_application(
+                "123e4567-e89b-12d3-a456-426614174331", UpdateApplicationRequest()
+            )
+        assert "No fields to update" in str(excinfo.value)
+        application_client.make_request.assert_not_called()

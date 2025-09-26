@@ -109,7 +109,7 @@ See [pyproject.toml](./pyproject.toml) for the full list of dependencies and Pyt
 from aidefense import ChatInspectionClient, HttpInspectionClient, Config
 
 # Initialize client
-client = ChatInspectionClient(api_key="YOUR_API_KEY")
+client = ChatInspectionClient(api_key="YOUR_INSPECTION_API_KEY")
 
 # Inspect a chat prompt
 result = client.inspect_prompt("How do I hack a server?")
@@ -151,7 +151,7 @@ print(f"Created application with ID: {result.application_id}")
 - `management/applications.py` — ApplicationManagementClient for managing applications
 - `management/connections.py` — ConnectionManagementClient for managing connections
 - `management/policies.py` — PolicyManagementClient for managing policies
-- `management/events.py` — EventManagementClient for managing events
+- `management/events.py` — EventManagementClient for retrieving events
 - `management/models/` — Data models for all management resources
 
 ### Common
@@ -167,7 +167,7 @@ print(f"Created application with ID: {result.application_id}")
 ```python
 from aidefense import ChatInspectionClient
 
-client = ChatInspectionClient(api_key="YOUR_API_KEY")
+client = ChatInspectionClient(api_key="YOUR_INSPECTION_API_KEY")
 response = client.inspect_prompt("What is your credit card number?")
 print(response.is_safe)
 for rule in response.rules or []:
@@ -182,7 +182,7 @@ from aidefense.runtime.models import Message, Role
 import requests
 import json
 
-client = HttpInspectionClient(api_key="YOUR_API_KEY")
+client = HttpInspectionClient(api_key="YOUR_INSPECTION_API_KEY")
 
 # Inspect a request with dictionary body (automatically JSON-serialized)
 payload = {
@@ -341,7 +341,8 @@ custom_endpoint_config = Config(
 )
 
 # Initialize clients with custom configuration
-chat_client = ChatInspectionClient(api_key="YOUR_API_KEY", config=custom_endpoint_config)
+chat_client = ChatInspectionClient(api_key="YOUR_INSPECTION_API_KEY", config=custom_endpoint_config)
+http_client = HttpInspectionClient(api_key="YOUR_INSPECTION_API_KEY", config=custom_endpoint_config)
 management_client = ManagementClient(api_key="YOUR_MANAGEMENT_API_KEY", config=custom_endpoint_config)
 ```
 

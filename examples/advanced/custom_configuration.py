@@ -60,7 +60,7 @@ def custom_api_endpoint():
     config = Config(runtime_base_url="https://custom-aidefense-api.example.com")
 
     # Initialize the client with the custom configuration
-    client = ChatInspectionClient(api_key="YOUR_API_KEY", config=config)
+    client = ChatInspectionClient(api_key="YOUR_INSPECTION_API_KEY", config=config)
 
     print(f"Client configured to use endpoint: {client.endpoint}")
 
@@ -82,14 +82,14 @@ def custom_logging_configuration():
         }
     )
 
-    client1 = ChatInspectionClient(api_key="YOUR_API_KEY", config=config1)
+    client1 = ChatInspectionClient(api_key="YOUR_INSPECTION_API_KEY", config=config1)
     print("Client 1: Configured with custom logging parameters")
 
     # Method 2: Use a custom logger
     custom_logger = setup_custom_logger()
 
     config2 = Config(logger=custom_logger)
-    client2 = ChatInspectionClient(api_key="YOUR_API_KEY", config=config2)
+    client2 = ChatInspectionClient(api_key="YOUR_INSPECTION_API_KEY", config=config2)
     print("Client 2: Configured with custom logger instance")
 
     # Demonstrate logging (no actual API call)
@@ -114,7 +114,7 @@ def retry_policy_configuration():
         }
     )
 
-    client = ChatInspectionClient(api_key="YOUR_API_KEY", config=config)
+    client = ChatInspectionClient(api_key="YOUR_INSPECTION_API_KEY", config=config)
     print("Client configured with custom retry policy")
     print("Will retry 5 times with exponential backoff")
 
@@ -133,7 +133,7 @@ def connection_pooling_example():
         }
     )
 
-    client1 = HttpInspectionClient(api_key="YOUR_API_KEY", config=config1)
+    client1 = HttpInspectionClient(api_key="YOUR_INSPECTION_API_KEY", config=config1)
     print("Client 1: Configured with custom connection pool parameters")
 
     # Method 2: Use a custom adapter
@@ -144,7 +144,7 @@ def connection_pooling_example():
     )
 
     config2 = Config(connection_pool=adapter)
-    client2 = HttpInspectionClient(api_key="YOUR_API_KEY", config=config2)
+    client2 = HttpInspectionClient(api_key="YOUR_INSPECTION_API_KEY", config=config2)
     print("Client 2: Configured with custom connection pool adapter")
 
 

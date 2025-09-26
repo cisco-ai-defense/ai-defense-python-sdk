@@ -21,7 +21,7 @@ Example: Using inspect for raw HTTP request/response dicts
 from aidefense import HttpInspectionClient
 from aidefense.runtime.utils import to_base64_bytes
 
-client = HttpInspectionClient(api_key="YOUR_API_KEY")
+client = HttpInspectionClient(api_key="YOUR_INSPECTION_API_KEY")
 
 # Example HTTP request (as dict)
 json_bytes = b'{"key": "value"}'

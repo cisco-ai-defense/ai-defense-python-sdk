@@ -19,6 +19,11 @@
 from typing import Optional, Dict, Any
 import threading
 
+from .auth import ManagementAuth
+from .applications import ApplicationManagementClient
+from .connections import ConnectionManagementClient
+from .policies import PolicyManagementClient
+from .events import EventManagementClient
 from ..config import Config
 from .base_client import BaseClient
 from ..request_handler import RequestHandler
@@ -39,13 +44,8 @@ class ManagementClient:
             If not provided, a default singleton Config is used.
 
     Attributes:
-        api_key (str): The API key used for management API authentication.
         config (Config): The runtime configuration object.
-        API_BASE_PATH (str): Base path for the management API.
     """
-
-    # Base URL for the management API
-    API_BASE_PATH = "/api/ai-defense/v1"
 
     def __init__(
         self,
@@ -63,62 +63,43 @@ class ManagementClient:
         if not api_key or not isinstance(api_key, str) or api_key.strip() == "":
             raise ValueError("API key is required")
 
-        # Initialize resource clients lazily with thread safety
-        self._applications_client = None
-        self._connections_client = None
-        self._policies_client = None
-        self._events_client = None
-
-        # Locks for thread-safe lazy initialization
-        self._applications_lock = threading.RLock()
-        self._connections_lock = threading.RLock()
-        self._policies_lock = threading.RLock()
-        self._events_lock = threading.RLock()
+        self._auth = ManagementAuth(api_key)
 
         self.config = config or Config()
-        self.api_key = api_key
         self._request_handler = RequestHandler(self.config)
+
+        # Create resource clients with shared handler and config
+        self._applications_client = ApplicationManagementClient(
+            self._auth, self.config, request_handler=self._request_handler
+        )
+        self._connections_client = ConnectionManagementClient(
+            self._auth, self.config, request_handler=self._request_handler
+        )
+        self._policies_client = PolicyManagementClient(
+            self._auth, self.config, request_handler=self._request_handler
+        )
+        self._events_client = EventManagementClient(
+            self._auth, self.config, request_handler=self._request_handler
+        )
 
     @property
     def applications(self):
         """
-        Get the applications client.
+        Get the application client.
 
         Returns:
-            ApplicationManagementClient: The applications client.
+            ApplicationManagementClient: The application client.
         """
-        if self._applications_client is None:
-            with self._applications_lock:
-                if self._applications_client is None:
-                    # Import here to avoid circular imports
-                    from .applications import ApplicationManagementClient
-
-                    self._applications_client = ApplicationManagementClient(
-                        api_key=self.api_key,
-                        config=self.config,
-                        request_handler=self._request_handler,
-                    )
         return self._applications_client
 
     @property
     def connections(self):
         """
-        Get the connections client.
+        Get the connection client.
 
         Returns:
-            ConnectionManagementClient: The connections client.
+            ConnectionManagementClient: The connection client.
         """
-        if self._connections_client is None:
-            with self._connections_lock:
-                if self._connections_client is None:
-                    # Import here to avoid circular imports
-                    from .connections import ConnectionManagementClient
-
-                    self._connections_client = ConnectionManagementClient(
-                        api_key=self.api_key,
-                        config=self.config,
-                        request_handler=self._request_handler,
-                    )
         return self._connections_client
 
     @property
@@ -129,17 +110,6 @@ class ManagementClient:
         Returns:
             PolicyManagementClient: The policies client.
         """
-        if self._policies_client is None:
-            with self._policies_lock:
-                if self._policies_client is None:
-                    # Import here to avoid circular imports
-                    from .policies import PolicyManagementClient
-
-                    self._policies_client = PolicyManagementClient(
-                        api_key=self.api_key,
-                        config=self.config,
-                        request_handler=self._request_handler,
-                    )
         return self._policies_client
 
     @property
@@ -150,15 +120,9 @@ class ManagementClient:
         Returns:
             EventManagementClient: The events client.
         """
-        if self._events_client is None:
-            with self._events_lock:
-                if self._events_client is None:
-                    # Import here to avoid circular imports
-                    from .events import EventManagementClient
-
-                    self._events_client = EventManagementClient(
-                        api_key=self.api_key,
-                        config=self.config,
-                        request_handler=self._request_handler,
-                    )
         return self._events_client
+
+    @property
+    def api_key(self) -> str:
+        """Expose the API key for compatibility with existing tests."""
+        return self._auth.api_key

@@ -19,6 +19,7 @@ from unittest.mock import MagicMock, patch
 from datetime import datetime
 
 from aidefense.management.events import EventManagementClient
+from aidefense.management.auth import ManagementAuth
 from aidefense.management.models.event import (
     Event,
     Events,
@@ -57,7 +58,7 @@ def mock_request_handler():
 def event_client(mock_request_handler):
     """Create an EventManagementClient with a mock request handler."""
     client = EventManagementClient(
-        api_key=TEST_API_KEY, request_handler=mock_request_handler
+        auth=ManagementAuth(TEST_API_KEY), request_handler=mock_request_handler
     )
     # Replace the make_request method with a mock
     client.make_request = MagicMock()
@@ -176,7 +177,7 @@ class TestEventManagementClient:
         event_client.make_request.return_value = mock_response
 
         # Call the method
-        event_id = "event-123"
+        event_id = "456e4567-e89b-12d3-a456-426614174456"
         response = event_client.get_event(event_id, expanded=True)
 
         # Verify the make_request call
@@ -227,12 +228,12 @@ class TestEventManagementClient:
         event_client.make_request.return_value = mock_response
 
         # Call the method
-        event_id = "event-123"
-        response = event_client.get_event_conversation(event_id, expanded=True)
+        event_id = "456e4567-e89b-12d3-a456-426614174456"
+        response = event_client.get_event_conversation(event_id)
 
         # Verify the make_request call
         event_client.make_request.assert_called_once_with(
-            "GET", f"events/{event_id}/conversation", params={"expanded": True}
+            "GET", f"events/{event_id}/conversation"
         )
 
         # Verify the response

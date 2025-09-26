@@ -30,7 +30,7 @@ Basic Prompt Inspection
 
     from aidefense import ChatInspectionClient
 
-    client = ChatInspectionClient(api_key="YOUR_API_KEY")
+    client = ChatInspectionClient(api_key="YOUR_INSPECTION_API_KEY")
 
     # Inspect a prompt before sending to an LLM
     result = client.inspect_prompt("How do I hack into a secure system?")
@@ -48,7 +48,7 @@ Response Inspection
     from aidefense import ChatInspectionClient
     from aidefense.runtime import Message, Role
 
-    client = ChatInspectionClient(api_key="YOUR_API_KEY")
+    client = ChatInspectionClient(api_key="YOUR_INSPECTION_API_KEY")
 
     # Inspect an LLM response with prompt context
     prompt = "What is your name?"
@@ -68,7 +68,7 @@ Conversation Inspection
     from aidefense import ChatInspectionClient
     from aidefense.runtime import Message, Role
 
-    client = ChatInspectionClient(api_key="YOUR_API_KEY")
+    client = ChatInspectionClient(api_key="YOUR_INSPECTION_API_KEY")
 
     # Inspect a complete conversation
     conversation = [
@@ -91,7 +91,7 @@ Inspection with Custom Rules
     from aidefense import ChatInspectionClient
     from aidefense.runtime import InspectionConfig, Rule, RuleName
 
-    client = ChatInspectionClient(api_key="YOUR_API_KEY")
+    client = ChatInspectionClient(api_key="YOUR_INSPECTION_API_KEY")
 
     # Create a config focusing on specific rules
     config = InspectionConfig(
@@ -121,7 +121,7 @@ Request Tracing and Metadata
     from aidefense.runtime import Metadata
     import uuid
 
-    client = ChatInspectionClient(api_key="YOUR_API_KEY")
+    client = ChatInspectionClient(api_key="YOUR_INSPECTION_API_KEY")
 
     # Generate a unique request ID for tracing
     request_id = str(uuid.uuid4())
@@ -159,7 +159,7 @@ The Chat Inspection client integrates seamlessly with various AI model providers
     from aidefense import ChatInspectionClient
 
     # Initialize the client
-    client = ChatInspectionClient(api_key="YOUR_API_KEY")
+    client = ChatInspectionClient(api_key="YOUR_INSPECTION_API_KEY")
 
     # Inspect prompt before sending to any LLM provider
     prompt = "Tell me about AI safety"

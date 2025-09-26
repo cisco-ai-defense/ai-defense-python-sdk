@@ -19,7 +19,8 @@
 from enum import Enum
 from typing import List, Optional, Dict, Any
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import Field
+from ...models.base import AIDefenseModel
 
 from .common import Paging
 from .connection import ConnectionType, Connections
@@ -28,13 +29,12 @@ from .connection import ConnectionType, Connections
 class ApplicationSortBy(str, Enum):
     """Application sort by enum."""
 
-    ApplicationSortBy_Unspecified = "ApplicationSortBy_Unspecified"
     application_name = "application_name"
     description = "description"
     connection_type = "connection_type"
 
 
-class Application(BaseModel):
+class Application(AIDefenseModel):
     """Application model."""
 
     application_id: str = Field(description="Application ID")
@@ -49,7 +49,7 @@ class Application(BaseModel):
     )
 
 
-class Applications(BaseModel):
+class Applications(AIDefenseModel):
     """Applications model."""
 
     items: List[Application] = Field(
@@ -58,7 +58,7 @@ class Applications(BaseModel):
     paging: Paging = Field(default=None, description="Pagination information")
 
 
-class CreateApplicationRequest(BaseModel):
+class CreateApplicationRequest(AIDefenseModel):
     """Create application request model."""
 
     application_name: str = Field(description="Application name")
@@ -66,13 +66,13 @@ class CreateApplicationRequest(BaseModel):
     connection_type: ConnectionType = Field(description="Connection type")
 
 
-class CreateApplicationResponse(BaseModel):
+class CreateApplicationResponse(AIDefenseModel):
     """Create application response model."""
 
     application_id: str = Field(description="Application ID")
 
 
-class ListApplicationsRequest(BaseModel):
+class ListApplicationsRequest(AIDefenseModel):
     """List applications request model."""
 
     limit: Optional[int] = Field(
@@ -86,9 +86,15 @@ class ListApplicationsRequest(BaseModel):
     order: Optional[str] = Field(
         None, description="Sort order of the applications returned"
     )
+    connection_type: Optional[ConnectionType] = Field(
+        None, description="Filter by connection type"
+    )
+    application_name: Optional[str] = Field(
+        None, description="Search by application name"
+    )
 
 
-class ListApplicationsResponse(BaseModel):
+class ListApplicationsResponse(AIDefenseModel):
     """List applications response model."""
 
     applications: Applications = Field(
@@ -96,7 +102,7 @@ class ListApplicationsResponse(BaseModel):
     )
 
 
-class UpdateApplicationRequest(BaseModel):
+class UpdateApplicationRequest(AIDefenseModel):
     """Update application request model."""
 
     application_name: Optional[str] = Field(
@@ -105,7 +111,7 @@ class UpdateApplicationRequest(BaseModel):
     description: Optional[str] = Field(None, description="Description (optional)")
 
 
-class UpdateApplicationResponse(BaseModel):
+class UpdateApplicationResponse(AIDefenseModel):
     """
     Update application response model.
 
@@ -118,7 +124,7 @@ class UpdateApplicationResponse(BaseModel):
         frozen = True  # Make the model immutable
 
 
-class DeleteApplicationResponse(BaseModel):
+class DeleteApplicationResponse(AIDefenseModel):
     """
     Delete application response model.
 

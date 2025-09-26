@@ -41,7 +41,7 @@ High-Level Request Inspection (with Dictionary Body)
 
     from aidefense import HttpInspectionClient
 
-    client = HttpInspectionClient(api_key="YOUR_API_KEY")
+    client = HttpInspectionClient(api_key="YOUR_INSPECTION_API_KEY")
 
     # Using dictionary body (automatically JSON-serialized)
     result = client.inspect_request(
@@ -105,7 +105,7 @@ Direct Integration with requests Library
     import requests
     from aidefense import HttpInspectionClient
 
-    client = HttpInspectionClient(api_key="YOUR_API_KEY")
+    client = HttpInspectionClient(api_key="YOUR_INSPECTION_API_KEY")
 
     # Create a request using the requests library
     req = requests.Request(
@@ -145,7 +145,7 @@ Low-Level Inspection API
     import json
     from aidefense import HttpInspectionClient
 
-    client = HttpInspectionClient(api_key="YOUR_API_KEY")
+    client = HttpInspectionClient(api_key="YOUR_INSPECTION_API_KEY")
 
     # Manually prepare HTTP request with base64 encoded body
     body_dict = {
@@ -180,7 +180,7 @@ Inspection with Custom Rules Configuration
     from aidefense import HttpInspectionClient
     from aidefense.runtime import InspectionConfig, Rule, RuleName
 
-    client = HttpInspectionClient(api_key="YOUR_API_KEY")
+    client = HttpInspectionClient(api_key="YOUR_INSPECTION_API_KEY")
 
     # Create a configuration focusing on PII detection
     config = InspectionConfig(

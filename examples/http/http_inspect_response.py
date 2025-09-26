@@ -20,7 +20,7 @@ Example: Using inspect_response for simplified HTTP response inspection
 
 from aidefense import HttpInspectionClient
 
-client = HttpInspectionClient(api_key="YOUR_API_KEY")
+client = HttpInspectionClient(api_key="YOUR_INSPECTION_API_KEY")
 
 result = client.inspect_response(
     status_code=200,

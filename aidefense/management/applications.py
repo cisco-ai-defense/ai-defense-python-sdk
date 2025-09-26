@@ -17,6 +17,7 @@
 """Application management client for the AI Defense Management API."""
 from typing import Optional
 
+from .auth import ManagementAuth
 from .base_client import BaseClient
 from .models.application import (
     Application,
@@ -31,6 +32,7 @@ from .models.application import (
     DeleteApplicationResponse,
 )
 from ..config import Config
+from ._routes import APPLICATIONS, application_by_id
 
 
 class ApplicationManagementClient(BaseClient):
@@ -42,18 +44,21 @@ class ApplicationManagementClient(BaseClient):
     """
 
     def __init__(
-        self, api_key: str, config: Optional[Config] = None, request_handler=None
+        self,
+        auth: ManagementAuth,
+        config: Optional[Config] = None,
+        request_handler=None,
     ):
         """
         Initialize the ApplicationManagementClient.
 
         Args:
-            api_key (str): Your AI Defense Management API key for authentication.
+            auth (ManagementAuth): Your AI Defense Management API authentication object.
             config (Config, optional): SDK configuration for endpoints, logging, retries, etc.
                 Defaults to the singleton Config if not provided.
             request_handler: Request handler for making API requests (should be an instance of ManagementClient).
         """
-        super().__init__(api_key, config, request_handler)
+        super().__init__(auth, config, request_handler)
 
     def list_applications(
         self, request: ListApplicationsRequest
@@ -87,26 +92,10 @@ class ApplicationManagementClient(BaseClient):
                 for app in response.applications.items:
                     print(f"{app.application_id}: {app.application_name}")
         """
-        # Prepare parameters for API call
-        params = self._filter_none(
-            {
-                "limit": request.limit,
-                "offset": request.offset,
-                "expanded": request.expanded,
-                "sort_by": (
-                    request.sort_by.value
-                    if isinstance(request.sort_by, ApplicationSortBy)
-                    else request.sort_by
-                ),
-                "order": (
-                    request.order.value
-                    if hasattr(request.order, "value")
-                    else request.order
-                ),
-            }
-        )
+        # Prepare parameters for API call using model serializer
+        params = request.to_params()
 
-        response = self.make_request("GET", "applications", params=params)
+        response = self.make_request("GET", APPLICATIONS, params=params)
         applications = self._parse_response(
             Applications, response.get("applications", {}), "applications response"
         )
@@ -135,9 +124,11 @@ class ApplicationManagementClient(BaseClient):
                 application = client.applications.get_application(application_id, expanded=True)
                 print(f"Application name: {application.application_name}")
         """
-        params = self._filter_none({"expanded": expanded})
+        params = {"expanded": expanded} if expanded is not None else None
+        # Validate IDs
+        self._ensure_uuid(application_id, "application_id")
         response = self.make_request(
-            "GET", f"applications/{application_id}", params=params
+            "GET", application_by_id(application_id), params=params
         )
         application = self._parse_response(
             Application, response.get("application", {}), "application response"
@@ -173,26 +164,16 @@ class ApplicationManagementClient(BaseClient):
                 response = client.applications.create_application(request)
                 print(f"Created application with ID: {response.application_id}")
         """
-        data = self._filter_none(
-            {
-                "application_name": request.application_name,
-                "description": request.description,
-                "connection_type": (
-                    request.connection_type.value
-                    if hasattr(request.connection_type, "value")
-                    else request.connection_type
-                ),
-            }
-        )
+        data = request.to_body_dict()
 
-        response = self.make_request("POST", "applications", data=data)
+        response = self.make_request("POST", APPLICATIONS, data=data)
         return CreateApplicationResponse(
             application_id=response.get("application_id", "")
         )
 
     def update_application(
         self, application_id: str, request: UpdateApplicationRequest
-    ) -> UpdateApplicationResponse:
+    ) -> None:
         """
         Update an application.
 
@@ -203,7 +184,7 @@ class ApplicationManagementClient(BaseClient):
                 - description: New description (optional)
 
         Returns:
-            UpdateApplicationResponse: Empty response object.
+            None
 
         Raises:
             ValidationError, ApiError, SDKError
@@ -218,16 +199,14 @@ class ApplicationManagementClient(BaseClient):
                 )
                 response = client.applications.update_application(application_id, request)
         """
-        data = self._filter_none(
-            {
-                "application_name": request.application_name,
-                "description": request.description,
-            }
-        )
-        self.make_request("PUT", f"applications/{application_id}", data=data)
-        return UpdateApplicationResponse()
+        data = request.to_body_dict(patch=True)
+        self._ensure_uuid(application_id, "application_id")
+        if not data:
+            raise ValueError("No fields to update in UpdateApplicationRequest")
+        self.make_request("PUT", application_by_id(application_id), data=data)
+        return None
 
-    def delete_application(self, application_id: str) -> DeleteApplicationResponse:
+    def delete_application(self, application_id: str) -> None:
         """
         Delete an application.
 
@@ -235,7 +214,7 @@ class ApplicationManagementClient(BaseClient):
             application_id (str): ID of the application to delete
 
         Returns:
-            DeleteApplicationResponse: Empty response object.
+            None
 
         Raises:
             ValidationError, ApiError, SDKError
@@ -246,5 +225,6 @@ class ApplicationManagementClient(BaseClient):
                 application_id = "123e4567-e89b-12d3-a456-426614174000"
                 response = client.applications.delete_application(application_id)
         """
-        self.make_request("DELETE", f"applications/{application_id}")
-        return DeleteApplicationResponse()
+        self._ensure_uuid(application_id, "application_id")
+        self.make_request("DELETE", application_by_id(application_id))
+        return None

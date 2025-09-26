@@ -19,7 +19,8 @@
 from enum import Enum
 from typing import List, Optional, Any
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import Field
+from ...models.base import AIDefenseModel
 
 from .common import Paging
 
@@ -27,7 +28,6 @@ from .common import Paging
 class EditConnectionOperationType(str, Enum):
     """Connection API key operation types."""
 
-    EditConnectionOperationType_Unspecified = "EditConnectionOperationTypeUnspecified"
     GENERATE_API_KEY = "GENERATE_API_KEY"
     REGENERATE_API_KEY = "REGENERATE_API_KEY"
     REVOKE_API_KEY = "REVOKE_API_KEY"
@@ -36,7 +36,6 @@ class EditConnectionOperationType(str, Enum):
 class ConnectionStatus(str, Enum):
     """Connection status enum."""
 
-    ConnectionStatusUnspecified = "ConnectionStatusUnspecified"
     Connected = "Connected"
     Disconnected = "Disconnected"
     Pending = "Pending"
@@ -45,7 +44,6 @@ class ConnectionStatus(str, Enum):
 class ConnectionType(str, Enum):
     """Connection type enum."""
 
-    Unspecified = "Unspecified"
     API = "API"
     Gateway = "Gateway"
 
@@ -53,13 +51,12 @@ class ConnectionType(str, Enum):
 class ConnectionSortBy(str, Enum):
     """Sort options for connection list operations."""
 
-    ConnectionSortBy_Unspecified = "ConnectionSortBy_Unspecified"
     connection_name = "connection_name"
     status = "status"
     last_active = "last_active"
 
 
-class ApiKeyRequest(BaseModel):
+class ApiKeyRequest(AIDefenseModel):
     """
     API key request model.
 
@@ -72,7 +69,7 @@ class ApiKeyRequest(BaseModel):
     expiry: datetime = Field(..., description="Expiry timestamp for the API key")
 
 
-class ApiKeyResponse(BaseModel):
+class ApiKeyResponse(AIDefenseModel):
     """
     API key response model.
 
@@ -87,7 +84,7 @@ class ApiKeyResponse(BaseModel):
     )
 
 
-class ApiKey(BaseModel):
+class ApiKey(AIDefenseModel):
     """
     API key model.
 
@@ -104,7 +101,7 @@ class ApiKey(BaseModel):
     expiry: datetime = Field(..., description="Expiry timestamp")
 
 
-class ApiKeys(BaseModel):
+class ApiKeys(AIDefenseModel):
     """
     List of API keys with pagination.
 
@@ -117,7 +114,7 @@ class ApiKeys(BaseModel):
     paging: Paging = Field(..., description="Pagination information")
 
 
-class Endpoint(BaseModel):
+class Endpoint(AIDefenseModel):
     """
     Endpoint model.
 
@@ -129,12 +126,18 @@ class Endpoint(BaseModel):
     """
 
     endpoint_id: str = Field(..., description="Endpoint ID")
-    model_endpoint_type: str = Field(..., description="Type of model endpoint")
-    model_endpoint_url: str = Field(..., description="URL of the model endpoint")
-    model_provider_name: str = Field(..., description="Name of the model provider")
+    model_endpoint_type: Optional[str] = Field(
+        None, description="Type of model endpoint"
+    )
+    model_endpoint_url: Optional[str] = Field(
+        None, description="URL of the model endpoint"
+    )
+    model_provider_name: Optional[str] = Field(
+        None, description="Name of the model provider"
+    )
 
 
-class Models(BaseModel):
+class Models(AIDefenseModel):
     """
     Models model.
 
@@ -145,7 +148,15 @@ class Models(BaseModel):
     model_name: List[str] = Field(..., description="List of model names")
 
 
-class Connection(BaseModel):
+class ConnectorDetails(AIDefenseModel):
+    """Connector details for hybrid/on-prem connectors."""
+
+    connector_id: Optional[str] = Field(None, description="Connector ID")
+    connector_name: Optional[str] = Field(None, description="Connector name")
+    connector_version: Optional[str] = Field(None, description="Connector version")
+
+
+class Connection(AIDefenseModel):
     """
     Connection resource model.
 
@@ -153,7 +164,7 @@ class Connection(BaseModel):
         connection_id (str): Unique identifier for the connection.
         connection_name (str): Name of the connection.
         application_id (str): ID of the associated application.
-        endpoint_id (str): ID of the associated endpoint.
+        endpoint_id (Optional[str]): ID of the associated endpoint.
         connection_status (ConnectionStatus): Status of the connection.
         created_at (datetime): Timestamp when the connection was created.
         last_active (Optional[datetime]): Timestamp when the connection was last active.
@@ -163,12 +174,15 @@ class Connection(BaseModel):
         policies (Optional[Any]): Associated policies.
         endpoint (Optional[Endpoint]): Associated endpoint details.
         models (Optional[Models]): Associated models.
+        connector_details (Optional[ConnectorDetails]): Connector information.
     """
 
     connection_id: str = Field(..., description="Unique identifier for the connection")
     connection_name: str = Field(..., description="Name of the connection")
     application_id: str = Field(..., description="ID of the associated application")
-    endpoint_id: str = Field(..., description="ID of the associated endpoint")
+    endpoint_id: Optional[str] = Field(
+        None, description="ID of the associated endpoint"
+    )
     connection_status: ConnectionStatus = Field(
         ..., description="Status of the connection"
     )
@@ -192,9 +206,12 @@ class Connection(BaseModel):
         None, description="Associated endpoint details"
     )
     models: Optional[Models] = Field(None, description="Associated models")
+    connector_details: Optional[ConnectorDetails] = Field(
+        None, description="Connector information"
+    )
 
 
-class Connections(BaseModel):
+class Connections(AIDefenseModel):
     """
     List of connections with pagination.
 
@@ -207,7 +224,7 @@ class Connections(BaseModel):
     paging: Paging = Field(..., description="Pagination information")
 
 
-class ListConnectionsRequest(BaseModel):
+class ListConnectionsRequest(AIDefenseModel):
     """List connections request model."""
 
     limit: Optional[int] = Field(
@@ -221,19 +238,33 @@ class ListConnectionsRequest(BaseModel):
     order: Optional[str] = Field(
         None, description="Sort order of the connections returned"
     )
+    connection_type: Optional[ConnectionType] = Field(
+        None, description="Filter by connection type"
+    )
+    connection_status: Optional[ConnectionStatus] = Field(
+        None, description="Filter by connection status"
+    )
+    policy_applied: Optional[bool] = Field(
+        None, description="Filter by policy assignment status"
+    )
+    connection_name: Optional[str] = Field(
+        None, description="Search by connection name"
+    )
 
 
-class ListConnectionsResponse(BaseModel):
+class ListConnectionsResponse(AIDefenseModel):
     """List connections response model."""
 
     connections: List[Connection] = Field(..., description="List of connections")
 
 
-class CreateConnectionRequest(BaseModel):
+class CreateConnectionRequest(AIDefenseModel):
     """Create connection request model."""
 
     application_id: str = Field(..., description="Application ID")
-    connection_name: str = Field(..., description="Connection name")
+    connection_name: str = Field(
+        ..., description="Connection name", alias="connectionName"
+    )
     connection_type: ConnectionType = Field(..., description="Connection type")
     endpoint_id: Optional[str] = Field(
         None, description="Endpoint ID (optional for API flow)"
@@ -242,9 +273,13 @@ class CreateConnectionRequest(BaseModel):
         None, description="Connection guide ID (optional)"
     )
     key: Optional[ApiKeyRequest] = Field(None, description="API key request (optional)")
+    connector_id: Optional[str] = Field(
+        None,
+        description="Connector ID of the onprem data plane deployment",
+    )
 
 
-class CreateConnectionResponse(BaseModel):
+class CreateConnectionResponse(AIDefenseModel):
     """Create connection response model."""
 
     connection_id: str = Field(..., description="ID of the created connection")
@@ -253,7 +288,7 @@ class CreateConnectionResponse(BaseModel):
     )
 
 
-class GetConnectionByIDRequest(BaseModel):
+class GetConnectionByIDRequest(AIDefenseModel):
     """Get connection by ID request model."""
 
     expanded: Optional[bool] = Field(
@@ -261,7 +296,7 @@ class GetConnectionByIDRequest(BaseModel):
     )
 
 
-class DeleteConnectionByIDResponse(BaseModel):
+class DeleteConnectionByIDResponse(AIDefenseModel):
     """Delete connection by ID response model."""
 
     class Config:
@@ -270,12 +305,12 @@ class DeleteConnectionByIDResponse(BaseModel):
         frozen = True  # Make the model immutable
 
 
-class UpdateConnectionRequest(BaseModel):
+class UpdateConnectionRequest(AIDefenseModel):
     """Update connection request model."""
 
-    key_id: str = Field(..., description="Key ID to update/revoke")
+    key_id: Optional[str] = Field(None, description="Key ID (for revoke op)")
     operation_type: EditConnectionOperationType = Field(
-        ..., description="Operation type"
+        ..., description="Operation type", alias="op"
     )
     key: Optional[ApiKeyRequest] = Field(
         None, description="API key request for generation"

@@ -18,6 +18,7 @@
 
 from typing import Optional, List
 
+from .auth import ManagementAuth
 from .base_client import BaseClient
 from .models.policy import (
     Policy,
@@ -34,6 +35,7 @@ from .models.policy import (
     AddOrUpdatePolicyConnectionsResponse,
 )
 from ..config import Config
+from ._routes import POLICIES, policy_by_id, policy_connections
 
 
 class PolicyManagementClient(BaseClient):
@@ -45,18 +47,21 @@ class PolicyManagementClient(BaseClient):
     """
 
     def __init__(
-        self, api_key: str, config: Optional[Config] = None, request_handler=None
+        self,
+        auth: ManagementAuth,
+        config: Optional[Config] = None,
+        request_handler=None,
     ):
         """
         Initialize the PolicyManagementClient.
 
         Args:
-            api_key (str): Your AI Defense Management API key for authentication.
+            auth (ManagementAuth): Your AI Defense Management API authentication object.
             config (Config, optional): SDK configuration for endpoints, logging, retries, etc.
                 Defaults to the singleton Config if not provided.
             request_handler: Request handler for making API requests (should be an instance of ManagementClient).
         """
-        super().__init__(api_key, config, request_handler)
+        super().__init__(auth, config, request_handler)
 
     def list_policies(self, request: ListPoliciesRequest) -> Policies:
         """
@@ -87,25 +92,12 @@ class PolicyManagementClient(BaseClient):
                 for policy in response.policies.items:
                     print(f"{policy.policy_id}: {policy.policy_name}")
         """
-        params = self._filter_none(
-            {
-                "limit": request.limit,
-                "offset": request.offset,
-                "sort_by": (
-                    request.sort_by.value
-                    if isinstance(request.sort_by, PolicySortBy)
-                    else request.sort_by
-                ),
-                "order": (
-                    request.order.value
-                    if hasattr(request.order, "value")
-                    else request.order
-                ),
-            }
-        )
+        params = request.to_params()
 
-        response = self.make_request("GET", "policies", params=params)
-        policies = self._parse_response(Policies, response, "policies response")
+        response = self.make_request("GET", POLICIES, params=params)
+        policies = self._parse_response(
+            Policies, response.get("policies"), "policies response"
+        )
         return policies
 
     def get_policy(self, policy_id: str, expanded: bool = None) -> Policy:
@@ -129,9 +121,11 @@ class PolicyManagementClient(BaseClient):
                 response = client.policies.get_policy(policy_id, expanded=True)
                 print(f"Policy name: {response.policy_name}")
         """
-        params = self._filter_none({"expanded": expanded})
-        response = self.make_request("GET", f"policies/{policy_id}", params=params)
-        policy = self._parse_response(Policy, response, "policy response")
+        # Validate IDs
+        self._ensure_uuid(policy_id, "policy_id")
+        params = {"expanded": expanded} if expanded is not None else None
+        response = self.make_request("GET", policy_by_id(policy_id), params=params)
+        policy = self._parse_response(Policy, response.get("policy"), "policy response")
         return policy
 
     def update_policy(
@@ -164,18 +158,16 @@ class PolicyManagementClient(BaseClient):
                 )
                 response = client.policies.update_policy(policy_id, request)
         """
-        data = self._filter_none(
-            {
-                "name": request.name,
-                "description": request.description,
-                "status": request.status,
-            }
-        )
+        # Validate IDs
+        self._ensure_uuid(policy_id, "policy_id")
+        data = request.to_body_dict(patch=True)
+        if not data:
+            raise ValueError("No fields to update in UpdatePolicyRequest")
 
-        self.make_request("PUT", f"policies/{policy_id}", data=data)
+        self.make_request("PUT", policy_by_id(policy_id), data=data)
         return UpdatePolicyResponse()
 
-    def delete_policy(self, policy_id: str) -> DeletePolicyResponse:
+    def delete_policy(self, policy_id: str) -> None:
         """
         Delete a policy.
 
@@ -194,12 +186,14 @@ class PolicyManagementClient(BaseClient):
                 policy_id = "550e8400-e29b-41d4-a716-446655440000"
                 response = client.policies.delete_policy(policy_id)
         """
-        self.make_request("DELETE", f"policies/{policy_id}")
-        return DeletePolicyResponse()
+        # Validate IDs
+        self._ensure_uuid(policy_id, "policy_id")
+        self.make_request("DELETE", policy_by_id(policy_id))
+        return None
 
     def update_policy_connections(
         self, policy_id: str, request: AddOrUpdatePolicyConnectionsRequest
-    ) -> AddOrUpdatePolicyConnectionsResponse:
+    ) -> None:
         """
         Add or update connections for a policy.
 
@@ -225,13 +219,17 @@ class PolicyManagementClient(BaseClient):
                 )
                 response = client.policies.update_policy_connections(policy_id, request)
         """
-        data = {}
-
-        if request.connections_to_associate:
-            data["connections_to_associate"] = request.connections_to_associate
-
-        if request.connections_to_disassociate:
-            data["connections_to_disassociate"] = request.connections_to_disassociate
-
-        self.make_request("POST", f"policies/{policy_id}/connections", data=data)
-        return AddOrUpdatePolicyConnectionsResponse()
+        # Validate IDs
+        self._ensure_uuid(policy_id, "policy_id")
+        # Validate connection IDs in the request payload (if provided)
+        if getattr(request, "connections_to_associate", None):
+            for cid in request.connections_to_associate:
+                self._ensure_uuid(cid, "connection_id")
+        if getattr(request, "connections_to_disassociate", None):
+            for cid in request.connections_to_disassociate:
+                self._ensure_uuid(cid, "connection_id")
+        data = request.to_body_dict(patch=True)
+        if not data:
+            raise ValueError("No connections specified to update for policy")
+        self.make_request("POST", policy_connections(policy_id), data=data)
+        return None

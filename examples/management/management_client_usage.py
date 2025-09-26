@@ -37,17 +37,23 @@ from aidefense import Config, Message, Role
 from aidefense.exceptions import ValidationError, ApiError, SDKError
 from aidefense.management import ManagementClient
 from aidefense.management.models import ApiKeyRequest
-from aidefense.management.models.application import CreateApplicationRequest
+from aidefense.management.models.application import (
+    CreateApplicationRequest,
+    ListApplicationsRequest,
+    UpdateApplicationRequest,
+)
 from aidefense.management.models.connection import (
     ConnectionType,
     EditConnectionOperationType,
     CreateConnectionRequest,
     UpdateConnectionRequest,
+    ListConnectionsRequest,
 )
 from aidefense.management.models.event import ListEventsRequest
 from aidefense.management.models.policy import (
     ListPoliciesRequest,
     AddOrUpdatePolicyConnectionsRequest,
+    UpdatePolicyRequest,
 )
 from aidefense.runtime import ChatInspectionClient
 
@@ -103,6 +109,36 @@ def main():
         except SDKError as e:
             print(f"SDK error: {e}")
 
+        # Example 1b: List and Get applications, then Update application
+        print("\n=== Example 1b: List/Get/Update Applications ===")
+        try:
+            # List applications
+            list_apps_req = ListApplicationsRequest(limit=5, order="asc")
+            apps_resp = client.applications.list_applications(list_apps_req)
+            print(f"Listed {len(apps_resp.applications.items)} applications")
+
+            # Get the just-created application (or first available)
+            target_app_id = created_app_id or (
+                apps_resp.applications.items[0].application_id
+                if apps_resp.applications.items
+                else None
+            )
+            if target_app_id:
+                app = client.applications.get_application(target_app_id, expanded=True)
+                print(
+                    f"Fetched application: {app.application_id} | {app.application_name}"
+                )
+
+                # Update application (rename)
+                upd_req = UpdateApplicationRequest(
+                    application_name=f"{app.application_name} - Updated",
+                    description=app.description or "Updated via SDK example",
+                )
+                client.applications.update_application(target_app_id, upd_req)
+                print("Application updated successfully!")
+        except (ValidationError, ApiError, SDKError) as e:
+            print(f"Management error (applications list/get/update): {e}")
+
         # Example 2: Create a connection with a specific endpoint
         print("\n=== Example 2: Create Connection with Specific Endpoint ===")
         try:
@@ -148,6 +184,30 @@ def main():
             print(f"API error: {e}")
         except SDKError as e:
             print(f"SDK error: {e}")
+
+        # Example 2b: List/Get connections and Get API Keys
+        print("\n=== Example 2b: List/Get Connections & API Keys ===")
+        try:
+            # List connections
+            list_conns_req = ListConnectionsRequest(limit=5, order="asc")
+            conns = client.connections.list_connections(list_conns_req)
+            print(f"Listed {len(conns.items)} connections")
+
+            # Get the just-created connection (or first available)
+            target_conn_id = created_connection_id or (
+                conns.items[0].connection_id if conns.items else None
+            )
+            if target_conn_id:
+                conn = client.connections.get_connection(target_conn_id)
+                print(
+                    f"Fetched connection: {conn.connection_id} | {conn.connection_name}"
+                )
+
+                # Get API keys for the connection
+                keys = client.connections.get_api_keys(target_conn_id)
+                print(f"Fetched {len(keys.items)} API keys for connection")
+        except (ValidationError, ApiError, SDKError) as e:
+            print(f"Management error (connections list/get/keys): {e}")
 
         # Example 3: Generate an API key for the connection
         print("\n=== Example 3: Generate API Key ===")
@@ -240,23 +300,21 @@ def main():
 
             print(f"Found {len(policies.items)} policies:")
             for policy in policies.items:
-                print(f"  - {policy.policy_id}: {policy.name}")
+                print(f"  - {policy.policy_id}: {policy.policy_name}")
 
                 # Print guardrails if available
                 if policy.guardrails and policy.guardrails.items:
                     print("    Guardrails:")
                     for guardrail in policy.guardrails.items:
-                        print(
-                            f"      - {guardrail.name}: {guardrail.status} (Action: {guardrail.action})"
-                        )
+                        print(guardrail.guardrails_type)
 
-                # Print associated connections if available
-                if policy.connections and policy.connections.items:
-                    print("    Associated connections:")
-                    for connection in policy.connections.items:
-                        print(
-                            f"      - {connection.connection_id}: {connection.connection_name}"
-                        )
+            # Optionally get a specific policy by ID
+            if policies.items:
+                sample_policy_id = policies.items[0].policy_id
+                pol = client.policies.get_policy(sample_policy_id)
+                print(
+                    f"Fetched policy: {pol.policy_id} | {pol.policy_name} | status={pol.status}"
+                )
 
             print("\nPolicy listing completed successfully!")
 
@@ -266,6 +324,45 @@ def main():
             print(f"API error: {e}")
         except SDKError as e:
             print(f"SDK error: {e}")
+
+        # Example 5b: Update a policy and update policy connections
+        print("\n=== Example 5b: Update Policy & Policy Connections ===")
+        try:
+            # Pick a policy to update (first listed above if available)
+            list_policies_req = ListPoliciesRequest(limit=1)
+            pols = client.policies.list_policies(list_policies_req)
+            if pols.items:
+                policy_id = pols.items[0].policy_id
+                print(f"Updating policy {policy_id}...")
+
+                # Ensure updated policy name respects API limit (1-50 chars)
+                base = (pols.items[0].policy_name or "Policy").strip()
+                suffix = " - Updated"
+                max_len = 50
+                max_base_len = max_len - len(suffix)
+                safe_base = base[:max_base_len].rstrip("- ")
+                upd_policy_req = UpdatePolicyRequest(
+                    name=f"{safe_base}{suffix}",
+                    description=pols.items[0].description or "Updated by SDK example",
+                    status=pols.items[0].status or "Enabled",
+                )
+                client.policies.update_policy(policy_id, upd_policy_req)
+                print("Policy updated.")
+
+                # Update policy connections if we have a created connection
+                if created_connection_id:
+                    print(
+                        f"Associating connection {created_connection_id} with policy {policy_id}..."
+                    )
+                    assoc_req = AddOrUpdatePolicyConnectionsRequest(
+                        connections_to_associate=[created_connection_id]
+                    )
+                    client.policies.update_policy_connections(policy_id, assoc_req)
+                    print("Policy connections updated.")
+            else:
+                print("No policies available to update.")
+        except (ValidationError, ApiError, SDKError) as e:
+            print(f"Management error (update policy/associations): {e}")
 
         # Example 6: List events
         print("\n=== Example 6: Event Management ===")

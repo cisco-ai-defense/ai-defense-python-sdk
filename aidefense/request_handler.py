@@ -125,7 +125,11 @@ class RequestHandler(BaseRequestHandler):
 
             if auth:
                 request = requests.Request(
-                    method=method, url=url, headers=request_headers, json=json_data
+                    method=method,
+                    url=url,
+                    headers=request_headers,
+                    params=params,
+                    json=json_data,
                 )
                 prepared_request = auth(request.prepare())
                 request_headers.update(prepared_request.headers)
@@ -134,6 +138,7 @@ class RequestHandler(BaseRequestHandler):
                 method=method,
                 url=url,
                 headers=request_headers,
+                params=params,
                 json=json_data,
                 timeout=timeout or self.config.timeout,
             )

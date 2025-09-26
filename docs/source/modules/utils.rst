@@ -37,7 +37,7 @@ Working with Base64 Encoding
     # Use in HTTP inspection
     from aidefense import HttpInspectionClient
 
-    client = HttpInspectionClient(api_key="YOUR_API_KEY")
+    client = HttpInspectionClient(api_key="YOUR_INSPECTION_API_KEY")
     result = client.inspect(
         http_req={
             "method": "POST",
