@@ -31,6 +31,7 @@ Prerequisites:
 
 import os
 import time
+import json
 from datetime import datetime, timedelta
 
 from aidefense.config import Config
@@ -44,6 +45,28 @@ from aidefense.management.models.validation import (
 )
 
 
+def section(title: str) -> None:
+    print(f"\n=== {title} ===")
+
+
+def pretty_model(model) -> None:
+    try:
+        print(
+            json.dumps(
+                model.dict(by_alias=True, exclude_none=True),
+                indent=2,
+                default=str,
+            )
+        )
+    except Exception:
+        # Fallback
+        print(model)
+
+
+def fmt_ts(ts: datetime) -> str:
+    return ts.strftime("%Y-%m-%d %H:%M:%S") if ts else "-"
+
+
 def main():
     api_key = os.environ.get("AIDEFENSE_MANAGEMENT_API_KEY")
     if not api_key:
@@ -52,7 +75,7 @@ def main():
 
     # Configure the base URL(s). Adjust as appropriate for your environment.
     config = Config(
-        management_base_url="https://api.preview.security.cisco.com",
+        management_base_url="https://api.security.cisco.com",
         timeout=60,
     )
 
@@ -61,51 +84,78 @@ def main():
     task_id = None
 
     try:
-        print("\n=== Start AI Validation Job ===")
+        section("Start AI Validation Job")
         start_req = StartAiValidationRequest(
-            asset_type=AssetType.APPLICATION,
-            application_id="your-application-id",  # replace if needed
+            asset_type=AssetType.EXTERNAL,
+            application_id="",  # replace if needed
             validation_scan_name=f"SDK Example Scan {datetime.utcnow().isoformat()}",
-            model_provider="OpenAI",
+            model_provider="",
             headers=[Header(key="Authorization", value="Bearer <redacted>")],
-            model_endpoint_url_model_id="gpt-4",
-            model_request_template='{"messages": [{"role": "user", "content": "Hello"}]}',
-            model_response_json_path="choices[0].message.content",
-            aws_region=AWSRegion.AWS_REGION_US_EAST_1,
+            model_endpoint_url_model_id="https://abcd.tools.mock.io/success",
+            model_request_template='{"a": "{{prompt}}"}',
+            model_response_json_path="response",
+            aws_region=AWSRegion.AWS_REGION_US_WEST_2,
             max_tokens=128,
             temperature=0.2,
             top_p=0.9,
             stop_sequences=["<END>"],
         )
 
+        # Summarize request
+        print("Request summary:")
+        print(f"- asset_type:            {start_req.asset_type}")
+        print(f"- validation_scan_name:  {start_req.validation_scan_name}")
+        print(f"- endpoint/model_id:     {start_req.model_endpoint_url_model_id}")
+        print(f"- response_json_path:    {start_req.model_response_json_path}")
+        print(f"- aws_region:            {start_req.aws_region}")
+
+        start_time = time.time()
         start_resp = client.start_ai_validation(start_req)
         task_id = start_resp.task_id
-        print(f"Started validation job. Task ID: {task_id}")
+        print(f"\nStarted validation job. Task ID: {task_id}")
 
-        print("\n=== Poll Job Status ===")
+        section("Poll Job Status")
+        header = "{:>3s}  {:<15s}  {}".format("#", "status", "error")
+        print(header)
+        print("-" * len(header))
+        final_job = None
         for i in range(10):  # poll up to ~50s
             job = client.get_ai_validation_job(task_id)
-            print(
-                f"Attempt {i+1}: status={job.status} progress={job.progress}% error='{job.error_message or ''}'"
-            )
-            if str(job.status) in ("JOB_COMPLETED", "JOB_FAILED"):
+            final_job = job
+            status_str = str(job.status or "")
+            err = job.error_message or ""
+            print("{:>3d}  {:<15s} {}".format(i + 1, status_str, err))
+            if status_str in ("JOB_COMPLETED", "JOB_FAILED"):
                 break
             time.sleep(5)
 
-        print("\n=== List All Validation Configs ===")
+        if final_job is not None:
+            print("\nTimestamps:")
+            print(f"- created_at:   {fmt_ts(final_job.created_at)}")
+            print(f"- started_at:   {fmt_ts(final_job.started_at)}")
+            print(f"- completed_at: {fmt_ts(final_job.completed_at)}")
+
+        duration = time.time() - start_time
+        print(f"\nElapsed: {duration:.1f}s")
+
+        section("List All Validation Configs")
         cfgs = client.list_all_ai_validation_config()
         print(f"Found {len(cfgs.config)} config(s)")
-        for c in cfgs.config[:3]:  # print at most 3
-            print(
-                f"- {c.config_id} | asset_type={c.asset_type} | provider={c.model_provider}"
-            )
-
+        if cfgs.config:
+            print("{:<38s}  {:<10s}  {}".format("config_id", "asset", "provider"))
+            print("-" * 70)
+            for c in cfgs.config[:3]:  # print at most 3
+                print(
+                    "{:<38s}  {:<10s}  {}".format(
+                        c.config_id or "-",
+                        (c.asset_type or "-") if isinstance(c.asset_type, str) else str(c.asset_type or "-"),
+                        c.model_provider or "-",
+                    )
+                )
         if task_id:
-            print("\n=== Get Validation Config For Task ===")
+            section("Get Validation Config For Task")
             cfg = client.get_ai_validation_config(task_id)
-            print(
-                f"Config ID: {cfg.config_id} | asset_type={cfg.asset_type} | provider={cfg.model_provider}"
-            )
+            pretty_model(cfg)
 
     except (ValidationError, ApiError, SDKError) as e:
         print(f"Error: {e}")
