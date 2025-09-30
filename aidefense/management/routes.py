@@ -70,6 +70,28 @@ def event_conversation(event_id: str) -> str:
     return f"{EVENTS}/{event_id}/conversation"
 
 
+# Validation (under management stack)
+
+
+AI_VALIDATION = "ai-validation"
+
+
+def ai_validation_start() -> str:
+    return f"{AI_VALIDATION}/start"
+
+
+def ai_validation_job(task_id: str) -> str:
+    return f"{AI_VALIDATION}/job/{task_id}"
+
+
+def ai_validation_config() -> str:
+    return f"{AI_VALIDATION}/config"
+
+
+def ai_validation_config_by_task(task_id: str) -> str:
+    return f"{AI_VALIDATION}/config/{task_id}"
+
+
 __all__ = [
     # Resources
     "APPLICATIONS",
@@ -84,4 +106,10 @@ __all__ = [
     "policy_connections",
     "event_by_id",
     "event_conversation",
+    # Validation
+    "AI_VALIDATION",
+    "ai_validation_start",
+    "ai_validation_job",
+    "ai_validation_config",
+    "ai_validation_config_by_task",
 ]
