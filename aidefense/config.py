@@ -120,9 +120,6 @@ class Config:
             "me-central-1": "https://uae.api.inspect.aidefense.security.cisco.com",
         }
         self.management_region_endpoints = {
-            "us": "https://us.api.aidefense.security.cisco.com",
-            "ap": "https://ap.api.aidefense.security.cisco.com",
-            "eu": "https://eu.api.aidefense.security.cisco.com",
             "us-west-2": "https://us.api.aidefense.security.cisco.com",
             "eu-central-1": "https://eu.api.aidefense.security.cisco.com",
             "ap-northeast-1": "https://ap.api.aidefense.security.cisco.com",
