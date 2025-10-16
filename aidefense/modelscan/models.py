@@ -297,14 +297,36 @@ class ThreatInfo(AIDefenseModel):
     def __restore_enums(cls, values):
         return restore_enum_wrapper(cls, values)
 
+
+class SubTechnique(AIDefenseModel):
+    """Sub-technique level grouping with threat evidence."""
+    sub_technique_id: str = Field(..., description="Sub-technique identifier (e.g., AITech-9.3.1)")
+    sub_technique_name: str = Field(..., description="Human-readable name of the sub-technique")
+    description: str = Field(..., description="Description of the sub-technique")
+    indicators: List[str] = Field(default_factory=list, description="List of indicators")
+    max_severity: Severity = Field(..., description="Highest severity in this sub-technique")
+    items: List[ThreatInfo] = Field(default_factory=list, description="List of threat detections")
+
+    @root_validator
+    def __restore_enums(cls, values):
+        return restore_enum_wrapper(cls, values)
+
+
+class Technique(AIDefenseModel):
+    """Technique-level grouping of threats."""
+    technique_id: str = Field(..., description="Technique identifier (e.g., AITech-9.3)")
+    technique_name: str = Field(..., description="Human-readable name of the technique")
+    items: List[SubTechnique] = Field(default_factory=list, description="List of sub-techniques")
+
+
 class ThreatInfoList(AIDefenseModel):
-    """List of threat findings with pagination.
+    """Hierarchical view of threats grouped by taxonomy.
 
     Args:
-        items: List of threat information objects.
+        items: List of technique-level threat groupings.
         paging: Pagination information.
     """
-    items: List[ThreatInfo] = Field(default_factory=list, description="List of threats")
+    items: List[Technique] = Field(default_factory=list, description="List of technique groupings")
     paging: Paging = Field(..., description="Pagination information")
 
 
