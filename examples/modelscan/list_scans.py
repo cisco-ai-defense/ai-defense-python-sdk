@@ -24,7 +24,7 @@ from aidefense.modelscan.models import ListScansRequest
 # Initialize the client
 client = ModelScanClient(
     api_key="YOUR_MANAGEMENT_API_KEY",
-    config=Config(management_base_url="https://api.security.cisco.com")
+    config=Config(management_base_url="https://api.security.cisco.com"),
 )
 
 # Get first 10 scans

@@ -15,40 +15,57 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-Example: Using inspect_conversation for chat conversation inspection
+Example: Scan a file for AI/ML model threats using the AI Defense Python SDK.
+
+This example demonstrates how to scan a file for potential AI/ML model threats
+using the hierarchical threat classification system.
 """
 from aidefense import Config
 from aidefense.modelscan import ModelScanClient
 from aidefense.modelscan.models import ScanStatus
 
-# Initialize the client
-client = ModelScanClient(
-    api_key="YOUR_MANAGEMENT_API_KEY",
-    config=Config(management_base_url="https://api.security.cisco.com")
-)
+# Import utility functions for displaying results
+from examples.modelscan.utils import print_analysis_results
 
-# Scan a local file
-result = client.scan_file("FILE_PATH")
+def main():
+    # Initialize the client
+    client = ModelScanClient(
+        api_key="YOUR_MANAGEMENT_API_KEY",
+        config=Config(management_base_url="https://api.security.cisco.com"),
+    )
 
-# Check the results
-if result.status == ScanStatus.COMPLETED:
-    print("✅ Scan completed successfully")
+    # Replace with your file path
+    file_path = "FILE_PATH"
+    print(f"🔍 Scanning file: {file_path}")
+    
+    try:
+        # Scan the file
+        result = client.scan_file(file_path)
+        print("\n📊 Scan Results:")
+        print("=" * 50)
+        
+        # Display scan ID
+        if hasattr(result, 'scan_id') and result.scan_id:
+            print(f"🔑 Scan ID:     {result.scan_id}")
 
-    # Check for threats in analysis results
-    for item in result.analysis_results.items:
-        if item.threats.items:
-            print(f"⚠️  Threats found in {item.name}:")
-            for threat in item.threats.items:
-                print(f"   - {threat.severity.value}: {threat.threat_type.value}")
-                print(f"     Description: {threat.description}")
-                if threat.details:
-                    print(f"     Details: {threat.details}")
-        elif item.status == ScanStatus.COMPLETED:
-            print(f"✅ {item.name} is clean")
+        if result.status == ScanStatus.COMPLETED:
+            print("✅ Scan completed successfully\n")
+            
+            # Display analysis results using the utility function
+            print_analysis_results(result.analysis_results)
+                
+        elif result.status == ScanStatus.FAILED:
+            print("❌ Scan failed")
+            if hasattr(result, 'error_message') and result.error_message:
+                print(f"Error: {result.error_message}")
         else:
-            print(f"ℹ️  {item.name} status: {item.status.value}")
-elif result.status == ScanStatus.FAILED:
-    print(f"❌ Scan failed")
+            print(f"ℹ️  Scan status: {result.status.value}")
+            
+    except Exception as e:
+        print(f"\n❌ An error occurred during scanning:")
+        print(f"   {str(e)}")
+        if hasattr(e, 'response') and hasattr(e.response, 'text'):
+            print(f"   Response: {e.response.text}")
 
 if __name__ == "__main__":
-    pass
+    main()

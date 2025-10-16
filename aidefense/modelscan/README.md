@@ -41,11 +41,6 @@ if result.status == ScanStatus.COMPLETED:
     for file_info in result.analysis_results.items:
         if file_info.threats.items:
             print(f"⚠️  Threats found in {file_info.name}:")
-            for threat in file_info.threats.items:
-                print(f"   - {threat.severity}: {threat.threat_type}")
-                print(f"     Description: {threat.description}")
-                if threat.details:
-                    print(f"     Details: {threat.details}")
         elif file_info.status == ScanStatus.COMPLETED:
             print(f"✅ {file_info.name} is clean")
         else:
@@ -89,8 +84,6 @@ if result.status == ScanStatus.COMPLETED:
     for file_info in result.analysis_results.items:
         if file_info.threats.items:
             print(f"⚠️  Threats found in {file_info.name}:")
-            for threat in file_info.threats.items:
-                print(f"   - {threat.severity}: {threat.threat_type} - {threat.description}")
         elif file_info.status == ScanStatus.COMPLETED:
             print(f"✅ {file_info.name} is clean")
         else:
@@ -174,11 +167,6 @@ try:
             for file_info in scan_info.analysis_results.items:
                 if file_info.threats.items:
                     print(f"⚠️  Threats detected in {file_info.name}")
-                    for threat in file_info.threats.items:
-                        print(f"   - {threat.severity}: {threat.threat_type}")
-                        print(f"   - Description: {threat.description}")
-                        if threat.details:
-                            print(f"   - Details: {threat.details}")
                 elif file_info.status == ScanStatus.COMPLETED:
                     print(f"✅ {file_info.name} is clean")
                 else:
