@@ -19,6 +19,7 @@ from enum import Enum
 
 import requests
 import uuid
+import platform
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional
 from requests.auth import AuthBase
@@ -29,6 +30,7 @@ from .exceptions import SDKError, ValidationError, ApiError
 
 REQUEST_ID_HEADER = "x-aidefense-request-id"
 
+
 class HttpMethod(str, Enum):
     GET = "GET"
     PUT = "PUT"
@@ -38,13 +40,14 @@ class HttpMethod(str, Enum):
     HEAD = "HEAD"
     OPTIONS = "OPTIONS"
 
+
 class BaseRequestHandler(ABC):
     """
     Abstract parent for all request handlers (sync, async, http2, etc).
     Defines the interface and shared logic for request handlers.
     """
 
-    USER_AGENT = f"Cisco-AI-Defense-Python-SDK/{version}"
+    USER_AGENT = f"Cisco-AI-Defense-Python-SDK/{platform.python_version()}/{version}"
     VALID_HTTP_METHODS = {"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"}
 
     def __init__(self, config: Config):
@@ -77,9 +80,7 @@ class RequestHandler(BaseRequestHandler):
         super().__init__(config)
         self._session = requests.Session()
         self._session.mount("https://", config.connection_pool)
-        self._session.headers.update(
-            {"User-Agent": self.USER_AGENT, "Content-Type": "application/json"}
-        )
+        self._session.headers.update({"User-Agent": self.USER_AGENT, "Content-Type": "application/json"})
 
     def request(
         self,
@@ -161,9 +162,7 @@ class RequestHandler(BaseRequestHandler):
             self.config.logger.error(f"Request failed: {e}")
             raise
 
-    def _handle_error_response(
-        self, response: requests.Response, request_id: str = None
-    ) -> Dict:
+    def _handle_error_response(self, response: requests.Response, request_id: str = None) -> Dict:
         """Handle error responses from the API.
 
         Args:
@@ -187,9 +186,7 @@ class RequestHandler(BaseRequestHandler):
             error_data = {"message": response.text or "Unknown error"}
         error_message = error_data.get("message", "Unknown error")
         if response.status_code == 401:
-            raise SDKError(
-                f"Authentication error: {error_message}", response.status_code
-            )
+            raise SDKError(f"Authentication error: {error_message}", response.status_code)
         elif response.status_code == 400:
             raise ValidationError(f"Bad request: {error_message}", response.status_code)
         else:
