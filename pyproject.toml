@@ -15,7 +15,8 @@ classifiers = [
 packages = [{include = "aidefense"}]
 
 [tool.poetry.dependencies]
-python = "^3.8"
+aiohttp = "^3.13.2"
+python = "^3.9"
 requests = "^2.32.3"
 uuid = "^1.30"
 pydantic = "1.10.8"
