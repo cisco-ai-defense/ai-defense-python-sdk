@@ -47,7 +47,7 @@ class BaseRequestHandler(ABC):
     Defines the interface and shared logic for request handlers.
     """
 
-    USER_AGENT = f"Cisco-AI-Defense-Python-SDK/{platform.python_version()}/{version}"
+    USER_AGENT = f"Cisco-AI-Defense-Python-SDK/{version} (Python {platform.python_version()})"
     VALID_HTTP_METHODS = {"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"}
 
     def __init__(self, config: Config):
