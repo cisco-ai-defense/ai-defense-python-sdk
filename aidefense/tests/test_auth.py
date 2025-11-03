@@ -18,7 +18,7 @@ import pytest
 import requests
 from unittest.mock import Mock
 
-from aidefense.runtime.auth import RuntimeAuth
+from aidefense.runtime.auth import RuntimeAuth, auth_header
 
 
 def test_runtime_auth_init_valid():
@@ -70,8 +70,8 @@ def test_runtime_auth_call():
 
     # Check that the request was properly modified
     assert result == request
-    assert RuntimeAuth.AUTH_HEADER in request.headers
-    assert request.headers[RuntimeAuth.AUTH_HEADER] == token
+    assert auth_header in request.headers
+    assert request.headers[auth_header] == token
 
 
 def test_runtime_auth_validate():
@@ -96,5 +96,5 @@ def test_runtime_auth_with_requests():
     authenticated_req = auth(prepared_req)
 
     # Check that auth header was added
-    assert RuntimeAuth.AUTH_HEADER in authenticated_req.headers
-    assert authenticated_req.headers[RuntimeAuth.AUTH_HEADER] == token
+    assert auth_header in authenticated_req.headers
+    assert authenticated_req.headers[auth_header] == token

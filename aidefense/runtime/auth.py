@@ -14,37 +14,24 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from aiohttp import ClientHandlerType, ClientRequest, ClientResponse
 from requests.auth import AuthBase
 
+auth_header = "X-Cisco-AI-Defense-API-Key"
 
-class BaseAuth:
-    AUTH_HEADER = "X-Cisco-AI-Defense-API-Key"
+
+class RuntimeAuth(AuthBase):
+    """Custom authentication class for runtime authentication."""
 
     def __init__(self, token: str):
         self.token = token
         self.validate()
 
+    def __call__(self, request):
+        request.headers[auth_header] = f"{self.token}"
+        return request
+
     def validate(self):
         """Validate the API key format."""
         if not self.token or not isinstance(self.token, str) or len(self.token) != 64:
             raise ValueError("Invalid API key format")
-
         return True
-
-
-class RuntimeAuth(BaseAuth, AuthBase):
-    """Custom authentication class for runtime authentication."""
-
-    def __call__(self, request):
-        request.headers[self.AUTH_HEADER] = f"{self.token}"
-        return request
-
-
-class AsyncAuth(BaseAuth):
-    """Custom authentication class for async runtime authentication."""
-
-    # This will be called as a middleware while making the request
-    async def __call__(self, request: ClientRequest, handler: ClientHandlerType) -> ClientResponse:
-        request.headers[self.AUTH_HEADER] = f"{self.token}"
-        return await handler(request)
