@@ -46,7 +46,6 @@ class ConnectionType(str, Enum):
 
     API = "API"
     Gateway = "Gateway"
-    MCPGateway = "MCPGateway"
     Unspecified = "Unspecified"
 
 
