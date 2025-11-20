@@ -13,10 +13,10 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-
 import pytest
 from aidefense.runtime.inspection_client import InspectionClient
 from aidefense.runtime.models import (
+    Action,
     InspectResponse,
     Classification,
     Severity,
@@ -232,14 +232,30 @@ def test_parse_inspect_response_with_attack_technique():
 
     response_data = {
         "is_safe": False,
+        "action": "Block",
         "attack_technique": "INJECTION",
         "explanation": "Injection attempt detected",
     }
-
     result = client._parse_inspect_response(response_data)
 
     assert result.attack_technique == "INJECTION"
     assert result.explanation == "Injection attempt detected"
+    assert result.action == Action.BLOCK
+
+
+def test_parse_inspect_response_with_invalid_action():
+    """Test parsing a response with invalid action."""
+    client = TestInspectionClient(TEST_API_KEY)
+
+    response_data = {
+        "is_safe": False,
+        "action": "INVALID_ACTION",  # Not in Action enum
+    }
+
+    result = client._parse_inspect_response(response_data)
+
+    # Invalid action should be None
+    assert result.action is None
 
 
 def test_parse_inspect_response_complex():
@@ -262,6 +278,7 @@ def test_parse_inspect_response_complex():
         "explanation": "Security violation detected",
         "client_transaction_id": "tx-9876",
         "event_id": "b403de99-8d19-408f-8184-ec6d7907f508",
+        "action": Action.ALLOW,
     }
 
     result = client._parse_inspect_response(response_data)
@@ -279,3 +296,4 @@ def test_parse_inspect_response_complex():
     assert result.explanation == "Security violation detected"
     assert result.client_transaction_id == "tx-9876"
     assert result.event_id == "b403de99-8d19-408f-8184-ec6d7907f508"
+    assert result.action == Action.ALLOW

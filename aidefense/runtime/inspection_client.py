@@ -21,6 +21,7 @@ from dataclasses import asdict
 from .auth import RuntimeAuth
 from .models import PII_ENTITIES, PCI_ENTITIES, PHI_ENTITIES
 from .models import (
+    Action,
     Rule,
     RuleName,
     Metadata,
@@ -118,9 +119,7 @@ class InspectionClient(ABC):
         """
         raise NotImplementedError("Subclasses must implement _inspect.")
 
-    def _parse_inspect_response(
-        self, response_data: Dict[str, Any]
-    ) -> "InspectResponse":
+    def _parse_inspect_response(self, response_data: Dict[str, Any]) -> "InspectResponse":
         """
         Parse API response (chat or http inspect) into an InspectResponse object.
 
@@ -153,6 +152,7 @@ class InspectionClient(ABC):
                 "explanation": "",
                 "client_transaction_id": "",
                 "event_id": "b403de99-8d19-408f-8184-ec6d7907f508"
+                "action": "Allow"
             }
             ```
 
@@ -174,12 +174,11 @@ class InspectionClient(ABC):
                 explanation="",
                 client_transaction_id="",
                 event_id="b403de99-8d19-408f-8184-ec6d7907f508"
+                action="Allow"
             )
             ```
         """
-        self.config.logger.debug(
-            f"_parse_inspect_response called | response_data: {response_data}"
-        )
+        self.config.logger.debug(f"_parse_inspect_response called | response_data: {response_data}")
 
         # Convert classifications from strings to enum values
         classifications = []
@@ -217,10 +216,17 @@ class InspectionClient(ABC):
             )
         # Parse severity if present
         severity = None
+        action = None
         try:
             severity = Severity(response_data.get("severity", None))
         except ValueError:
             pass
+
+        try:
+            action = Action(response_data.get("action", None))
+        except ValueError:
+            pass
+
         # Create the response object
         return InspectResponse(
             classifications=classifications,
@@ -231,6 +237,7 @@ class InspectionClient(ABC):
             explanation=response_data.get("explanation"),
             client_transaction_id=response_data.get("client_transaction_id"),
             event_id=response_data.get("event_id"),
+            action=action,
         )
 
     def _prepare_inspection_metadata(self, metadata: Metadata) -> Dict:
@@ -275,9 +282,7 @@ class InspectionClient(ABC):
                     d["classification"] = d["classification"].value
                 return d
 
-            config_dict["enabled_rules"] = [
-                rule_to_dict(rule) for rule in config.enabled_rules if rule is not None
-            ]
+            config_dict["enabled_rules"] = [rule_to_dict(rule) for rule in config.enabled_rules if rule is not None]
 
         for key in INTEGRATION_DETAILS:
             value = getattr(config, key, None)
