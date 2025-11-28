@@ -18,6 +18,7 @@ from pathlib import Path
 from time import sleep
 from typing import Union
 
+from aidefense import ValidationError
 from .model_scan_base import ModelScan
 from .models import ScanStatus, ModelRepoConfig, ScanStatusInfo, GetScanStatusRequest
 
@@ -240,7 +241,10 @@ class ModelScanClient(ModelScan):
         """
         res = self.register_scan()
         try:
-            self.validate_scan_url(res.scan_id, repo_config)
+            validation_response = self.validate_scan_url(res.scan_id, repo_config)
+            if validation_response.error_message:
+                raise ValidationError(validation_response.error_message)
+
             self.trigger_scan(res.scan_id)
             scan_info = self.__get_scan_info_wait_until_status(res.scan_id, END_SCAN_STATUS)
         except Exception as e:
