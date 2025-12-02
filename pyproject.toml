@@ -15,10 +15,10 @@ classifiers = [
 packages = [{include = "aidefense"}]
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.9"
 requests = "^2.32.3"
 uuid = "^1.30"
-pydantic = "1.10.13"
+pydantic = "^2.12.5"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"
