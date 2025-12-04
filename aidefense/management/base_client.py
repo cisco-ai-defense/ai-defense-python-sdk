@@ -134,7 +134,7 @@ class BaseClient:
             )
 
         try:
-            return cast(T, model_class.parse_obj(data))
+            return cast(T, model_class.model_validate(data))
         except PydanticValidationError as e:
             self.config.logger.warning(f"Failed to parse {context}: {e}")
             raise ResponseParseError(f"Failed to parse {context}: {e}") from e

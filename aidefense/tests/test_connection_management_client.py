@@ -318,11 +318,11 @@ class TestConnectionManagementClient:
             key=None,
         )
 
-        # Mock the parse_obj method to avoid validation errors
+        # Mock the model_validate method to avoid validation errors
         with patch(
-            "aidefense.management.models.connection.ApiKeyResponse.parse_obj"
-        ) as mock_parse_obj:
-            mock_parse_obj.return_value = ApiKeyResponse(key_id="key-123", api_key="")
+            "aidefense.management.models.connection.ApiKeyResponse.model_validate"
+        ) as mock_model_validate:
+            mock_model_validate.return_value = ApiKeyResponse(key_id="key-123", api_key="")
 
             # Call the method
             response = connection_client.update_api_key(connection_id, request)

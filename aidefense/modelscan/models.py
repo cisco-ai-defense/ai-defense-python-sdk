@@ -18,8 +18,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Dict, List, Optional
 
-from pydantic import Field
-from pydantic import root_validator
+from pydantic import Field, model_validator
 
 from aidefense.management.models.common import Paging
 from aidefense.models.base import AIDefenseModel
@@ -113,7 +112,8 @@ class Auth(AIDefenseModel):
 
     huggingface: Optional[HuggingFaceAuth] = None
 
-    @root_validator
+    @model_validator(mode="before")
+    @classmethod
     def _validate_oneof(cls, values):  # type: ignore[override]
         # Enforce oneof semantics: at most one provider
         provided = [v for v in [values.get("huggingface")] if v is not None]
@@ -151,7 +151,8 @@ class ScanObject(AIDefenseModel):
     file_object: Optional[FileObject] = None
     url_object: Optional[URLObject] = None
 
-    @root_validator
+    @model_validator(mode="before")
+    @classmethod
     def _validate_oneof(cls, values):  # type: ignore[override]
         fo = values.get("file_object")
         uo = values.get("url_object")
@@ -274,11 +275,17 @@ class Severity(str, Enum):
 
 
 def restore_enum_wrapper(cls, values):
-    for name, field in cls.__fields__.items():
+    for name, field_info in cls.model_fields.items():
         value = values.get(name)
-        if isinstance(value, str) and issubclass(field.type_, Enum):
+        annotation = field_info.annotation
+        # Handle Optional types by extracting the inner type
+        origin = getattr(annotation, "__origin__", None)
+        if origin is not None:
+            args = getattr(annotation, "__args__", ())
+            annotation = args[0] if args else annotation
+        if isinstance(value, str) and isinstance(annotation, type) and issubclass(annotation, Enum):
             try:
-                values[name] = field.type_(value)
+                values[name] = annotation(value)
             except ValueError:
                 pass  # leave as-is if invalid
     return values
@@ -293,7 +300,8 @@ class ThreatInfo(AIDefenseModel):
     details: str = Field(..., description="Detailed threat information")
     description: str = Field(..., description="Human-readable description")
 
-    @root_validator
+    @model_validator(mode="before")
+    @classmethod
     def __restore_enums(cls, values):
         return restore_enum_wrapper(cls, values)
 
@@ -307,7 +315,8 @@ class SubTechnique(AIDefenseModel):
     max_severity: Severity = Field(..., description="Highest severity in this sub-technique")
     items: List[ThreatInfo] = Field(default_factory=list, description="List of threat detections")
 
-    @root_validator
+    @model_validator(mode="before")
+    @classmethod
     def __restore_enums(cls, values):
         return restore_enum_wrapper(cls, values)
 
@@ -346,7 +355,8 @@ class FileInfo(AIDefenseModel):
     threats: ThreatInfoList = Field(..., description="Detected threats")
     reason: Optional[str] = Field(None, description="Reason for status")
 
-    @root_validator
+    @model_validator(mode="before")
+    @classmethod
     def __restore_enums(cls, values):
         return restore_enum_wrapper(cls, values)
 
@@ -395,7 +405,8 @@ class ScanStatusInfo(AIDefenseModel):
     repository: Optional[RepositoryInfo] = Field(None, description="Repository information")
     analysis_results: AnalysisResult = Field(..., description="Analysis results")
 
-    @root_validator
+    @model_validator(mode="before")
+    @classmethod
     def __restore_enums(cls, values):
         return restore_enum_wrapper(cls, values)
 
@@ -446,7 +457,8 @@ class ScanSummary(AIDefenseModel):
     issues_by_severity: Dict[str, int] = Field(default_factory=dict, description="Issues by severity")
     status: ScanStatus = Field(..., description="Current scan status")
 
-    @root_validator
+    @model_validator(mode="before")
+    @classmethod
     def __restore_enums(cls, values):
         return restore_enum_wrapper(cls, values)
 
