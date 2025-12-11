@@ -23,11 +23,11 @@ from requests.adapters import HTTPAdapter
 @pytest.fixture(autouse=True)
 def reset_config_singleton():
     """Reset Config singleton before each test."""
-    # Reset the singleton instance
-    Config._instance = None
+    # Reset the singleton instances
+    Config._instances = {}
     yield
     # Clean up after test
-    Config._instance = None
+    Config._instances = {}
 
 
 def test_config_default():

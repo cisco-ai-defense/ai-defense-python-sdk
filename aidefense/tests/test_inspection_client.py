@@ -25,7 +25,6 @@ from aidefense.runtime.models import (
 )
 from aidefense.config import Config
 from aidefense.exceptions import ValidationError
-from typing import Dict, Any, Optional
 import uuid
 
 
@@ -36,11 +35,10 @@ TEST_API_KEY = "0123456789" * 6 + "0123"  # 64 characters
 @pytest.fixture(autouse=True)
 def reset_config_singleton():
     """Reset Config singleton before each test."""
-    # Reset the singleton instance
-    Config._instance = None
+    Config._instances = {}
     yield
     # Clean up after test
-    Config._instance = None
+    Config._instances = {}
 
 
 class TestInspectionClient(InspectionClient):
@@ -48,7 +46,7 @@ class TestInspectionClient(InspectionClient):
     Test implementation of the abstract InspectionClient for testing purposes.
     """
 
-    def __init__(self, api_key: str, config: Optional[Config] = None):
+    def __init__(self, api_key: str, config: Config):
         super().__init__(api_key, config)
         self.endpoint = "https://test.endpoint/api/v1/inspect/test"
 
@@ -59,7 +57,7 @@ class TestInspectionClient(InspectionClient):
 
 def test_parse_inspect_response_basic():
     """Test parsing a basic inspection response."""
-    client = TestInspectionClient(TEST_API_KEY)
+    client = TestInspectionClient(TEST_API_KEY, Config())
 
     response_data = {
         "is_safe": True,
@@ -77,7 +75,7 @@ def test_parse_inspect_response_basic():
 
 def test_parse_inspect_response_with_classifications():
     """Test parsing a response with classifications."""
-    client = TestInspectionClient(TEST_API_KEY)
+    client = TestInspectionClient(TEST_API_KEY, Config())
 
     response_data = {
         "is_safe": False,
@@ -98,7 +96,7 @@ def test_parse_inspect_response_with_classifications():
 
 def test_parse_inspect_response_with_invalid_classification():
     """Test parsing a response with an invalid classification type."""
-    client = TestInspectionClient(TEST_API_KEY)
+    client = TestInspectionClient(TEST_API_KEY, Config())
 
     response_data = {
         "is_safe": False,
@@ -115,7 +113,7 @@ def test_parse_inspect_response_with_invalid_classification():
 
 def test_parse_inspect_response_with_rules():
     """Test parsing a response with rule information."""
-    client = TestInspectionClient(TEST_API_KEY)
+    client = TestInspectionClient(TEST_API_KEY, Config())
 
     response_data = {
         "is_safe": False,
@@ -153,7 +151,7 @@ def test_parse_inspect_response_with_rules():
 
 def test_parse_inspect_response_with_custom_rule_name():
     """Test parsing a response with a custom rule name not in the enum."""
-    client = TestInspectionClient(TEST_API_KEY)
+    client = TestInspectionClient(TEST_API_KEY, Config())
 
     response_data = {
         "is_safe": False,
@@ -177,7 +175,7 @@ def test_parse_inspect_response_with_custom_rule_name():
 
 def test_parse_inspect_response_with_severity():
     """Test parsing a response with severity information."""
-    client = TestInspectionClient(TEST_API_KEY)
+    client = TestInspectionClient(TEST_API_KEY, Config())
 
     response_data = {
         "is_safe": False,
@@ -193,7 +191,7 @@ def test_parse_inspect_response_with_severity():
 
 def test_parse_inspect_response_with_invalid_severity():
     """Test parsing a response with invalid severity."""
-    client = TestInspectionClient(TEST_API_KEY)
+    client = TestInspectionClient(TEST_API_KEY, Config())
 
     response_data = {
         "is_safe": False,
@@ -209,7 +207,7 @@ def test_parse_inspect_response_with_invalid_severity():
 
 def test_parse_inspect_response_with_metadata():
     """Test parsing a response with transaction metadata."""
-    client = TestInspectionClient(TEST_API_KEY)
+    client = TestInspectionClient(TEST_API_KEY, Config())
 
     event_id = str(uuid.uuid4())
     transaction_id = "tx-12345"
@@ -228,7 +226,7 @@ def test_parse_inspect_response_with_metadata():
 
 def test_parse_inspect_response_with_attack_technique():
     """Test parsing a response with attack technique information."""
-    client = TestInspectionClient(TEST_API_KEY)
+    client = TestInspectionClient(TEST_API_KEY, Config())
 
     response_data = {
         "is_safe": False,
@@ -245,7 +243,7 @@ def test_parse_inspect_response_with_attack_technique():
 
 def test_parse_inspect_response_with_invalid_action():
     """Test parsing a response with invalid action."""
-    client = TestInspectionClient(TEST_API_KEY)
+    client = TestInspectionClient(TEST_API_KEY, Config())
 
     response_data = {
         "is_safe": False,
@@ -260,7 +258,7 @@ def test_parse_inspect_response_with_invalid_action():
 
 def test_parse_inspect_response_complex():
     """Test parsing a complex response with all possible fields."""
-    client = TestInspectionClient(TEST_API_KEY)
+    client = TestInspectionClient(TEST_API_KEY, Config())
 
     response_data = {
         "classifications": ["SECURITY_VIOLATION"],

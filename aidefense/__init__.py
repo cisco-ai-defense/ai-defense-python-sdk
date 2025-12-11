@@ -20,7 +20,7 @@ Convenient imports for all major SDK components.
 """
 
 from .runtime import *
-from .config import Config
+from .config import Config, AsyncConfig
 from .exceptions import ValidationError, ApiError, SDKError
 from .modelscan import ModelScanClient
 

@@ -40,15 +40,15 @@ TEST_API_KEY = "0123456789" * 6 + "0123"  # 64 characters
 @pytest.fixture(autouse=True)
 def reset_config_singleton():
     """Reset Config singleton before each test."""
-    Config._instance = None
+    Config._instances = {}
     yield
-    Config._instance = None
+    Config._instances = {}
 
 
 @pytest.fixture
 def client():
     """Create a test Chat inspection client with a mock _request_handler."""
-    client = ChatInspectionClient(api_key=TEST_API_KEY)
+    client = ChatInspectionClient(api_key=TEST_API_KEY, config=Config())
     # Replace the _request_handler with a Mock after initialization
     mock_handler = Mock()
     client._request_handler = mock_handler
@@ -62,7 +62,7 @@ def client():
 
 def test_chat_client_init():
     """Test basic client initialization."""
-    client = ChatInspectionClient(api_key=TEST_API_KEY)
+    client = ChatInspectionClient(api_key=TEST_API_KEY, config=Config())
     assert client.endpoint.endswith("/api/v1/inspect/chat")
 
 
@@ -209,38 +209,38 @@ def test_validation_empty_messages(client):
 
 
 def test_validate_inspection_request_non_list_messages():
-    client = ChatInspectionClient(api_key=TEST_API_KEY)
+    client = ChatInspectionClient(api_key=TEST_API_KEY, config=Config())
     with pytest.raises(ValidationError, match="'messages' must be a non-empty list"):
         client.validate_inspection_request({"messages": "not a list"})
 
 
 def test_validate_inspection_request_message_not_dict():
-    client = ChatInspectionClient(api_key=TEST_API_KEY)
+    client = ChatInspectionClient(api_key=TEST_API_KEY, config=Config())
     with pytest.raises(ValidationError, match="Each message must be a dict"):
         client.validate_inspection_request({"messages": ["not a dict"]})
 
 
 def test_validate_inspection_request_invalid_role():
-    client = ChatInspectionClient(api_key=TEST_API_KEY)
+    client = ChatInspectionClient(api_key=TEST_API_KEY, config=Config())
     with pytest.raises(ValidationError, match="Message role must be one of"):
         client.validate_inspection_request({"messages": [{"role": "invalid_role", "content": "hi"}]})
 
 
 def test_validate_inspection_request_empty_content():
-    client = ChatInspectionClient(api_key=TEST_API_KEY)
+    client = ChatInspectionClient(api_key=TEST_API_KEY, config=Config())
     with pytest.raises(ValidationError, match="Each message must have non-empty string content"):
         client.validate_inspection_request({"messages": [{"role": "user", "content": ""}]})
 
 
 def test_validate_inspection_request_no_prompt_or_completion():
-    client = ChatInspectionClient(api_key=TEST_API_KEY)
+    client = ChatInspectionClient(api_key=TEST_API_KEY, config=Config())
     # Only system message, no user or assistant
     with pytest.raises(ValidationError, match="At least one message must be a prompt.*or completion"):
         client.validate_inspection_request({"messages": [{"role": "system", "content": "instruction"}]})
 
 
 def test_validate_inspection_request_invalid_metadata():
-    client = ChatInspectionClient(api_key=TEST_API_KEY)
+    client = ChatInspectionClient(api_key=TEST_API_KEY, config=Config())
     with pytest.raises(ValidationError, match="'metadata' must be a dict"):
         client.validate_inspection_request(
             {
@@ -251,7 +251,7 @@ def test_validate_inspection_request_invalid_metadata():
 
 
 def test_validate_inspection_request_invalid_config():
-    client = ChatInspectionClient(api_key=TEST_API_KEY)
+    client = ChatInspectionClient(api_key=TEST_API_KEY, config=Config())
     with pytest.raises(ValidationError, match="'config' must be a dict"):
         client.validate_inspection_request(
             {
@@ -262,7 +262,8 @@ def test_validate_inspection_request_invalid_config():
 
 
 def test_validate_inspection_request_valid():
-    client = ChatInspectionClient(api_key=TEST_API_KEY)
+    client = ChatInspectionClient(api_key=TEST_API_KEY, config=Config())
+
     # This should not raise any exception
     request_dict = {
         "messages": [

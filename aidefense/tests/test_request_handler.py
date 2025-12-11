@@ -34,9 +34,9 @@ REQUEST_ID_HEADER = "x-aidefense-request-id"
 @pytest.fixture
 def reset_config_singleton():
     """Reset the Config singleton before each test."""
-    Config._instance = None
+    Config._instances = {}
     yield
-    Config._instance = None
+    Config._instances = {}
 
 
 def test_request_handler_init_default():
@@ -309,9 +309,7 @@ def test_request_uses_config_timeout(mock_request, reset_config_singleton):
 
 
 @patch("requests.Session.request")
-def test_request_explicit_timeout_overrides_config(
-    mock_request, reset_config_singleton
-):
+def test_request_explicit_timeout_overrides_config(mock_request, reset_config_singleton):
     """Test that explicit timeout parameter overrides config timeout."""
     mock_response = MagicMock()
     mock_response.status_code = 200
@@ -391,9 +389,7 @@ def test_custom_headers_merge_with_defaults(mock_request):
         "Content-Type": "application/xml",  # Override default
     }
 
-    handler.request(
-        method="GET", url="https://api.example.com", auth=None, headers=custom_headers
-    )
+    handler.request(method="GET", url="https://api.example.com", auth=None, headers=custom_headers)
 
     # Verify headers are properly merged
     mock_request.assert_called_once()
@@ -426,9 +422,7 @@ def test_retry_configuration_in_adapter(reset_config_singleton):
     assert retry_obj.backoff_factor == 1.0
     # Note: status_forcelist might be a list or frozenset depending on urllib3 version
     expected_statuses = {429, 500, 502, 503, 504}
-    actual_statuses = (
-        set(retry_obj.status_forcelist) if retry_obj.status_forcelist else set()
-    )
+    actual_statuses = set(retry_obj.status_forcelist) if retry_obj.status_forcelist else set()
     assert actual_statuses == expected_statuses
 
 
@@ -446,9 +440,7 @@ def test_default_retry_configuration(reset_config_singleton):
     assert retry_obj.backoff_factor == Config.DEFAULT_BACKOFF_FACTOR
     # Note: status_forcelist might be a list or frozenset depending on urllib3 version
     expected_statuses = set(Config.DEFAULT_STATUS_FORCELIST)
-    actual_statuses = (
-        set(retry_obj.status_forcelist) if retry_obj.status_forcelist else set()
-    )
+    actual_statuses = set(retry_obj.status_forcelist) if retry_obj.status_forcelist else set()
     assert actual_statuses == expected_statuses
 
 
