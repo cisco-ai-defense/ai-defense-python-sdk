@@ -46,10 +46,10 @@ TEST_API_KEY = "0123456789" * 6 + "0123"  # 64 characters
 def reset_config_singleton():
     """Reset Config singleton before each test."""
     # Reset the singleton instance
-    Config._instance = None
+    Config._instances = {}
     yield
     # Clean up after test
-    Config._instance = None
+    Config._instances = {}
 
 
 @pytest.fixture
@@ -62,9 +62,7 @@ def mock_request_handler():
 @pytest.fixture
 def policy_client(mock_request_handler):
     """Create a PolicyManagementClient with a mock request handler."""
-    client = PolicyManagementClient(
-        auth=ManagementAuth(TEST_API_KEY), request_handler=mock_request_handler
-    )
+    client = PolicyManagementClient(auth=ManagementAuth(TEST_API_KEY), request_handler=mock_request_handler)
     # Replace the make_request method with a mock
     client.make_request = MagicMock()
     return client
@@ -104,9 +102,7 @@ class TestPolicyManagementClient:
         policy_client.make_request.return_value = mock_response
 
         # Create request
-        request = ListPoliciesRequest(
-            limit=10, offset=0, sort_by=PolicySortBy.policy_name, order="asc"
-        )
+        request = ListPoliciesRequest(limit=10, offset=0, sort_by=PolicySortBy.policy_name, order="asc")
 
         # Call the method
         response = policy_client.list_policies(request)
@@ -171,9 +167,7 @@ class TestPolicyManagementClient:
         response = policy_client.get_policy(policy_id, expanded=True)
 
         # Verify the make_request call
-        policy_client.make_request.assert_called_once_with(
-            "GET", f"policies/{policy_id}", params={"expanded": True}
-        )
+        policy_client.make_request.assert_called_once_with("GET", f"policies/{policy_id}", params={"expanded": True})
 
         # Verify the response
         assert isinstance(response, Policy)
@@ -224,9 +218,7 @@ class TestPolicyManagementClient:
     def test_update_policy_failfast_empty(self, policy_client):
         """Fail fast when no fields are provided to update."""
         with pytest.raises(ValueError) as excinfo:
-            policy_client.update_policy(
-                "123e4567-e89b-12d3-a456-426614174331", UpdatePolicyRequest()
-            )
+            policy_client.update_policy("123e4567-e89b-12d3-a456-426614174331", UpdatePolicyRequest())
         assert "No fields to update" in str(excinfo.value)
         policy_client.make_request.assert_not_called()
 
@@ -240,9 +232,7 @@ class TestPolicyManagementClient:
         response = policy_client.delete_policy(policy_id)
 
         # Verify the make_request call
-        policy_client.make_request.assert_called_once_with(
-            "DELETE", f"policies/{policy_id}"
-        )
+        policy_client.make_request.assert_called_once_with("DELETE", f"policies/{policy_id}")
 
         # Verify the response
         assert response is None
