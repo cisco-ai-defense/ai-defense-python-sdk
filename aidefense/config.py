@@ -266,7 +266,7 @@ class AsyncConfig(BaseConfig):
     The AsyncConfig class centralizes all runtime options for AI Defense SDK clients. It enables you to control API endpoints (region or custom),
     HTTP timeouts, logging behavior, retry logic, and HTTP connection pooling.
 
-    Pass a AsyncConfig instance to any asynchronous client (e.g., AsyncChatInspectionClient) to apply consistent
+    Pass an AsyncConfig instance to any asynchronous client (e.g., AsyncChatInspectionClient) to apply consistent
     settings across all SDK operations.
 
     Typical usage:
