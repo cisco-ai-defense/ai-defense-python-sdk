@@ -63,6 +63,7 @@ class HttpInspectionClient(InspectionClient):
             api_key (str): Your AI Defense API key.
             config (Config, optional): SDK configuration for endpoints, logging, retries, etc.
         """
+        config = config or Config()
         super().__init__(api_key, config)
         self.endpoint = f"{self.config.runtime_base_url}/api/v1/inspect/http"
 
