@@ -186,7 +186,7 @@ class Connection(AIDefenseModel):
         None, description="ID of the associated endpoint"
     )
     connection_status: ConnectionStatus = Field(
-        default=ConnectionStatus.Unspecified, description="Status of the connection"
+        ..., description="Status of the connection"
     )
     created_at: Optional[datetime] = Field(
         None, description="Timestamp when the connection was created"
