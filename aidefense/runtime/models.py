@@ -166,11 +166,12 @@ class InspectResponse:
         classifications (List[Classification]): List of detected classifications (e.g., PII, PCI, PHI).
         is_safe (bool): Whether the inspected content is considered safe.
         severity (Optional[Severity]): Severity level of the detected issue (if any).
-        rules (Optional[List[Rule]]): List of rules that matched during inspection.
+        rules (Optional[List[Rule]]): List of rules that matched/triggered during inspection.
         attack_technique (Optional[str]): Attack technique detected, if applicable.
         explanation (Optional[str]): Human-readable explanation of the inspection result.
         client_transaction_id (Optional[str]): Unique client-provided transaction ID for tracing.
         event_id (Optional[str]): Unique event ID assigned by the backend.
+        processed_rules (Optional[List[Rule]]): List of all rules that were processed during inspection.
     """
 
     classifications: List[Classification]
@@ -182,3 +183,4 @@ class InspectResponse:
     explanation: Optional[str] = None
     client_transaction_id: Optional[str] = None
     event_id: Optional[str] = None
+    processed_rules: Optional[List[Rule]] = None

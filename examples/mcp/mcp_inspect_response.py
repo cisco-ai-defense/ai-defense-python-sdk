@@ -1,0 +1,141 @@
+# Copyright 2025 Cisco Systems, Inc. and its affiliates
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+"""
+Example: Using inspect_response for MCP response inspection
+
+This example demonstrates how to inspect MCP response messages
+to detect data leakage such as PII, credentials, or secrets in tool results.
+
+Environment Variables:
+    AIDEFENSE_API_KEY: Your Cisco AI Defense API key
+    AIDEFENSE_RUNTIME_URL: The runtime API base URL
+"""
+
+import os
+
+from aidefense import MCPInspectionClient, Config
+
+# Get API key and URL from environment variables
+api_key = os.environ.get("AIDEFENSE_API_KEY")
+runtime_url = os.environ.get("AIDEFENSE_RUNTIME_URL")
+
+if not api_key:
+    raise ValueError("AIDEFENSE_API_KEY environment variable is required")
+
+if not runtime_url:
+    raise ValueError("AIDEFENSE_RUNTIME_URL environment variable is required")
+
+# Initialize the MCP inspection client with custom config
+config = Config(runtime_base_url=runtime_url)
+client = MCPInspectionClient(api_key=api_key, config=config)
+
+def print_inspection_result(title: str, result):
+    """Print inspection result in a readable format."""
+    print("=" * 60)
+    print(f"MCP INSPECTION RESULT - {title}")
+    print("=" * 60)
+
+    if result.error:
+        print(f"❌ Inspection Error:")
+        print(f"   Code:    {result.error.code}")
+        print(f"   Message: {result.error.message}")
+        if result.error.data:
+            print(f"   Data:    {result.error.data}")
+    elif result.result:
+        r = result.result
+        status = "✅ SAFE" if r.is_safe else "🚫 UNSAFE"
+        print(f"Status:          {status}")
+        print(f"Action:          {r.action.value if r.action else 'N/A'}")
+        print(f"Severity:        {r.severity.value if r.severity else 'N/A'}")
+        print(f"Event ID:        {r.event_id or 'N/A'}")
+
+        if r.classifications:
+            print(f"Classifications: {', '.join(c.value for c in r.classifications)}")
+
+        if r.rules:
+            print("\nTriggered Rules:")
+            for rule in r.rules:
+                rule_name = rule.rule_name.value if hasattr(rule.rule_name, 'value') else rule.rule_name
+                print(f"   • {rule_name}")
+                if rule.classification and rule.classification != "NONE_VIOLATION":
+                    classification = rule.classification.value if hasattr(rule.classification, 'value') else rule.classification
+                    print(f"     Classification: {classification}")
+
+        if r.processed_rules:
+            print(f"\nProcessed Rules ({len(r.processed_rules)} total):")
+            for rule in r.processed_rules:
+                rule_name = rule.rule_name.value if hasattr(rule.rule_name, 'value') else rule.rule_name
+                print(f"   • {rule_name}")
+
+        if r.attack_technique and r.attack_technique != "NONE_ATTACK_TECHNIQUE":
+            print(f"\nAttack Technique: {r.attack_technique}")
+
+        if r.explanation:
+            print(f"\nExplanation: {r.explanation}")
+
+    print("=" * 60)
+    print()
+
+
+# Example 1: PII - Personal Identifiable Information
+result = client.inspect_response(
+    result_data={
+        "content": [
+            {
+                "type": "text",
+                "text": "Customer data: Name: John Smith, SSN: 123-45-6789, Email: john.smith@email.com, Phone: 555-123-4567, Driver License: D1234567"
+            }
+        ]
+    },
+    method="tools/call",
+    params={"name": "get_customer_data", "arguments": {"customer_id": "12345"}},
+    message_id=1
+)
+print_inspection_result("PII (Personal Identifiable Information)", result)
+
+# Example 2: PCI - Payment Card Information
+result = client.inspect_response(
+    result_data={
+        "content": [
+            {
+                "type": "text",
+                "text": "Payment details: Credit Card: 4111-1111-1111-1111, CVV: 123, Expiry: 12/25, Bank Account: 1234567890, Routing: 021000021"
+            }
+        ]
+    },
+    method="tools/call",
+    params={"name": "get_payment_details", "arguments": {"order_id": "ORD-789"}},
+    message_id=2
+)
+print_inspection_result("PCI (Payment Card Information)", result)
+
+# Example 3: PHI - Protected Health Information
+result = client.inspect_response(
+    result_data={
+        "content": [
+            {
+                "type": "text",
+                "text": "Patient record: Medical License: MD12345, NHS Number: 943-476-5919, Diagnosis: Diabetes Type 2, Prescription: Metformin 500mg"
+            }
+        ]
+    },
+    method="tools/call",
+    params={"name": "get_patient_record", "arguments": {"patient_id": "PAT-456"}},
+    message_id=3
+)
+print_inspection_result("PHI (Protected Health Information)", result)
+

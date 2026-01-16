@@ -15,6 +15,7 @@ Integrate AI-powered security, privacy, and safety inspections into your Python 
 - [Usage Examples](#usage-examples)
   - [Chat Inspection](#chat-inspection)
   - [HTTP Inspection](#http-inspection)
+  - [MCP Inspection](#mcp-inspection)
   - [Model Scanning](#model-scanning)
   - [Management API](#management-api)
   - [Validation API](#validation-api)
@@ -29,7 +30,7 @@ Integrate AI-powered security, privacy, and safety inspections into your Python 
 
 ## Overview
 
-The `cisco-aidefense-sdk` provides a developer-friendly interface for inspecting chat conversations and HTTP 
+The `cisco-aidefense-sdk` provides a developer-friendly interface for inspecting chat conversations and HTTP
 requests/responses using Cisco's AI Defense API. It also includes a comprehensive Management API client for creating and managing applications, connections, policies, and events.
 
 The SDK enables you to detect security, privacy, and safety risks in real time, with flexible configuration and robust validation, while also providing tools to manage your AI Defense resources programmatically.
@@ -40,6 +41,7 @@ The SDK enables you to detect security, privacy, and safety risks in real time, 
 
 - **Chat Inspection**: Analyze chat prompts, responses, or full conversations for risks.
 - **HTTP Inspection**: Inspect HTTP requests and responses, including support for `requests.Request`, `requests.PreparedRequest`, and `requests.Response` objects.
+- **MCP Inspection**: Inspect Model Context Protocol (MCP) JSON-RPC 2.0 messages for security, privacy, and safety violations in AI agent tool calls, resource access, and responses.
 - **Model Scanning**: Scan AI/ML model files and repositories for security threats, malicious code, and vulnerabilities.
 - **Management API**: Create and manage applications, connections, policies, and events through a clean, intuitive API.
 - **Strong Input Validation**: Prevent malformed requests and catch errors early.
@@ -191,16 +193,21 @@ print(resp.task_id)
 ## SDK Structure
 
 ### Runtime API
+
 - `runtime/chat_inspect.py` — ChatInspectionClient for chat-related inspection
 - `runtime/http_inspect.py` — HttpInspectionClient for HTTP request/response inspection
+- `runtime/mcp_inspect.py` — MCPInspectionClient for MCP JSON-RPC 2.0 message inspection
 - `runtime/models.py` — Data models and enums for requests, responses, rules, etc.
+- `runtime/mcp_models.py` — Data models for MCP messages and inspection responses
 
 ### Model Scanning API
+
 - `modelscan/model_scan.py` — ModelScanClient for high-level file and repository scanning
 - `modelscan/model_scan_base.py` — ModelScan base class for granular scan operations
 - `modelscan/models.py` — Data models for scan requests, responses, and status information
 
 ### Management API
+
 - `management/__init__.py` — ManagementClient for accessing all management APIs
 - `management/applications.py` — ApplicationManagementClient for managing applications
 - `management/connections.py` — ConnectionManagementClient for managing connections
@@ -211,6 +218,7 @@ print(resp.task_id)
   - `management/models/validation.py` — Validation-related request/response models and enums
 
 ### Common
+
 - `config.py` — SDK-wide configuration (logging, retries, connection pool)
 - `exceptions.py` — Custom exception classes for robust error handling
 
@@ -271,6 +279,60 @@ result = client.inspect_request_from_http_library(req)
 print(result.is_safe)
 ```
 
+### MCP Inspection
+
+The MCP (Model Context Protocol) Inspection API allows you to inspect JSON-RPC 2.0 messages used by AI agents for security, privacy, and safety violations.
+
+```python
+from aidefense import MCPInspectionClient, Config
+from aidefense.runtime import MCPMessage
+
+# Initialize client
+client = MCPInspectionClient(api_key="YOUR_INSPECTION_API_KEY")
+
+# Inspect a tool call request
+result = client.inspect_tool_call(
+    tool_name="execute_query",
+    arguments={"query": "SELECT * FROM users"},
+    message_id=1
+)
+print(f"Is safe: {result.result.is_safe}")
+
+# Inspect a resource read request
+result = client.inspect_resource_read(
+    uri="file:///etc/passwd",
+    message_id=2
+)
+if result.result and not result.result.is_safe:
+    print("Sensitive resource access detected!")
+
+# Inspect a tool response for data leakage (PII, PCI, PHI)
+result = client.inspect_response(
+    result_data={
+        "content": [
+            {"type": "text", "text": "User email: john.doe@example.com, SSN: 123-45-6789"}
+        ]
+    },
+    method="tools/call",
+    params={"name": "get_user_info", "arguments": {"user_id": "123"}},
+    message_id=3
+)
+if result.result and not result.result.is_safe:
+    print("Response contains sensitive data!")
+    for rule in result.result.rules or []:
+        print(f"  Triggered: {rule.rule_name}")
+
+# Inspect a raw MCP message
+message = MCPMessage(
+    jsonrpc="2.0",
+    method="tools/call",
+    params={"name": "search", "arguments": {"query": "confidential data"}},
+    id=4
+)
+result = client.inspect(message)
+print(f"Action: {result.result.action}")
+```
+
 ### Model Scanning
 
 #### Scanning Local Files
@@ -288,7 +350,7 @@ result = client.scan_file("/path/to/model.pkl")
 # Check the results
 if result.status == ScanStatus.COMPLETED:
     print("✅ Scan completed successfully")
-    
+
     # Check for threats in each file
     for file_info in result.analysis_results.items:
         if file_info.threats.items:
@@ -325,7 +387,7 @@ if result.status == ScanStatus.COMPLETED:
     print("✅ Repository scan completed")
     print(f"Repository: {result.repository.url}")
     print(f"Files scanned: {result.repository.files_scanned}")
-    
+
     # Check for threats
     for file_info in result.analysis_results.items:
         if file_info.threats.items:
@@ -451,7 +513,7 @@ if events.items:
     event_id = events.items[0].event_id
     event_detail = client.events.get_event(event_id, expanded=True)
     print(f"Event action: {event_detail.event_action}")
-    
+
     # Get conversation for the event
     conversation = client.events.get_event_conversation(event_id, expanded=True)
     if "messages" in conversation and conversation["messages"].items:

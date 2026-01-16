@@ -36,6 +36,10 @@ The examples are organized into the following structure:
     │       ├── http_inspect_mistral_api.py
     │       ├── http_inspect_openai_api.py
     │       └── http_inspect_vertex_ai_api.py
+    ├── mcp/                     # MCP inspection examples
+    │   ├── mcp_inspect_message.py
+    │   ├── mcp_inspect_response.py
+    │   └── mcp_inspect_tool_call.py
     └── advanced/                # Advanced usage examples
         ├── advanced_usage.py
         └── custom_configuration.py
@@ -116,6 +120,64 @@ The SDK includes HTTP inspection examples for multiple AI model providers:
 - Amazon Bedrock
 - Mistral AI
 - Cohere
+
+MCP Inspection Examples
+-----------------------
+
+The MCP (Model Context Protocol) Inspection API allows you to inspect JSON-RPC 2.0 messages
+used by AI agents for security, privacy, and safety violations.
+
+Basic MCP Inspection
+^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: python
+
+    from aidefense import MCPInspectionClient, Config
+    from aidefense.runtime import MCPMessage
+
+    # Initialize the client
+    client = MCPInspectionClient(api_key="YOUR_INSPECTION_API_KEY")
+
+    # Inspect a tool call request
+    result = client.inspect_tool_call(
+        tool_name="execute_query",
+        arguments={"query": "SELECT * FROM users"},
+        message_id=1
+    )
+    print(f"Is safe: {result.result.is_safe}")
+
+    # Check triggered rules if unsafe
+    if result.result and not result.result.is_safe:
+        for rule in result.result.rules or []:
+            print(f"Rule: {rule.rule_name}")
+
+MCP Response Inspection
+^^^^^^^^^^^^^^^^^^^^^^
+
+Inspect tool responses for data leakage such as PII, PCI, or PHI:
+
+.. code-block:: python
+
+    from aidefense import MCPInspectionClient
+
+    client = MCPInspectionClient(api_key="YOUR_INSPECTION_API_KEY")
+
+    # Inspect a tool response for sensitive data
+    result = client.inspect_response(
+        result_data={
+            "content": [
+                {"type": "text", "text": "User SSN: 123-45-6789, Email: john@example.com"}
+            ]
+        },
+        method="tools/call",
+        params={"name": "get_user_info", "arguments": {"user_id": "123"}},
+        message_id=1
+    )
+
+    if result.result and not result.result.is_safe:
+        print("Response contains sensitive data!")
+        for rule in result.result.rules or []:
+            print(f"  Triggered: {rule.rule_name}")
 
 Advanced Examples
 ---------------

@@ -17,6 +17,7 @@
 from .http_inspect import HttpInspectionClient
 from .chat_inspect import ChatInspectionClient
 from .chat_inspect import Message, Role, ChatInspectRequest
+from .mcp_inspect import MCPInspectionClient
 from .models import (
     Action,
     Rule,
@@ -33,5 +34,11 @@ from .http_models import (
     HttpMetaObject,
     HttpHdrObject,
     HttpHdrKvObject,
+)
+from .mcp_models import (
+    MCPMessage,
+    MCPError,
+    MCPInspectResponse,
+    MCPInspectError,
 )
 from .utils import to_base64_bytes
