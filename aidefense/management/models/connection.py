@@ -39,7 +39,6 @@ class ConnectionStatus(str, Enum):
     Connected = "Connected"
     Disconnected = "Disconnected"
     Pending = "Pending"
-    Unspecified = "ConnectionStatusUnspecified"
 
 
 class ConnectionType(str, Enum):

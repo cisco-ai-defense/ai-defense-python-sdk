@@ -74,8 +74,8 @@ class GuardrailRule(AIDefenseModel):
 
     ruleset_type: str = Field(description="Ruleset type")
     status: RuleStatus = Field(description="Rule status")
-    direction: Optional[Direction] = Field(None, description="Direction")
-    action: Optional[Action] = Field(None, description="Action")
+    direction: Direction = Field(description="Direction")
+    action: Action = Field(description="Action")
     entity: Optional[Entity] = Field(None, description="Entity")
 
 
