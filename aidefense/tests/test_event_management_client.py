@@ -41,10 +41,10 @@ TEST_API_KEY = "0123456789" * 6 + "0123"  # 64 characters
 def reset_config_singleton():
     """Reset Config singleton before each test."""
     # Reset the singleton instance
-    Config._instance = None
+    Config._instances = {}
     yield
     # Clean up after test
-    Config._instance = None
+    Config._instances = {}
 
 
 @pytest.fixture
@@ -57,9 +57,7 @@ def mock_request_handler():
 @pytest.fixture
 def event_client(mock_request_handler):
     """Create an EventManagementClient with a mock request handler."""
-    client = EventManagementClient(
-        auth=ManagementAuth(TEST_API_KEY), request_handler=mock_request_handler
-    )
+    client = EventManagementClient(auth=ManagementAuth(TEST_API_KEY), request_handler=mock_request_handler)
     # Replace the make_request method with a mock
     client.make_request = MagicMock()
     return client
@@ -181,9 +179,7 @@ class TestEventManagementClient:
         response = event_client.get_event(event_id, expanded=True)
 
         # Verify the make_request call
-        event_client.make_request.assert_called_once_with(
-            "GET", f"events/{event_id}", params={"expanded": True}
-        )
+        event_client.make_request.assert_called_once_with("GET", f"events/{event_id}", params={"expanded": True})
 
         # Verify the response
         assert isinstance(response, Event)
@@ -232,9 +228,7 @@ class TestEventManagementClient:
         response = event_client.get_event_conversation(event_id)
 
         # Verify the make_request call
-        event_client.make_request.assert_called_once_with(
-            "GET", f"events/{event_id}/conversation"
-        )
+        event_client.make_request.assert_called_once_with("GET", f"events/{event_id}/conversation")
 
         # Verify the response
         assert isinstance(response, dict)
