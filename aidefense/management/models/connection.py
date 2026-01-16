@@ -39,6 +39,7 @@ class ConnectionStatus(str, Enum):
     Connected = "Connected"
     Disconnected = "Disconnected"
     Pending = "Pending"
+    Unspecified = "ConnectionStatusUnspecified"
 
 
 class ConnectionType(str, Enum):
@@ -46,6 +47,7 @@ class ConnectionType(str, Enum):
 
     API = "API"
     Gateway = "Gateway"
+    MCPGateway = "MCPGateway"
     Unspecified = "Unspecified"
 
 
@@ -185,16 +187,16 @@ class Connection(AIDefenseModel):
         None, description="ID of the associated endpoint"
     )
     connection_status: ConnectionStatus = Field(
-        ..., description="Status of the connection"
+        default=ConnectionStatus.Unspecified, description="Status of the connection"
     )
-    created_at: datetime = Field(
-        ..., description="Timestamp when the connection was created"
+    created_at: Optional[datetime] = Field(
+        None, description="Timestamp when the connection was created"
     )
     last_active: Optional[datetime] = Field(
         None, description="Timestamp when the connection was last active"
     )
-    updated_at: datetime = Field(
-        ..., description="Timestamp when the connection was last updated"
+    updated_at: Optional[datetime] = Field(
+        None, description="Timestamp when the connection was last updated"
     )
     updated_by: Optional[str] = Field(
         None, description="User who last updated the connection"

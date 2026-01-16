@@ -40,6 +40,13 @@ The examples are organized into the following structure:
     │   ├── mcp_inspect_message.py
     │   ├── mcp_inspect_response.py
     │   └── mcp_inspect_tool_call.py
+    ├── mcpscan/                 # MCP server scanning examples
+    │   ├── manage_mcp_events.py
+    │   ├── manage_mcp_policies.py
+    │   ├── manage_mcp_servers.py
+    │   ├── manage_resource_connections.py
+    │   ├── register_mcp_server.py
+    │   └── scan_mcp_server_async.py
     └── advanced/                # Advanced usage examples
         ├── advanced_usage.py
         └── custom_configuration.py
@@ -178,6 +185,72 @@ Inspect tool responses for data leakage such as PII, PCI, or PHI:
         print("Response contains sensitive data!")
         for rule in result.result.rules or []:
             print(f"  Triggered: {rule.rule_name}")
+
+MCP Server Scanning Examples
+---------------------------
+
+The MCP Server Scanning API allows you to scan MCP servers for security threats
+and manage resource connections, policies, and events.
+
+Basic MCP Server Scanning
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: python
+
+    from aidefense.mcpscan import MCPScanClient
+    from aidefense.mcpscan.models import (
+        StartMCPServerScanRequest,
+        TransportType,
+        MCPScanStatus
+    )
+
+    # Initialize the client
+    client = MCPScanClient(api_key="YOUR_MANAGEMENT_API_KEY")
+
+    # Create scan request
+    request = StartMCPServerScanRequest(
+        name="My MCP Server",
+        url="https://mcp-server.example.com/sse",
+        description="Production MCP server",
+        connection_type=TransportType.SSE
+    )
+
+    # Run the scan (waits for completion)
+    result = client.scan_mcp_server(request)
+
+    if result.status == MCPScanStatus.COMPLETED:
+        print("✅ Scan completed")
+        if result.result and result.result.is_safe:
+            print("✅ MCP server is safe")
+
+Managing Resource Connections
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: python
+
+    from aidefense.mcpscan import ResourceConnectionClient
+    from aidefense.mcpscan.models import (
+        CreateResourceConnectionRequest,
+        FilterResourceConnectionsRequest,
+        ResourceConnectionType
+    )
+
+    client = ResourceConnectionClient(api_key="YOUR_MANAGEMENT_API_KEY")
+
+    # Create a connection
+    request = CreateResourceConnectionRequest(
+        connection_name="Production MCP Connection",
+        connection_type=ResourceConnectionType.MCP_GATEWAY,
+        resource_ids=[]
+    )
+    response = client.create_connection(request)
+    print(f"Created: {response.connection_id}")
+
+    # List connections
+    filter_request = FilterResourceConnectionsRequest(limit=25)
+    connections = client.filter_connections(filter_request)
+    for conn in connections.connections.items:
+        print(f"  - {conn.connection_name}: {conn.connection_status}")
 
 Advanced Examples
 ---------------

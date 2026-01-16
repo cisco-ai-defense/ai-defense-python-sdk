@@ -16,6 +16,7 @@ Integrate AI-powered security, privacy, and safety inspections into your Python 
   - [Chat Inspection](#chat-inspection)
   - [HTTP Inspection](#http-inspection)
   - [MCP Inspection](#mcp-inspection)
+  - [MCP Server Scanning](#mcp-server-scanning)
   - [Model Scanning](#model-scanning)
   - [Management API](#management-api)
   - [Validation API](#validation-api)
@@ -42,6 +43,7 @@ The SDK enables you to detect security, privacy, and safety risks in real time, 
 - **Chat Inspection**: Analyze chat prompts, responses, or full conversations for risks.
 - **HTTP Inspection**: Inspect HTTP requests and responses, including support for `requests.Request`, `requests.PreparedRequest`, and `requests.Response` objects.
 - **MCP Inspection**: Inspect Model Context Protocol (MCP) JSON-RPC 2.0 messages for security, privacy, and safety violations in AI agent tool calls, resource access, and responses.
+- **MCP Server Scanning**: Scan MCP servers for security threats and vulnerabilities, manage resource connections, policies, and events.
 - **Model Scanning**: Scan AI/ML model files and repositories for security threats, malicious code, and vulnerabilities.
 - **Management API**: Create and manage applications, connections, policies, and events through a clean, intuitive API.
 - **Strong Input Validation**: Prevent malformed requests and catch errors early.
@@ -200,6 +202,14 @@ print(resp.task_id)
 - `runtime/models.py` — Data models and enums for requests, responses, rules, etc.
 - `runtime/mcp_models.py` — Data models for MCP messages and inspection responses
 
+### MCP Server Scanning API
+
+- `mcpscan/mcp_scan.py` — MCPScanClient for scanning MCP servers
+- `mcpscan/resource_connections.py` — ResourceConnectionClient for managing resource connections
+- `mcpscan/policies.py` — MCPPolicyClient for managing MCP Gateway policies
+- `mcpscan/events.py` — MCPEventClient for retrieving MCP-related events
+- `mcpscan/models.py` — Data models for MCP server scanning, connections, and events
+
 ### Model Scanning API
 
 - `modelscan/model_scan.py` — ModelScanClient for high-level file and repository scanning
@@ -331,6 +341,54 @@ message = MCPMessage(
 )
 result = client.inspect(message)
 print(f"Action: {result.result.action}")
+```
+
+### MCP Server Scanning
+
+The MCP Server Scanning API allows you to scan MCP servers for security threats and manage resource connections.
+
+```python
+from aidefense.mcpscan import MCPScanClient, ResourceConnectionClient
+from aidefense.mcpscan.models import (
+    StartMCPServerScanRequest,
+    TransportType,
+    MCPScanStatus,
+    CreateResourceConnectionRequest,
+    ResourceConnectionType,
+)
+
+# Initialize the MCP scan client
+client = MCPScanClient(api_key="YOUR_MANAGEMENT_API_KEY")
+
+# Scan an MCP server
+request = StartMCPServerScanRequest(
+    name="My MCP Server",
+    url="https://mcp-server.example.com/sse",
+    description="Production MCP server",
+    connection_type=TransportType.SSE
+)
+
+# Run the scan (waits for completion)
+result = client.scan_mcp_server(request)
+
+if result.status == MCPScanStatus.COMPLETED:
+    print("✅ Scan completed")
+    if result.result and result.result.is_safe:
+        print("✅ MCP server is safe")
+    else:
+        print("⚠️ Security issues detected")
+
+# Manage resource connections
+conn_client = ResourceConnectionClient(api_key="YOUR_MANAGEMENT_API_KEY")
+
+# Create a connection
+create_request = CreateResourceConnectionRequest(
+    connection_name="Production MCP Connection",
+    connection_type=ResourceConnectionType.MCP_GATEWAY,
+    resource_ids=[]  # Add MCP server IDs after registration
+)
+response = conn_client.create_connection(create_request)
+print(f"Created connection: {response.connection_id}")
 ```
 
 ### Model Scanning
