@@ -188,8 +188,8 @@ class Connection(AIDefenseModel):
     connection_status: ConnectionStatus = Field(
         ..., description="Status of the connection"
     )
-    created_at: Optional[datetime] = Field(
-        None, description="Timestamp when the connection was created"
+    created_at: datetime = Field(
+        ..., description="Timestamp when the connection was created"
     )
     last_active: Optional[datetime] = Field(
         None, description="Timestamp when the connection was last active"
@@ -197,8 +197,8 @@ class Connection(AIDefenseModel):
     updated_at: Optional[datetime] = Field(
         None, description="Timestamp when the connection was last updated"
     )
-    updated_by: Optional[str] = Field(
-        None, description="User who last updated the connection"
+    updated_at: datetime = Field(
+        ..., description="Timestamp when the connection was last updated"
     )
     application: Optional[Any] = Field(
         None, description="Associated application details"
