@@ -171,7 +171,7 @@ class MCPScan(BaseClient):
             path=mcp_scan_start(),
             data=request.to_body_dict(),
         )
-        result = StartMCPServerScanResponse.parse_obj(res)
+        result = StartMCPServerScanResponse.model_validate(res)
         self.config.logger.debug(f"Raw API response: {result}")
         return result
 
@@ -231,7 +231,7 @@ class MCPScan(BaseClient):
             method=HttpMethod.GET,
             path=mcp_scan_status(scan_id),
         )
-        result = GetMCPScanStatusResponse.parse_obj(res)
+        result = GetMCPScanStatusResponse.model_validate(res)
         self.config.logger.debug(f"Raw API response: {result}")
         return result
 

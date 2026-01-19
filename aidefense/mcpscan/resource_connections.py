@@ -166,7 +166,7 @@ class ResourceConnectionClient(BaseClient):
             path=resource_connections(),
             data=request.to_body_dict(),
         )
-        result = CreateResourceConnectionResponse.parse_obj(res)
+        result = CreateResourceConnectionResponse.model_validate(res)
         self.config.logger.debug(f"Created resource connection: {result}")
         return result
 

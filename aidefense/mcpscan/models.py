@@ -18,7 +18,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Dict, List, Optional, Union
 
-from pydantic import Field, root_validator
+from pydantic import Field, model_validator
 
 from aidefense.models.base import AIDefenseModel
 
@@ -162,18 +162,14 @@ class AuthConfig(AIDefenseModel):
     oauth: Optional[OAuthConfig] = Field(None, description="OAuth configuration")
     api_key: Optional[ApiKeyConfig] = Field(None, alias="apiKey", description="API key configuration")
 
-    @root_validator(skip_on_failure=True)
-    def _validate_auth_config(cls, values):
-        auth_type = values.get("auth_type")
-        oauth = values.get("oauth")
-        api_key = values.get("api_key")
-
-        if auth_type == AuthType.OAUTH and oauth is None:
+    @model_validator(mode='after')
+    def _validate_auth_config(self):
+        if self.auth_type == AuthType.OAUTH and self.oauth is None:
             raise ValueError("OAuth configuration is required when auth_type is OAUTH")
-        if auth_type == AuthType.API_KEY and api_key is None:
+        if self.auth_type == AuthType.API_KEY and self.api_key is None:
             raise ValueError("API key configuration is required when auth_type is API_KEY")
 
-        return values
+        return self
 
 
 # --------------------
@@ -297,7 +293,8 @@ class Capability(AIDefenseModel):
     prompt: Optional[Prompt] = Field(None, description="Prompt details")
     resource: Optional[Resource] = Field(None, description="Resource details")
 
-    @root_validator(pre=True)
+    @model_validator(mode='before')
+    @classmethod
     def __restore_enums(cls, values):
         return restore_enum_wrapper(cls, values)
 
@@ -341,7 +338,8 @@ class ThreatDetails(AIDefenseModel):
     completed_at: Optional[datetime] = Field(None, alias="completedAt", description="Completion timestamp")
     sub_techniques: List[ThreatSubTechnique] = Field(default_factory=list, alias="subTechniques", description="Sub-techniques")
 
-    @root_validator(pre=True)
+    @model_validator(mode='before')
+    @classmethod
     def __restore_enums(cls, values):
         return restore_enum_wrapper(cls, values)
 
@@ -495,7 +493,8 @@ class GetMCPServerCapabilitiesResponse(AIDefenseModel):
     capabilities: List[Capability] = Field(default_factory=list, description="List of capabilities")
     paging: Optional[Paging] = Field(None, description="Pagination info")
 
-    @root_validator(pre=True)
+    @model_validator(mode='before')
+    @classmethod
     def unwrap_capabilities(cls, values):
         """Unwrap capabilities from nested structure: {capabilities: {items: [...]}}"""
         caps = values.get("capabilities")
@@ -535,7 +534,8 @@ class GetMCPServerThreatsResponse(AIDefenseModel):
     threats: List[MCPServerCapabilityThreats] = Field(default_factory=list, description="List of threats")
     paging: Optional[Paging] = Field(None, description="Pagination info")
 
-    @root_validator(pre=True)
+    @model_validator(mode='before')
+    @classmethod
     def unwrap_threats(cls, values):
         """Unwrap threats from nested structure: {threats: {items: [...]}}"""
         threats = values.get("threats")
@@ -657,18 +657,14 @@ class StartMCPServerScanRequest(AIDefenseModel):
         description="Authentication configuration"
     )
 
-    @root_validator(skip_on_failure=True)
-    def _validate_server_input(cls, values):
-        server_type = values.get("server_type")
-        remote = values.get("remote")
-        stdio = values.get("stdio")
-
-        if server_type == ServerType.REMOTE and remote is None:
+    @model_validator(mode='after')
+    def _validate_server_input(self):
+        if self.server_type == ServerType.REMOTE and self.remote is None:
             raise ValueError("Remote configuration is required when server_type is REMOTE")
-        if server_type == ServerType.STDIO and stdio is None:
+        if self.server_type == ServerType.STDIO and self.stdio is None:
             raise ValueError("Stdio configuration is required when server_type is STDIO")
 
-        return values
+        return self
 
 
 class StartMCPServerScanResponse(AIDefenseModel):
@@ -716,7 +712,8 @@ class CapabilityScanResult(AIDefenseModel):
     technique_name: str = Field(default="", alias="techniqueName", description="Technique name")
     threats: List[ThreatSubTechnique] = Field(default_factory=list, description="Detailed threat information")
 
-    @root_validator(pre=True)
+    @model_validator(mode='before')
+    @classmethod
     def __restore_enums(cls, values):
         return restore_enum_wrapper(cls, values)
 
@@ -813,7 +810,8 @@ class GetMCPScanStatusResponse(AIDefenseModel):
     result: Optional[MCPScanResult] = Field(None, description="Scan results")
     error_info: Optional[ErrorInfo] = Field(None, description="Error information if failed")
 
-    @root_validator(skip_on_failure=True)
+    @model_validator(mode='before')
+    @classmethod
     def __restore_enums(cls, values):
         return restore_enum_wrapper(cls, values)
 
@@ -890,7 +888,8 @@ class ResourceDetails(AIDefenseModel):
     resource_type: ResourceType = Field(default=ResourceType.UNSPECIFIED, description="Resource type")
     resource_url: str = Field(default="", description="Resource URL")
 
-    @root_validator(pre=True)
+    @model_validator(mode='before')
+    @classmethod
     def __restore_enums(cls, values):
         return restore_enum_wrapper(cls, values)
 
@@ -929,7 +928,8 @@ class ResourceInfo(AIDefenseModel):
     resource_type: ResourceType = Field(default=ResourceType.UNSPECIFIED, description="Resource type")
     resource_url: str = Field(default="", description="Resource URL")
 
-    @root_validator(pre=True)
+    @model_validator(mode='before')
+    @classmethod
     def __restore_enums(cls, values):
         return restore_enum_wrapper(cls, values)
 
@@ -983,7 +983,8 @@ class ResourceConnection(AIDefenseModel):
     )
     resources: Optional[ResourcesList] = Field(None, description="Associated resources")
 
-    @root_validator(pre=True)
+    @model_validator(mode='before')
+    @classmethod
     def __restore_enums(cls, values):
         return restore_enum_wrapper(cls, values)
 
@@ -1207,7 +1208,8 @@ class MCPServer(AIDefenseModel):
     status_info: Optional[ErrorInfo] = Field(None, alias="statusInfo", description="Error information if any")
     auth_config: Optional[AuthConfig] = Field(None, alias="authConfig", description="Authentication configuration")
 
-    @root_validator(pre=True)
+    @model_validator(mode='before')
+    @classmethod
     def __restore_enums(cls, values):
         return restore_enum_wrapper(cls, values)
 
@@ -1358,7 +1360,8 @@ class MCPRegistry(AIDefenseModel):
     created_at: Optional[datetime] = Field(None, alias="createdAt", description="Creation timestamp")
     updated_at: Optional[datetime] = Field(None, alias="updatedAt", description="Last update timestamp")
 
-    @root_validator(pre=True)
+    @model_validator(mode='before')
+    @classmethod
     def __restore_enums(cls, values):
         return restore_enum_wrapper(cls, values)
 
@@ -1508,7 +1511,8 @@ class MCPRegistryServer(AIDefenseModel):
         description="Authentication type"
     )
 
-    @root_validator(pre=True)
+    @model_validator(mode='before')
+    @classmethod
     def __restore_enums(cls, values):
         return restore_enum_wrapper(cls, values)
 
@@ -1583,7 +1587,8 @@ class MCPServerFromRegistry(AIDefenseModel):
         description="Authentication type"
     )
 
-    @root_validator(pre=True)
+    @model_validator(mode='before')
+    @classmethod
     def __restore_enums(cls, values):
         return restore_enum_wrapper(cls, values)
 
@@ -1844,7 +1849,8 @@ class ResyncMCPRegistryResponse(AIDefenseModel):
     status: RegistryStatus = Field(..., description="Resync status")
     started_at: Optional[datetime] = Field(None, alias="startedAt", description="Resync start timestamp")
 
-    @root_validator(pre=True)
+    @model_validator(mode='before')
+    @classmethod
     def __restore_enums(cls, values):
         return restore_enum_wrapper(cls, values)
 
