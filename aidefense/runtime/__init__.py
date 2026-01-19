@@ -42,3 +42,13 @@ from .mcp_models import (
     MCPInspectError,
 )
 from .utils import to_base64_bytes
+
+# Agent Security SDK (agentsec)
+from .agentsec import (
+    protect,
+    get_patched_clients,
+    Decision,
+    SecurityPolicyError,
+    skip_inspection,
+    no_inspection,
+)

@@ -1,0 +1,60 @@
+# =============================================================================
+# GCP Vertex AI Configuration
+# =============================================================================
+# WARNING: Never hardcode secrets. Use .env file and ${VAR} syntax.
+# =============================================================================
+
+provider: vertex
+
+vertex:
+  # Gemini model ID
+  model_id: gemini-2.5-flash-lite
+  
+  # Required for Vertex AI
+  project_id: ${VERTEXAI_PROJECT}
+  location: ${VERTEXAI_LOCATION:-us-central1}
+  
+  auth:
+    # Authentication method (choose one):
+    # - adc (default): Application Default Credentials (gcloud auth application-default login)
+    # - service_account: Service account JSON key file
+    # - workload_identity: GKE Workload Identity
+    # - impersonation: Impersonate another service account
+    
+    method: adc
+    
+    # ─────────────────────────────────────────────────────────────────────────
+    # For method: adc (default)
+    # Uses Application Default Credentials
+    # Run: gcloud auth application-default login
+    # No additional config needed beyond project_id/location
+    # ─────────────────────────────────────────────────────────────────────────
+  
+    # ─────────────────────────────────────────────────────────────────────────
+    # For method: service_account
+    # Path to service account JSON key file
+    # ─────────────────────────────────────────────────────────────────────────
+    # method: service_account
+    # key_file: /path/to/service-account.json
+    # Or use inline JSON from env var:
+    # key_json: ${GCP_SERVICE_ACCOUNT_JSON}
+  
+    # ─────────────────────────────────────────────────────────────────────────
+    # For method: workload_identity
+    # For GKE pods with Workload Identity configured
+    # Uses ADC automatically - just set project_id/location
+    # ─────────────────────────────────────────────────────────────────────────
+  
+    # ─────────────────────────────────────────────────────────────────────────
+    # For method: impersonation
+    # Impersonate another service account
+    # ─────────────────────────────────────────────────────────────────────────
+    # method: impersonation
+    # target_service_account: target-sa@project.iam.gserviceaccount.com
+    # delegates: []  # Optional delegation chain
+
+# Common LLM settings
+llm_settings:
+  temperature: 0.7
+  max_tokens: 4096
+

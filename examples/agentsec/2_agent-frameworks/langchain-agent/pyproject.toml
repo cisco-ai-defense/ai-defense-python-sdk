@@ -1,0 +1,49 @@
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "langchain-agent-example"
+version = "0.1.0"
+description = "LangChain agent example with agentsec protection"
+authors = ["Cisco <ai-defense@cisco.com>"]
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.14"
+cisco-aidefense-sdk = { path = "../../../..", develop = true }
+
+# LangChain framework
+langchain = ">=0.3.0"
+
+# LangChain core components
+langchain-core = ">=0.3.0"
+
+# LangChain AWS integration (ChatBedrock)
+langchain-aws = ">=0.2.0"
+
+# LangChain OpenAI integration (ChatOpenAI, AzureChatOpenAI)
+langchain-openai = ">=0.2.0"
+
+# LangChain Google Vertex AI integration (ChatVertexAI)
+langchain-google-vertexai = ">=2.0.0"
+
+# AWS SDK for Bedrock
+boto3 = ">=1.34.0"
+
+# OpenAI SDK (for OpenAI and Azure providers)
+openai = ">=1.0.0"
+
+# Google Cloud Vertex AI SDK (for Vertex AI with ADC)
+google-cloud-aiplatform = ">=1.50.0"
+
+# MCP client library
+mcp = ">=1.0.0"
+
+# Environment variable loading
+python-dotenv = ">=1.0.0"
+
+# YAML config parsing
+pyyaml = ">=6.0.0"
+
+# Enable nested event loops (for sync tool calling async MCP)
+nest-asyncio = ">=1.6.0"

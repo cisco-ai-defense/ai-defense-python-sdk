@@ -11,14 +11,19 @@ Integrate AI-powered security, privacy, and safety inspections into your Python 
 - [Features](#features)
 - [Installation](#installation)
 - [Quickstart](#quickstart)
+  - [Runtime Protection (Recommended)](#runtime-protection-recommended)
+  - [Inspection API](#inspection-api)
+  - [Model Scanning API](#model-scanning-api)
+  - [Management API](#management-api)
 - [SDK Structure](#sdk-structure)
 - [Usage Examples](#usage-examples)
+  - [Runtime Protection](#runtime-protection)
   - [Chat Inspection](#chat-inspection)
   - [HTTP Inspection](#http-inspection)
   - [MCP Inspection](#mcp-inspection)
   - [MCP Server Scanning](#mcp-server-scanning)
   - [Model Scanning](#model-scanning)
-  - [Management API](#management-api)
+  - [Management API Examples](#management-api-examples)
   - [Validation API](#validation-api)
 - [Configuration](#configuration)
 - [Advanced Usage](#advanced-usage)
@@ -40,6 +45,7 @@ The SDK enables you to detect security, privacy, and safety risks in real time, 
 
 ## Features
 
+- **Runtime Protection**: Auto-patch LLM clients (OpenAI, Azure OpenAI, Bedrock, Vertex AI) and MCP clients with just 2 lines of code. Supports API mode (inspection) and Gateway mode (proxy).
 - **Chat Inspection**: Analyze chat prompts, responses, or full conversations for risks.
 - **HTTP Inspection**: Inspect HTTP requests and responses, including support for `requests.Request`, `requests.PreparedRequest`, and `requests.Response` objects.
 - **MCP Inspection**: Inspect Model Context Protocol (MCP) JSON-RPC 2.0 messages for security, privacy, and safety violations in AI agent tool calls, resource access, and responses.
@@ -109,6 +115,37 @@ See [pyproject.toml](./pyproject.toml) for the full list of dependencies and Pyt
 ---
 
 ## Quickstart
+
+### Runtime Protection (Recommended)
+
+The easiest way to protect your AI applications is with automatic runtime protection. Just 2 lines of code to secure all LLM and MCP interactions:
+
+```python
+from aidefense.runtime import agentsec
+agentsec.protect()  # Auto-configures from environment variables
+
+# Import your LLM client — it's automatically protected
+from openai import OpenAI
+client = OpenAI()
+
+# All calls are now inspected by Cisco AI Defense
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+```
+
+Configure via environment variables:
+
+```bash
+# API Mode (recommended for most deployments)
+AGENTSEC_LLM_INTEGRATION_MODE=api
+AI_DEFENSE_API_MODE_LLM_ENDPOINT=https://api.inspect.aidefense.cisco.com/api
+AI_DEFENSE_API_MODE_LLM_API_KEY=your-api-key
+AGENTSEC_API_MODE_LLM=on_enforce  # or on_monitor, off
+```
+
+See [Runtime Protection](#runtime-protection) for detailed configuration options.
 
 ### Inspection API
 
@@ -194,7 +231,16 @@ print(resp.task_id)
 
 ## SDK Structure
 
-### Runtime API
+### Runtime Protection (agentsec)
+
+- `runtime/agentsec/__init__.py` — Main entry point with `protect()` function
+- `runtime/agentsec/config.py` — Configuration loading from environment/parameters
+- `runtime/agentsec/patchers/` — Auto-patching for LLM clients (OpenAI, Bedrock, Vertex AI, MCP)
+- `runtime/agentsec/inspectors/` — API and Gateway mode inspectors for LLM and MCP
+- `runtime/agentsec/decision.py` — Decision model for inspection results
+- `runtime/agentsec/exceptions.py` — SecurityPolicyError for blocked requests
+
+### Runtime Inspection API
 
 - `runtime/chat_inspect.py` — ChatInspectionClient for chat-related inspection
 - `runtime/http_inspect.py` — HttpInspectionClient for HTTP request/response inspection
@@ -235,6 +281,102 @@ print(resp.task_id)
 ---
 
 ## Usage Examples
+
+### Runtime Protection
+
+Runtime protection automatically patches LLM and MCP clients to inspect all interactions with Cisco AI Defense.
+
+#### API Mode (Default)
+
+In API mode, the SDK inspects requests via the AI Defense API, then calls the LLM provider directly.
+
+```python
+from aidefense.runtime import agentsec
+
+agentsec.protect(
+    llm_integration_mode="api",
+    api_mode_llm="on_enforce",  # on_monitor, on_enforce, or off
+    api_mode_llm_endpoint="https://api.inspect.aidefense.cisco.com/api",
+    api_mode_llm_api_key="your-api-key",
+    api_mode_fail_open_llm=True,  # Allow requests if API is unavailable
+)
+
+from openai import OpenAI
+client = OpenAI()
+
+# All calls are automatically inspected
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+```
+
+#### Gateway Mode
+
+In Gateway mode, all traffic is routed through the Cisco AI Defense Gateway proxy.
+
+```python
+from aidefense.runtime import agentsec
+
+agentsec.protect(
+    llm_integration_mode="gateway",
+    gateway_mode_llm="on",
+    providers={
+        "openai": {
+            "gateway_url": "https://gateway.aidefense.cisco.com/tenant/connections/openai-conn",
+            "gateway_api_key": "your-gateway-key",
+        },
+    },
+)
+
+from openai import OpenAI
+client = OpenAI()
+
+# Calls are routed through the gateway
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+```
+
+#### Skip Inspection for Specific Calls
+
+```python
+from aidefense.runtime import skip_inspection
+
+# Skip inspection for specific calls
+with skip_inspection():
+    response = client.chat.completions.create(...)
+
+# Or use as a decorator
+from aidefense.runtime import no_inspection
+
+@no_inspection()
+def health_check():
+    return client.chat.completions.create(...)
+```
+
+#### Error Handling
+
+```python
+from aidefense.runtime import SecurityPolicyError
+
+try:
+    response = client.chat.completions.create(...)
+except SecurityPolicyError as e:
+    print(f"Blocked: {e.decision.action}")
+    print(f"Reasons: {e.decision.reasons}")
+```
+
+#### Supported Clients
+
+| Client | Package | API Mode | Gateway Mode |
+|--------|---------|----------|--------------|
+| OpenAI | `openai` | ✅ | ✅ |
+| Azure OpenAI | `openai` | ✅ | ✅ |
+| AWS Bedrock | `boto3` | ✅ | ✅ |
+| Vertex AI | `google-cloud-aiplatform` | ✅ | ✅ |
+| MCP | `mcp` | ✅ | ✅ |
 
 ### Chat Inspection
 

@@ -12,6 +12,21 @@ The examples are organized into the following structure:
 
     examples/
     ├── README.md
+    ├── agentsec/                # Runtime protection examples
+    │   ├── 1_simple/            # Simple standalone examples
+    │   │   ├── basic_protection.py
+    │   │   ├── openai_example.py
+    │   │   ├── streaming_example.py
+    │   │   ├── mcp_example.py
+    │   │   ├── gateway_mode_example.py
+    │   │   └── skip_inspection_example.py
+    │   └── 2_agent-frameworks/  # Agent framework integrations
+    │       ├── strands-agent/
+    │       ├── langchain-agent/
+    │       ├── langgraph-agent/
+    │       ├── crewai-agent/
+    │       ├── autogen-agent/
+    │       └── openai-agent/
     ├── chat/                    # Chat inspection examples
     │   ├── chat_inspect_conversation.py
     │   ├── chat_inspect_multiple_clients.py
@@ -50,6 +65,83 @@ The examples are organized into the following structure:
     └── advanced/                # Advanced usage examples
         ├── advanced_usage.py
         └── custom_configuration.py
+
+Runtime Protection Examples
+--------------------------
+
+Runtime protection automatically patches LLM and MCP clients to inspect all interactions.
+
+Basic Protection (API Mode)
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: python
+
+    from aidefense.runtime import agentsec
+    agentsec.protect()  # Auto-configures from environment
+
+    from openai import OpenAI
+    client = OpenAI()
+
+    # All calls are automatically inspected
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": "Hello!"}]
+    )
+
+Gateway Mode
+^^^^^^^^^^^^
+
+Route all traffic through the AI Defense Gateway:
+
+.. code-block:: python
+
+    from aidefense.runtime import agentsec
+
+    agentsec.protect(
+        llm_integration_mode="gateway",
+        gateway_mode_llm="on",
+        providers={
+            "openai": {
+                "gateway_url": "https://gateway.aidefense.cisco.com/tenant/conn",
+                "gateway_api_key": "your-gateway-key",
+            },
+        },
+    )
+
+    from openai import OpenAI
+    client = OpenAI()
+    response = client.chat.completions.create(...)
+
+Skip Inspection
+^^^^^^^^^^^^^^
+
+Exclude specific calls from inspection:
+
+.. code-block:: python
+
+    from aidefense.runtime import skip_inspection, no_inspection
+
+    # Context manager
+    with skip_inspection():
+        response = client.chat.completions.create(...)
+
+    # Decorator
+    @no_inspection()
+    def health_check():
+        return client.chat.completions.create(...)
+
+Agent Framework Integration
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The SDK works with popular agent frameworks:
+
+- AWS Strands
+- LangChain / LangGraph
+- CrewAI
+- AutoGen
+- OpenAI Agents SDK
+
+See ``examples/agentsec/2_agent-frameworks/`` for complete examples.
 
 Chat Inspection Examples
 -----------------------
