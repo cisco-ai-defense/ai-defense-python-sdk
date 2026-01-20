@@ -57,6 +57,9 @@ def _get_inspector() -> LLMInspector:
                     fail_open=_state.get_api_mode_fail_open_llm(),
                     default_rules=_state.get_llm_rules(),
                 )
+                # Register for cleanup on shutdown
+                from ..inspectors import register_inspector_for_cleanup
+                register_inspector_for_cleanup(_inspector)
     return _inspector
 
 
@@ -296,12 +299,23 @@ class StreamingInspectionWrapper:
         self._inspector = _get_inspector()
         self._chunk_count = 0
         self._inspect_interval = 10  # Inspect every N chunks
+        self._final_inspection_done = False
     
     def __iter__(self):
         return self
     
     def __next__(self):
-        chunk = next(self._stream)
+        try:
+            chunk = next(self._stream)
+        except StopIteration:
+            # Stream ended normally - perform final inspection
+            self._perform_final_inspection()
+            raise
+        except Exception as e:
+            # Stream error - still perform inspection on what we have
+            logger.warning(f"Stream error, performing final inspection on buffered content: {e}")
+            self._perform_final_inspection()
+            raise
         
         # Extract content from chunk
         try:
@@ -318,6 +332,15 @@ class StreamingInspectionWrapper:
             logger.debug(f"Error processing streaming chunk: {e}")
         
         return chunk
+    
+    def _perform_final_inspection(self) -> None:
+        """Perform final inspection on complete buffered content."""
+        if self._final_inspection_done:
+            return
+        self._final_inspection_done = True
+        
+        if self._buffer:
+            self._inspect_buffer()
     
     def _inspect_buffer(self) -> None:
         """Inspect the buffered content."""
@@ -352,12 +375,23 @@ class AsyncStreamingInspectionWrapper:
         self._inspector = _get_inspector()
         self._chunk_count = 0
         self._inspect_interval = 10
+        self._final_inspection_done = False
     
     def __aiter__(self):
         return self
     
     async def __anext__(self):
-        chunk = await self._stream.__anext__()
+        try:
+            chunk = await self._stream.__anext__()
+        except StopAsyncIteration:
+            # Stream ended normally - perform final inspection
+            await self._perform_final_inspection()
+            raise
+        except Exception as e:
+            # Stream error - still perform inspection on what we have
+            logger.warning(f"Async stream error, performing final inspection on buffered content: {e}")
+            await self._perform_final_inspection()
+            raise
         
         try:
             if hasattr(chunk, "choices") and chunk.choices:
@@ -368,12 +402,19 @@ class AsyncStreamingInspectionWrapper:
                     
                     if self._chunk_count % self._inspect_interval == 0:
                         await self._inspect_buffer()
-        except StopAsyncIteration:
-            raise
         except Exception as e:
             logger.debug(f"Error processing async streaming chunk: {e}")
         
         return chunk
+    
+    async def _perform_final_inspection(self) -> None:
+        """Perform final inspection on complete buffered content."""
+        if self._final_inspection_done:
+            return
+        self._final_inspection_done = True
+        
+        if self._buffer:
+            await self._inspect_buffer()
     
     async def _inspect_buffer(self) -> None:
         """Inspect the buffered content asynchronously."""
@@ -612,16 +653,25 @@ def _handle_gateway_call_sync(kwargs: Dict[str, Any], stream: bool, normalized: 
     except httpx.HTTPStatusError as e:
         logger.error(f"[GATEWAY] HTTP error: {e}")
         if _state.get_gateway_mode_fail_open_llm():
+            # fail_open=True: allow request to proceed by re-raising original error
+            # (let calling code handle the HTTP error naturally)
+            logger.warning(f"[GATEWAY] fail_open=True, re-raising original HTTP error for caller to handle")
             set_inspection_context(decision=Decision.allow(reasons=["Gateway error, fail_open=True"]), done=True)
+            raise  # Re-raise original HTTP error, not SecurityPolicyError
+        else:
+            # fail_open=False: block the request with SecurityPolicyError
             raise SecurityPolicyError(
                 Decision.block(reasons=["Gateway unavailable"]),
                 f"Gateway HTTP error: {e}"
             )
-        raise
     except SecurityPolicyError:
         raise
     except Exception as e:
         logger.error(f"[GATEWAY] Error: {e}")
+        if _state.get_gateway_mode_fail_open_llm():
+            logger.warning(f"[GATEWAY] fail_open=True, re-raising original error for caller to handle")
+            set_inspection_context(decision=Decision.allow(reasons=["Gateway error, fail_open=True"]), done=True)
+            raise  # Re-raise original error
         raise
 
 
@@ -922,16 +972,24 @@ async def _handle_gateway_call_async(kwargs: Dict[str, Any], stream: bool, norma
     except httpx.HTTPStatusError as e:
         logger.error(f"[GATEWAY] HTTP error: {e}")
         if _state.get_gateway_mode_fail_open_llm():
+            # fail_open=True: allow request to proceed by re-raising original error
+            logger.warning(f"[GATEWAY] fail_open=True, re-raising original HTTP error for caller to handle")
             set_inspection_context(decision=Decision.allow(reasons=["Gateway error, fail_open=True"]), done=True)
+            raise  # Re-raise original HTTP error, not SecurityPolicyError
+        else:
+            # fail_open=False: block the request with SecurityPolicyError
             raise SecurityPolicyError(
                 Decision.block(reasons=["Gateway unavailable"]),
                 f"Gateway HTTP error: {e}"
             )
-        raise
     except SecurityPolicyError:
         raise
     except Exception as e:
         logger.error(f"[GATEWAY] Async error: {e}")
+        if _state.get_gateway_mode_fail_open_llm():
+            logger.warning(f"[GATEWAY] fail_open=True, re-raising original error for caller to handle")
+            set_inspection_context(decision=Decision.allow(reasons=["Gateway error, fail_open=True"]), done=True)
+            raise  # Re-raise original error
         raise
 
 

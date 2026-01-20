@@ -1,19 +1,3 @@
-# Copyright 2025 Cisco Systems, Inc. and its affiliates
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
-# SPDX-License-Identifier: Apache-2.0
-
 """
 agentsec - Agent Runtime Security Sensor SDK
 
@@ -21,15 +5,15 @@ Provides runtime security enforcement and monitoring for LLM and MCP
 interactions with minimal integration effort.
 
 Usage (Simple - Recommended):
-    from aidefense.runtime.agentsec import protect
-    protect()  # Auto-configures from environment
+    import agentsec
+    agentsec.protect()  # Auto-configures from environment
     
     # Now import your LLM client
     from openai import OpenAI
 
 Usage (Fine-Grained Control):
-    from aidefense.runtime.agentsec import protect
-    protect(
+    import agentsec
+    agentsec.protect(
         api_mode_llm="on_enforce",    # Enforce LLM inspection
         api_mode_mcp="on_monitor",    # Monitor MCP tools
         api_mode_llm_rules=["jailbreak", "prompt_injection"],  # Optional rules
@@ -100,6 +84,7 @@ def _apply_patches(llm_mode: str, mcp_mode: str) -> None:
         patch_bedrock,
         patch_mcp,
         patch_vertexai,
+        patch_google_genai,
     )
     
     # Patch LLM clients if not off
@@ -107,6 +92,7 @@ def _apply_patches(llm_mode: str, mcp_mode: str) -> None:
         patch_openai()
         patch_bedrock()
         patch_vertexai()
+        patch_google_genai()
     
     # Patch MCP client if not off
     if mcp_mode != "off":
@@ -158,15 +144,15 @@ def protect(
     application, BEFORE importing any LLM clients.
     
     Minimal usage:
-        from aidefense.runtime.agentsec import protect
-        protect()
+        import agentsec
+        agentsec.protect()
         
         # Now import your framework
         from openai import OpenAI
     
     API mode (inspection via Cisco AI Defense API):
-        from aidefense.runtime.agentsec import protect
-        protect(
+        import agentsec
+        agentsec.protect(
             api_mode_llm="on_enforce",    # Block LLM policy violations
             api_mode_mcp="on_monitor",    # Log MCP tools, don't block
             api_mode_llm_endpoint="https://preview.api.inspect.aidefense.aiteam.cisco.com/api",
@@ -175,8 +161,8 @@ def protect(
         )
     
     Gateway mode (routes through Cisco AI Defense Gateway):
-        from aidefense.runtime.agentsec import protect
-        protect(
+        import agentsec
+        agentsec.protect(
             llm_integration_mode="gateway",
             providers={
                 "openai": {"gateway_url": "https://gateway.../openai-conn", "gateway_api_key": "key1"},
@@ -344,7 +330,7 @@ def protect(
     provider_gateway_config = {}
     provider_api_config = {}
     
-    for provider in ["openai", "azure_openai", "vertexai", "bedrock"]:
+    for provider in ["openai", "azure_openai", "vertexai", "bedrock", "agentcore", "google_genai"]:
         # Gateway config from providers parameter or env
         if providers and provider in providers:
             provider_config = providers[provider]

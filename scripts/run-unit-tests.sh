@@ -28,15 +28,16 @@ echo ""
 # Collect all unit test directories
 UNIT_TEST_DIRS=(
     "aidefense/tests"
-    "aidefense/tests/agentsec/unit"
-    "examples/agentsec/1_simple/tests/unit"
-    "examples/agentsec/2_agent-frameworks/strands-agent/tests/unit"
-    "examples/agentsec/2_agent-frameworks/langgraph-agent/tests/unit"
-    "examples/agentsec/2_agent-frameworks/langchain-agent/tests/unit"
-    "examples/agentsec/2_agent-frameworks/crewai-agent/tests/unit"
-    "examples/agentsec/2_agent-frameworks/autogen-agent/tests/unit"
-    "examples/agentsec/2_agent-frameworks/openai-agent/tests/unit"
-    "examples/agentsec/2_agent-frameworks/_shared/tests"
+    "examples/agentsec/1-simple/tests/unit"
+    "examples/agentsec/2-agent-frameworks/strands-agent/tests/unit"
+    "examples/agentsec/2-agent-frameworks/langgraph-agent/tests/unit"
+    "examples/agentsec/2-agent-frameworks/langchain-agent/tests/unit"
+    "examples/agentsec/2-agent-frameworks/crewai-agent/tests/unit"
+    "examples/agentsec/2-agent-frameworks/autogen-agent/tests/unit"
+    "examples/agentsec/2-agent-frameworks/openai-agent/tests/unit"
+    "examples/agentsec/2-agent-frameworks/_shared/tests"
+    "examples/agentsec/3-agent-runtimes/amazon-bedrock-agentcore/tests/unit"
+    "examples/agentsec/3-agent-runtimes/gcp-vertex-ai-agent-engine/tests/unit"
 )
 
 # Build pytest paths (only include directories that exist)

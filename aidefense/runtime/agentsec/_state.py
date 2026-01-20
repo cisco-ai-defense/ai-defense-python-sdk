@@ -1,26 +1,10 @@
-# Copyright 2025 Cisco Systems, Inc. and its affiliates
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
-# SPDX-License-Identifier: Apache-2.0
-
 """Global state management for agentsec."""
 
 from typing import Any, Dict, List, Optional
 
 
 # Supported LLM providers
-SUPPORTED_PROVIDERS = ["openai", "azure_openai", "vertexai", "bedrock"]
+SUPPORTED_PROVIDERS = ["openai", "azure_openai", "vertexai", "bedrock", "agentcore"]
 
 # Global state
 _initialized: bool = False
@@ -52,11 +36,13 @@ _gateway_mode_fail_open_mcp: bool = True
 
 # Provider-specific gateway configuration
 # Each provider has its own gateway URL and API key
+# Note: AgentCore uses AWS Sig V4 authentication, so api_key is not used
 _provider_gateway_config: Dict[str, Dict[str, Optional[str]]] = {
     "openai": {"url": None, "api_key": None},
     "azure_openai": {"url": None, "api_key": None},
     "vertexai": {"url": None, "api_key": None},
     "bedrock": {"url": None, "api_key": None},
+    "agentcore": {"url": None, "api_key": None},  # api_key not used - AWS Sig V4
 }
 
 # Provider-specific API configuration (for direct calls in API mode)
@@ -65,6 +51,7 @@ _provider_api_config: Dict[str, Dict[str, Optional[str]]] = {
     "azure_openai": {"url": None, "api_key": None},
     "vertexai": {"url": None, "api_key": None},
     "bedrock": {"url": None, "api_key": None},
+    "agentcore": {"url": None, "api_key": None},
 }
 
 
@@ -434,10 +421,12 @@ def reset() -> None:
         "azure_openai": {"url": None, "api_key": None},
         "vertexai": {"url": None, "api_key": None},
         "bedrock": {"url": None, "api_key": None},
+        "agentcore": {"url": None, "api_key": None},
     }
     _provider_api_config = {
         "openai": {"url": None, "api_key": None},
         "azure_openai": {"url": None, "api_key": None},
         "vertexai": {"url": None, "api_key": None},
         "bedrock": {"url": None, "api_key": None},
+        "agentcore": {"url": None, "api_key": None},
     }

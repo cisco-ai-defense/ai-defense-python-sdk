@@ -1,9 +1,14 @@
 """MCP client autopatching.
 
-This module provides automatic inspection for MCP (Model Context Protocol) tool calls.
+This module provides automatic inspection for MCP (Model Context Protocol) operations.
+
+Patched methods:
+- ClientSession.call_tool(): Tool execution inspection
+- ClientSession.get_prompt(): Prompt retrieval inspection  
+- ClientSession.read_resource(): Resource access inspection
 
 Supports two integration modes:
-- "api" (default): Use MCPInspector to inspect tool calls via AI Defense API
+- "api" (default): Use MCPInspector to inspect calls via AI Defense API
 - "gateway": Use MCPGatewayInspector to redirect connections through AI Defense Gateway
 
 In gateway mode, the MCP client connects directly to the gateway URL using MCP protocol.
@@ -47,6 +52,9 @@ def _get_api_inspector() -> MCPInspector:
                 _api_inspector = MCPInspector(
                     fail_open=_state.get_api_mode_fail_open_mcp(),
                 )
+                # Register for cleanup on shutdown
+                from ..inspectors import register_inspector_for_cleanup
+                register_inspector_for_cleanup(_api_inspector)
     return _api_inspector
 
 
@@ -234,9 +242,165 @@ async def _wrap_call_tool(wrapped, instance, args, kwargs):
     return result
 
 
+async def _wrap_get_prompt(wrapped, instance, args, kwargs):
+    """Async wrapper for ClientSession.get_prompt.
+    
+    Routes to appropriate inspector based on integration mode:
+    - API mode: MCPInspector (makes API calls for inspection)
+    - Gateway mode: MCPGatewayInspector (pass-through, gateway handles inspection)
+    """
+    # Extract prompt info
+    prompt_name = args[0] if args else kwargs.get("name", "")
+    arguments = args[1] if len(args) > 1 else kwargs.get("arguments", {})
+    
+    integration_mode = _state.get_mcp_integration_mode()
+    use_gateway = _should_use_gateway()
+    
+    # Log the call
+    if use_gateway:
+        logger.debug(f"")
+        logger.debug(f"╔══════════════════════════════════════════════════════════════")
+        logger.debug(f"║ [PATCHED] MCP GET PROMPT: {prompt_name}")
+        logger.debug(f"║ Arguments: {arguments}")
+        logger.debug(f"║ Integration: gateway (gateway handles inspection)")
+        logger.debug(f"╚══════════════════════════════════════════════════════════════")
+    else:
+        mode = _state.get_mcp_mode()
+        logger.debug(f"")
+        logger.debug(f"╔══════════════════════════════════════════════════════════════")
+        logger.debug(f"║ [PATCHED] MCP GET PROMPT: {prompt_name}")
+        logger.debug(f"║ Arguments: {arguments}")
+        logger.debug(f"║ MCP Mode: {mode} | Integration: {integration_mode}")
+        logger.debug(f"╚══════════════════════════════════════════════════════════════")
+    
+    # Check if inspection is enabled (API mode only)
+    if not use_gateway and not _should_inspect():
+        logger.debug(f"[PATCHED CALL] MCP.get_prompt({prompt_name}) - inspection skipped (mode=off)")
+        return await wrapped(*args, **kwargs)
+    
+    metadata = get_inspection_context().metadata
+    inspector = _get_inspector()
+    
+    # Pre-call inspection
+    try:
+        logger.debug(f"[PATCHED CALL] MCP.get_prompt({prompt_name}) - Request inspection")
+        decision = await inspector.ainspect_request(prompt_name, arguments or {}, metadata, method="prompts/get")
+        logger.debug(f"[PATCHED CALL] MCP.get_prompt({prompt_name}) - Request decision: {decision.action}")
+        set_inspection_context(decision=decision)
+        _enforce_decision(decision)
+    except SecurityPolicyError:
+        raise
+    except Exception as e:
+        logger.warning(f"[PATCHED CALL] MCP.get_prompt({prompt_name}) - Request inspection error: {e}")
+        # Use inspector's fail_open setting for consistency
+        fail_open = getattr(inspector, 'fail_open', _state.get_api_mode_fail_open_mcp())
+        if not fail_open:
+            decision = Decision.block(reasons=[f"MCP inspection error: {e}"])
+            raise SecurityPolicyError(decision, f"MCP inspection failed: {e}")
+        logger.warning(f"fail_open=True, proceeding despite inspection error")
+    
+    # Call original
+    logger.debug(f"[PATCHED CALL] MCP.get_prompt({prompt_name}) - calling original method")
+    result = await wrapped(*args, **kwargs)
+    
+    # Post-call inspection
+    try:
+        logger.debug(f"[PATCHED CALL] MCP.get_prompt({prompt_name}) - Response inspection")
+        decision = await inspector.ainspect_response(prompt_name, arguments or {}, result, metadata, method="prompts/get")
+        logger.debug(f"[PATCHED CALL] MCP.get_prompt({prompt_name}) - Response decision: {decision.action}")
+        set_inspection_context(decision=decision, done=True)
+        _enforce_decision(decision)
+    except SecurityPolicyError:
+        raise
+    except Exception as e:
+        logger.warning(f"[PATCHED CALL] MCP.get_prompt({prompt_name}) - Response inspection error: {e}")
+    
+    logger.debug(f"[PATCHED CALL] MCP.get_prompt({prompt_name}) - complete")
+    return result
+
+
+async def _wrap_read_resource(wrapped, instance, args, kwargs):
+    """Async wrapper for ClientSession.read_resource.
+    
+    Routes to appropriate inspector based on integration mode:
+    - API mode: MCPInspector (makes API calls for inspection)
+    - Gateway mode: MCPGatewayInspector (pass-through, gateway handles inspection)
+    """
+    # Extract resource info - read_resource takes a URI
+    resource_uri = args[0] if args else kwargs.get("uri", "")
+    
+    integration_mode = _state.get_mcp_integration_mode()
+    use_gateway = _should_use_gateway()
+    
+    # Log the call
+    if use_gateway:
+        logger.debug(f"")
+        logger.debug(f"╔══════════════════════════════════════════════════════════════")
+        logger.debug(f"║ [PATCHED] MCP READ RESOURCE: {resource_uri}")
+        logger.debug(f"║ Integration: gateway (gateway handles inspection)")
+        logger.debug(f"╚══════════════════════════════════════════════════════════════")
+    else:
+        mode = _state.get_mcp_mode()
+        logger.debug(f"")
+        logger.debug(f"╔══════════════════════════════════════════════════════════════")
+        logger.debug(f"║ [PATCHED] MCP READ RESOURCE: {resource_uri}")
+        logger.debug(f"║ MCP Mode: {mode} | Integration: {integration_mode}")
+        logger.debug(f"╚══════════════════════════════════════════════════════════════")
+    
+    # Check if inspection is enabled (API mode only)
+    if not use_gateway and not _should_inspect():
+        logger.debug(f"[PATCHED CALL] MCP.read_resource({resource_uri}) - inspection skipped (mode=off)")
+        return await wrapped(*args, **kwargs)
+    
+    metadata = get_inspection_context().metadata
+    inspector = _get_inspector()
+    
+    # Pre-call inspection
+    try:
+        logger.debug(f"[PATCHED CALL] MCP.read_resource({resource_uri}) - Request inspection")
+        decision = await inspector.ainspect_request(resource_uri, {}, metadata, method="resources/read")
+        logger.debug(f"[PATCHED CALL] MCP.read_resource({resource_uri}) - Request decision: {decision.action}")
+        set_inspection_context(decision=decision)
+        _enforce_decision(decision)
+    except SecurityPolicyError:
+        raise
+    except Exception as e:
+        logger.warning(f"[PATCHED CALL] MCP.read_resource({resource_uri}) - Request inspection error: {e}")
+        # Use inspector's fail_open setting for consistency
+        fail_open = getattr(inspector, 'fail_open', _state.get_api_mode_fail_open_mcp())
+        if not fail_open:
+            decision = Decision.block(reasons=[f"MCP inspection error: {e}"])
+            raise SecurityPolicyError(decision, f"MCP inspection failed: {e}")
+        logger.warning(f"fail_open=True, proceeding despite inspection error")
+    
+    # Call original
+    logger.debug(f"[PATCHED CALL] MCP.read_resource({resource_uri}) - calling original method")
+    result = await wrapped(*args, **kwargs)
+    
+    # Post-call inspection
+    try:
+        logger.debug(f"[PATCHED CALL] MCP.read_resource({resource_uri}) - Response inspection")
+        decision = await inspector.ainspect_response(resource_uri, {}, result, metadata, method="resources/read")
+        logger.debug(f"[PATCHED CALL] MCP.read_resource({resource_uri}) - Response decision: {decision.action}")
+        set_inspection_context(decision=decision, done=True)
+        _enforce_decision(decision)
+    except SecurityPolicyError:
+        raise
+    except Exception as e:
+        logger.warning(f"[PATCHED CALL] MCP.read_resource({resource_uri}) - Response inspection error: {e}")
+    
+    logger.debug(f"[PATCHED CALL] MCP.read_resource({resource_uri}) - complete")
+    return result
+
+
 def patch_mcp() -> bool:
     """
     Patch MCP client for automatic inspection.
+    
+    Patches the following MCP ClientSession methods:
+    - call_tool: Tool execution inspection
+    - get_prompt: Prompt retrieval inspection
+    - read_resource: Resource access inspection
     
     Returns:
         True if patching was successful, False otherwise
@@ -256,6 +420,33 @@ def patch_mcp() -> bool:
             "ClientSession.call_tool",
             _wrap_call_tool,
         )
+        logger.debug("MCP ClientSession.call_tool patched")
+        
+        # Patch get_prompt for inspection
+        get_prompt_patched = False
+        try:
+            wrapt.wrap_function_wrapper(
+                "mcp.client.session",
+                "ClientSession.get_prompt",
+                _wrap_get_prompt,
+            )
+            logger.debug("MCP ClientSession.get_prompt patched")
+            get_prompt_patched = True
+        except Exception as e:
+            logger.warning(f"Could not patch MCP get_prompt - prompt retrieval will NOT be inspected: {e}")
+        
+        # Patch read_resource for inspection
+        read_resource_patched = False
+        try:
+            wrapt.wrap_function_wrapper(
+                "mcp.client.session",
+                "ClientSession.read_resource",
+                _wrap_read_resource,
+            )
+            logger.debug("MCP ClientSession.read_resource patched")
+            read_resource_patched = True
+        except Exception as e:
+            logger.warning(f"Could not patch MCP read_resource - resource reads will NOT be inspected: {e}")
         
         # Patch streamablehttp_client for gateway URL redirection
         try:
@@ -266,10 +457,17 @@ def patch_mcp() -> bool:
             )
             logger.debug("MCP streamablehttp_client patched for gateway mode")
         except Exception as e:
-            logger.debug(f"Could not patch streamablehttp_client: {e}")
+            # This is less critical - only needed for gateway mode URL redirection
+            logger.debug(f"Could not patch streamablehttp_client (gateway mode): {e}")
         
         mark_patched("mcp")
-        logger.info("MCP client patched successfully")
+        # Build list of patched methods for logging
+        patched_methods = ["call_tool"]
+        if get_prompt_patched:
+            patched_methods.append("get_prompt")
+        if read_resource_patched:
+            patched_methods.append("read_resource")
+        logger.info(f"MCP client patched successfully ({', '.join(patched_methods)})")
         return True
     except Exception as e:
         logger.warning(f"Failed to patch MCP: {e}")

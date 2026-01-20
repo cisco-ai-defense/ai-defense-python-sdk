@@ -47,6 +47,9 @@ def _get_inspector() -> LLMInspector:
                     fail_open=_state.get_api_mode_fail_open_llm(),
                     default_rules=_state.get_llm_rules(),
                 )
+                # Register for cleanup on shutdown
+                from ..inspectors import register_inspector_for_cleanup
+                register_inspector_for_cleanup(_inspector)
     return _inspector
 
 
@@ -689,3 +692,5 @@ def patch_vertexai() -> bool:
     except Exception as e:
         logger.warning(f"Failed to patch VertexAI: {e}")
         return False
+
+

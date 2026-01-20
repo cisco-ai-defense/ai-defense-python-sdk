@@ -1,0 +1,115 @@
+# Kubernetes Deployment for SRE Agent
+# This deploys the agent to GKE with Cisco AI Defense protection
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sre-agent
+  labels:
+    app: sre-agent
+    protection: cisco-ai-defense
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sre-agent
+  template:
+    metadata:
+      labels:
+        app: sre-agent
+        protection: cisco-ai-defense
+    spec:
+      serviceAccountName: sre-agent-sa
+      containers:
+      - name: sre-agent
+        image: gcr.io/${PROJECT_ID}/sre-agent-gke:latest
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        # Google Cloud configuration
+        - name: GOOGLE_CLOUD_PROJECT
+          valueFrom:
+            configMapKeyRef:
+              name: sre-agent-config
+              key: project_id
+        - name: GOOGLE_CLOUD_LOCATION
+          valueFrom:
+            configMapKeyRef:
+              name: sre-agent-config
+              key: location
+        - name: GOOGLE_GENAI_USE_VERTEXAI
+          value: "True"
+        # Cisco AI Defense configuration
+        - name: AGENTSEC_LLM_INTEGRATION_MODE
+          valueFrom:
+            configMapKeyRef:
+              name: sre-agent-config
+              key: agentsec_mode
+              optional: true
+        - name: AGENTSEC_API_MODE_LLM
+          valueFrom:
+            configMapKeyRef:
+              name: sre-agent-config
+              key: agentsec_api_mode
+              optional: true
+        # AI Defense API credentials (from secret)
+        - name: AI_DEFENSE_API_MODE_LLM_ENDPOINT
+          valueFrom:
+            secretKeyRef:
+              name: ai-defense-credentials
+              key: endpoint
+              optional: true
+        - name: AI_DEFENSE_API_MODE_LLM_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ai-defense-credentials
+              key: api_key
+              optional: true
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+      nodeSelector:
+        cloud.google.com/gke-nodepool: default-pool
+
+---
+# ConfigMap for non-sensitive configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sre-agent-config
+data:
+  project_id: "${GOOGLE_CLOUD_PROJECT}"  # Substituted by deploy.sh
+  location: "us-central1"
+  agentsec_mode: "api"
+  agentsec_api_mode: "on_monitor"
+
+---
+# ServiceAccount for Workload Identity
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sre-agent-sa
+  annotations:
+    iam.gke.io/gcp-service-account: sre-agent@${PROJECT_ID}.iam.gserviceaccount.com

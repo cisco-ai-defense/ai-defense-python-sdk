@@ -1,19 +1,3 @@
-# Copyright 2025 Cisco Systems, Inc. and its affiliates
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
-# SPDX-License-Identifier: Apache-2.0
-
 """Configuration management for agentsec."""
 
 import json
@@ -128,7 +112,7 @@ def _load_provider_config(provider: str, mode: str) -> Dict[str, Optional[str]]:
     Load provider-specific configuration from environment variables.
     
     Args:
-        provider: Provider name (openai, azure_openai, vertexai, bedrock)
+        provider: Provider name (openai, azure_openai, vertexai, bedrock, agentcore)
         mode: Configuration mode (api or gateway)
         
     Returns:
@@ -140,6 +124,7 @@ def _load_provider_config(provider: str, mode: str) -> Dict[str, Optional[str]]:
         "azure_openai": "AZURE_OPENAI",
         "vertexai": "VERTEXAI",
         "bedrock": "BEDROCK",
+        "agentcore": "AGENTCORE",
     }
     
     prefix = provider_prefix_map.get(provider, provider.upper())
@@ -193,6 +178,7 @@ def load_env_config() -> Dict[str, Any]:
         AGENTSEC_VERTEXAI_GATEWAY_API_KEY: Gateway API key for Vertex AI calls
         AGENTSEC_BEDROCK_GATEWAY_URL: Gateway URL for AWS Bedrock calls
         AGENTSEC_BEDROCK_GATEWAY_API_KEY: Gateway API key for AWS Bedrock calls
+        AGENTSEC_AGENTCORE_GATEWAY_URL: Gateway URL for AWS AgentCore calls (uses AWS Sig V4, no API key needed)
         
         # Provider-Specific API Configuration (for direct calls)
         AGENTSEC_OPENAI_API_URL: OpenAI API URL (default: https://api.openai.com/v1)
@@ -215,12 +201,12 @@ def load_env_config() -> Dict[str, Any]:
     
     # Load provider-specific gateway configuration
     provider_gateway_config = {}
-    for provider in ["openai", "azure_openai", "vertexai", "bedrock"]:
+    for provider in ["openai", "azure_openai", "vertexai", "bedrock", "agentcore"]:
         provider_gateway_config[provider] = _load_provider_config(provider, "gateway")
     
     # Load provider-specific API configuration
     provider_api_config = {}
-    for provider in ["openai", "azure_openai", "vertexai", "bedrock"]:
+    for provider in ["openai", "azure_openai", "vertexai", "bedrock", "agentcore"]:
         config = _load_provider_config(provider, "api")
         # Fall back to standard env vars for API keys
         if not config["api_key"]:
@@ -278,3 +264,5 @@ def load_env_config() -> Dict[str, Any]:
         "mcp_enabled": _parse_bool_env(os.environ.get("AGENTSEC_MCP_ENABLED"), True),
         "redact_logs": _parse_bool_env(os.environ.get("AGENTSEC_REDACT_LOGS"), True),
     }
+
+

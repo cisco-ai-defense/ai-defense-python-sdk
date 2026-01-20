@@ -125,6 +125,39 @@ class TestMCPInspectorRequestBuilding:
         assert msg3["id"] == 3
         inspector.close()
 
+    def test_build_request_message_prompts_get(self):
+        """Test building JSON-RPC 2.0 request message for prompts/get."""
+        inspector = MCPInspector()
+        
+        message = inspector._build_request_message(
+            tool_name="code_review_prompt",
+            arguments={"language": "python", "style": "detailed"},
+            method="prompts/get",
+        )
+        
+        assert message["jsonrpc"] == "2.0"
+        assert message["method"] == "prompts/get"
+        assert message["params"]["name"] == "code_review_prompt"
+        assert message["params"]["arguments"] == {"language": "python", "style": "detailed"}
+        inspector.close()
+
+    def test_build_request_message_resources_read(self):
+        """Test building JSON-RPC 2.0 request message for resources/read."""
+        inspector = MCPInspector()
+        
+        message = inspector._build_request_message(
+            tool_name="file:///path/to/config.yaml",
+            arguments={},
+            method="resources/read",
+        )
+        
+        assert message["jsonrpc"] == "2.0"
+        assert message["method"] == "resources/read"
+        assert message["params"]["uri"] == "file:///path/to/config.yaml"
+        # resources/read doesn't include arguments, only uri
+        assert "arguments" not in message["params"]
+        inspector.close()
+
     def test_build_response_message_string_result(self):
         """Test building response message with string result."""
         inspector = MCPInspector()
@@ -376,6 +409,79 @@ class TestMCPInspectorInspectRequest:
         
         inspector.close()
 
+    def test_inspect_request_prompts_get(self):
+        """Test inspect_request with prompts/get method."""
+        inspector = MCPInspector(
+            api_key="test-key",
+            endpoint="https://test.example.com",
+        )
+        
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "jsonrpc": "2.0",
+            "result": {
+                "is_safe": True,
+                "action": "Allow",
+                "severity": "NONE_SEVERITY",
+                "rules": [],
+            },
+            "id": 1,
+        }
+        mock_response.raise_for_status = MagicMock()
+        
+        with patch.object(inspector._sync_client, 'post', return_value=mock_response) as mock_post:
+            decision = inspector.inspect_request(
+                tool_name="code_review_prompt",
+                arguments={"language": "python"},
+                metadata={},
+                method="prompts/get",
+            )
+            
+            assert decision.action == "allow"
+            # Verify the request was built with prompts/get method
+            call_args = mock_post.call_args
+            request_body = call_args.kwargs.get('json') or call_args[1].get('json')
+            assert request_body["method"] == "prompts/get"
+        
+        inspector.close()
+
+    def test_inspect_request_resources_read(self):
+        """Test inspect_request with resources/read method."""
+        inspector = MCPInspector(
+            api_key="test-key",
+            endpoint="https://test.example.com",
+        )
+        
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "jsonrpc": "2.0",
+            "result": {
+                "is_safe": True,
+                "action": "Allow",
+                "severity": "NONE_SEVERITY",
+                "rules": [],
+            },
+            "id": 1,
+        }
+        mock_response.raise_for_status = MagicMock()
+        
+        with patch.object(inspector._sync_client, 'post', return_value=mock_response) as mock_post:
+            decision = inspector.inspect_request(
+                tool_name="file:///config.yaml",
+                arguments={},
+                metadata={},
+                method="resources/read",
+            )
+            
+            assert decision.action == "allow"
+            # Verify the request was built with resources/read method
+            call_args = mock_post.call_args
+            request_body = call_args.kwargs.get('json') or call_args[1].get('json')
+            assert request_body["method"] == "resources/read"
+            assert request_body["params"]["uri"] == "file:///config.yaml"
+        
+        inspector.close()
+
 
 class TestMCPInspectorInspectResponse:
     """Test inspect_response method (Task Group 4)."""
@@ -545,3 +651,98 @@ class TestMCPInspectorAsync:
         
         inspector.close()
 
+    @pytest.mark.asyncio
+    async def test_ainspect_request_prompts_get(self):
+        """Test ainspect_request with prompts/get method."""
+        inspector = MCPInspector(
+            api_key="test-key",
+            endpoint="https://test.example.com",
+        )
+        
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "jsonrpc": "2.0",
+            "result": {
+                "is_safe": True,
+                "action": "Allow",
+                "severity": "NONE_SEVERITY",
+                "rules": [],
+            },
+            "id": 1,
+        }
+        mock_response.raise_for_status = MagicMock()
+        
+        async def mock_post(*args, **kwargs):
+            return mock_response
+        
+        with patch('aidefense.runtime.agentsec.inspectors.api_mcp.httpx.AsyncClient') as mock_client_class:
+            mock_client = MagicMock()
+            mock_client.post = mock_post
+            
+            async def aenter_mock(*args):
+                return mock_client
+            
+            async def aexit_mock(*args):
+                return None
+            
+            mock_client_class.return_value.__aenter__ = aenter_mock
+            mock_client_class.return_value.__aexit__ = aexit_mock
+            
+            decision = await inspector.ainspect_request(
+                tool_name="code_review_prompt",
+                arguments={"language": "python"},
+                metadata={},
+                method="prompts/get",
+            )
+            
+            assert decision.action == "allow"
+        
+        inspector.close()
+
+    @pytest.mark.asyncio
+    async def test_ainspect_request_resources_read(self):
+        """Test ainspect_request with resources/read method."""
+        inspector = MCPInspector(
+            api_key="test-key",
+            endpoint="https://test.example.com",
+        )
+        
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "jsonrpc": "2.0",
+            "result": {
+                "is_safe": True,
+                "action": "Allow",
+                "severity": "NONE_SEVERITY",
+                "rules": [],
+            },
+            "id": 1,
+        }
+        mock_response.raise_for_status = MagicMock()
+        
+        async def mock_post(*args, **kwargs):
+            return mock_response
+        
+        with patch('aidefense.runtime.agentsec.inspectors.api_mcp.httpx.AsyncClient') as mock_client_class:
+            mock_client = MagicMock()
+            mock_client.post = mock_post
+            
+            async def aenter_mock(*args):
+                return mock_client
+            
+            async def aexit_mock(*args):
+                return None
+            
+            mock_client_class.return_value.__aenter__ = aenter_mock
+            mock_client_class.return_value.__aexit__ = aexit_mock
+            
+            decision = await inspector.ainspect_request(
+                tool_name="file:///config.yaml",
+                arguments={},
+                metadata={},
+                method="resources/read",
+            )
+            
+            assert decision.action == "allow"
+        
+        inspector.close()

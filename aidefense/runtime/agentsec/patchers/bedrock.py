@@ -1,25 +1,33 @@
 """
-Bedrock/boto3 client autopatching.
+Bedrock/boto3 and AgentCore client autopatching.
 
-This module provides automatic inspection for AWS Bedrock LLM calls by patching
-at the botocore level. This covers ALL Bedrock operations including:
+This module provides automatic inspection for AWS Bedrock and AgentCore LLM calls
+by patching at the botocore level. This covers ALL Bedrock and AgentCore operations:
 
+Bedrock Operations:
 - InvokeModel: Direct model invocation
 - InvokeModelWithResponseStream: Streaming model invocation
 - Converse: Chat-like Converse API
 - ConverseStream: Streaming Converse API
 
+AgentCore Operations:
+- InvokeAgentRuntime: Agent runtime invocation (supports direct deploy, Lambda, container)
+
 By patching botocore.client.BaseClient._make_api_call, we intercept all Bedrock
-operations regardless of which higher-level AWS SDK or wrapper is used.
+and AgentCore operations regardless of which higher-level AWS SDK or wrapper is used.
 
 Gateway Mode Support:
-When AGENTSEC_LLM_INTEGRATION_MODE=gateway, Bedrock calls are sent directly
-to the provider-specific AI Defense Gateway in native format.
+- Bedrock: Uses Bearer token authentication with API key
+- AgentCore: Uses AWS Signature V4 authentication (no separate API key needed)
+
+When AGENTSEC_LLM_INTEGRATION_MODE=gateway, calls are routed to the provider-specific
+AI Defense Gateway in native format.
 
 Note: This satisfies roadmap item 21 (AWS Bedrock Client Autopatch) as the
-botocore-level patching covers all Bedrock client interfaces.
+botocore-level patching covers all Bedrock and AgentCore client interfaces.
 """
 
+import io
 import json
 import logging
 import threading
@@ -37,8 +45,97 @@ from ._base import safe_import
 
 logger = logging.getLogger("aidefense.runtime.agentsec.patchers.bedrock")
 
+
+class _StreamingBodyWrapper:
+    """
+    Wrapper that mimics boto3's StreamingBody interface while wrapping pre-read content.
+    
+    When inspecting Bedrock responses, we need to read the StreamingBody to get the content.
+    This wrapper allows us to provide a replacement that looks like a StreamingBody to
+    calling code, ensuring compatibility with code that expects StreamingBody-specific methods.
+    
+    Supported methods (same as botocore.response.StreamingBody):
+    - read(amt=None): Read some or all of the body
+    - close(): Close the stream
+    - iter_lines(): Iterate over lines
+    - iter_chunks(chunk_size): Iterate over chunks
+    """
+    
+    def __init__(self, content: bytes):
+        """
+        Initialize with pre-read content.
+        
+        Args:
+            content: The bytes content that was read from the original StreamingBody
+        """
+        self._content = content
+        self._stream = io.BytesIO(content)
+        self._amount_read = 0
+    
+    def read(self, amt: Optional[int] = None) -> bytes:
+        """
+        Read the body content.
+        
+        Args:
+            amt: Number of bytes to read, or None to read all remaining content
+            
+        Returns:
+            The requested bytes
+        """
+        return self._stream.read(amt)
+    
+    def readlines(self) -> List[bytes]:
+        """Read all lines from the stream."""
+        return self._stream.readlines()
+    
+    def close(self) -> None:
+        """Close the underlying stream."""
+        self._stream.close()
+    
+    def iter_lines(self, chunk_size: int = 1024):
+        """
+        Iterate over lines in the body.
+        
+        Args:
+            chunk_size: Size of chunks to read (for compatibility, not used)
+            
+        Yields:
+            Lines from the body content
+        """
+        for line in self._stream:
+            yield line
+    
+    def iter_chunks(self, chunk_size: int = 1024):
+        """
+        Iterate over chunks of the body.
+        
+        Args:
+            chunk_size: Size of each chunk
+            
+        Yields:
+            Chunks of the body content
+        """
+        while True:
+            chunk = self._stream.read(chunk_size)
+            if not chunk:
+                break
+            yield chunk
+    
+    def __iter__(self):
+        """Allow iteration over the stream."""
+        return self.iter_chunks()
+    
+    def __enter__(self):
+        return self
+    
+    def __exit__(self, *args):
+        self.close()
+
 # Bedrock operation names to intercept
 BEDROCK_OPERATIONS = {"InvokeModel", "InvokeModelWithResponseStream", "Converse", "ConverseStream"}
+
+# AgentCore operation names to intercept
+AGENTCORE_OPERATIONS = {"InvokeAgentRuntime"}
 
 # Global inspector instance with thread-safe initialization
 _inspector: Optional[LLMInspector] = None
@@ -58,6 +155,9 @@ def _get_inspector() -> LLMInspector:
                     fail_open=_state.get_api_mode_fail_open_llm(),
                     default_rules=_state.get_llm_rules(),
                 )
+                # Register for cleanup on shutdown
+                from ..inspectors import register_inspector_for_cleanup
+                register_inspector_for_cleanup(_inspector)
     return _inspector
 
 
@@ -67,7 +167,7 @@ def _is_gateway_mode() -> bool:
 
 
 def _should_use_gateway() -> bool:
-    """Check if we should use gateway mode (gateway mode enabled, configured, and not skipped)."""
+    """Check if we should use gateway mode for Bedrock (gateway mode enabled, configured, and not skipped)."""
     from .._context import is_llm_skip_active
     if is_llm_skip_active():
         return False
@@ -77,6 +177,392 @@ def _should_use_gateway() -> bool:
     gateway_url = _state.get_provider_gateway_url("bedrock")
     gateway_api_key = _state.get_provider_gateway_api_key("bedrock")
     return bool(gateway_url and gateway_api_key)
+
+
+# =============================================================================
+# AgentCore-specific functions
+# =============================================================================
+
+def _is_agentcore_client(instance) -> bool:
+    """
+    Check if the boto client is for the bedrock-agentcore service.
+    
+    Args:
+        instance: The boto client instance
+        
+    Returns:
+        True if this is a bedrock-agentcore client
+    """
+    try:
+        service_model = getattr(instance, '_service_model', None)
+        if service_model:
+            service_name = getattr(service_model, 'service_name', '')
+            return service_name == 'bedrock-agentcore'
+    except Exception:
+        pass
+    return False
+
+
+def _is_agentcore_operation(operation_name: str, instance) -> bool:
+    """Check if this is an AgentCore operation we should intercept."""
+    return operation_name in AGENTCORE_OPERATIONS and _is_agentcore_client(instance)
+
+
+def _should_use_agentcore_gateway() -> bool:
+    """Check if we should use gateway mode for AgentCore (gateway mode enabled, configured, and not skipped)."""
+    from .._context import is_llm_skip_active
+    if is_llm_skip_active():
+        return False
+    if not _is_gateway_mode():
+        return False
+    # Check if AgentCore gateway is configured (only URL needed - uses AWS Sig V4)
+    gateway_url = _state.get_provider_gateway_url("agentcore")
+    return bool(gateway_url)
+
+
+def _parse_agentcore_payload(payload: bytes) -> List[Dict[str, Any]]:
+    """
+    Parse AgentCore request payload into standard message format.
+    
+    Handles multiple payload formats:
+    1. Bedrock Converse format (messages array)
+    2. Simple formats (prompt, query, input, text)
+    
+    Args:
+        payload: The request payload (bytes or string)
+        
+    Returns:
+        List of message dicts with role and content
+    """
+    if isinstance(payload, bytes):
+        try:
+            payload = payload.decode('utf-8')
+        except UnicodeDecodeError:
+            return []
+    
+    try:
+        data = json.loads(payload)
+    except json.JSONDecodeError:
+        # If it's not JSON, treat it as plain text
+        if payload.strip():
+            return [{"role": "user", "content": payload.strip()}]
+        return []
+    
+    messages = []
+    
+    # Format 1: Bedrock Converse format (messages array)
+    if "messages" in data:
+        for msg in data.get("messages", []):
+            role = msg.get("role", "user")
+            content = msg.get("content", "")
+            
+            if isinstance(content, list):
+                # Handle content blocks (Bedrock Converse style)
+                text_parts = []
+                for c in content:
+                    if isinstance(c, dict):
+                        if "text" in c:
+                            text_parts.append(c.get("text", ""))
+                        elif c.get("type") == "text":
+                            text_parts.append(c.get("text", ""))
+                content = " ".join(text_parts)
+            
+            if content:
+                messages.append({"role": role, "content": content})
+        
+        # Add system prompt if present
+        if "system" in data:
+            system_content = data["system"]
+            if isinstance(system_content, list):
+                text = " ".join(
+                    c.get("text", "") for c in system_content if isinstance(c, dict) and "text" in c
+                )
+                if text:
+                    messages.insert(0, {"role": "system", "content": text})
+            elif isinstance(system_content, str):
+                messages.insert(0, {"role": "system", "content": system_content})
+        
+        return messages
+    
+    # Format 2: Simple prompt formats
+    for key in ["prompt", "query", "input", "text"]:
+        if key in data:
+            content = data[key]
+            if isinstance(content, str) and content.strip():
+                return [{"role": "user", "content": content.strip()}]
+    
+    return messages
+
+
+def _parse_agentcore_response(response_payload) -> str:
+    """
+    Parse AgentCore response payload to extract assistant content.
+    
+    Handles multiple response formats:
+    1. Bedrock Converse format (output.message.content)
+    2. Simple formats (response, completion, content, text)
+    
+    Args:
+        response_payload: The response payload (bytes, string, or StreamingBody)
+        
+    Returns:
+        Extracted assistant content as string
+    """
+    # Handle StreamingBody from boto3
+    if hasattr(response_payload, 'read'):
+        try:
+            response_payload = response_payload.read()
+        except Exception:
+            return ""
+    
+    if isinstance(response_payload, bytes):
+        try:
+            response_payload = response_payload.decode('utf-8')
+        except UnicodeDecodeError:
+            return ""
+    
+    try:
+        data = json.loads(response_payload)
+    except json.JSONDecodeError:
+        # If it's not JSON, return as-is if it looks like content
+        if response_payload.strip():
+            return response_payload.strip()
+        return ""
+    
+    # Format 1: Bedrock Converse format
+    if "output" in data:
+        output = data["output"]
+        if isinstance(output, dict) and "message" in output:
+            message = output["message"]
+            content = message.get("content", [])
+            if isinstance(content, list):
+                return " ".join(
+                    c.get("text", "") for c in content if isinstance(c, dict) and "text" in c
+                )
+            elif isinstance(content, str):
+                return content
+    
+    # Format 2: Simple response formats
+    for key in ["result", "response", "completion", "content", "text", "output"]:
+        if key in data:
+            value = data[key]
+            if isinstance(value, str):
+                return value
+            elif isinstance(value, dict) and "text" in value:
+                return value["text"]
+    
+    return ""
+
+
+def _handle_agentcore_gateway_call(operation_name: str, api_params: Dict, instance) -> Dict:
+    """
+    Handle AgentCore call via AI Defense Gateway with AWS Signature V4 authentication.
+    
+    Sends the request to the AI Defense Gateway, which proxies to AgentCore.
+    Uses AWS Sig V4 for authentication (no separate API key needed).
+    
+    Args:
+        operation_name: AgentCore operation name (InvokeAgentRuntime)
+        api_params: AgentCore API parameters
+        instance: The boto client instance (used for session/credentials)
+        
+    Returns:
+        AgentCore-format response dict
+    """
+    import httpx
+    
+    gateway_url = _state.get_provider_gateway_url("agentcore")
+    
+    if not gateway_url:
+        logger.warning("Gateway mode enabled but AgentCore gateway not configured")
+        raise SecurityPolicyError(
+            Decision.block(reasons=["AgentCore gateway not configured"]),
+            "Gateway mode enabled but AGENTSEC_AGENTCORE_GATEWAY_URL not set"
+        )
+    
+    agent_runtime_arn = api_params.get("agentRuntimeArn", "")
+    session_id = api_params.get("runtimeSessionId", "")
+    payload = api_params.get("payload", b"")
+    
+    # Ensure payload is string for JSON encoding
+    if isinstance(payload, bytes):
+        payload = payload.decode('utf-8')
+    
+    logger.debug(f"[GATEWAY] Sending AgentCore request to gateway with AWS Sig V4")
+    logger.debug(f"[GATEWAY] Operation: {operation_name}, AgentRuntime: {agent_runtime_arn}")
+    
+    try:
+        # Import boto3 for AWS Sig V4 signing
+        import boto3
+        from botocore.auth import SigV4Auth
+        from botocore.awsrequest import AWSRequest
+        
+        # Build request body
+        try:
+            request_body = json.loads(payload) if payload else {}
+        except json.JSONDecodeError:
+            request_body = {"payload": payload}
+        
+        # Add AgentCore-specific fields
+        request_body["agentRuntimeArn"] = agent_runtime_arn
+        if session_id:
+            request_body["runtimeSessionId"] = session_id
+        
+        body_bytes = json.dumps(request_body).encode('utf-8')
+        
+        # Get AWS credentials from boto3 session
+        session = boto3.Session()
+        credentials = session.get_credentials()
+        region = session.region_name or "us-east-1"
+        
+        if credentials is None:
+            logger.error("[GATEWAY] No AWS credentials available for Sig V4 signing")
+            raise SecurityPolicyError(
+                Decision.block(reasons=["AWS credentials not available"]),
+                "AWS credentials required for AgentCore gateway authentication"
+            )
+        
+        # Create AWS request for signing
+        headers = {
+            "Content-Type": "application/json",
+            "X-AgentCore-Operation": operation_name,
+        }
+        
+        aws_request = AWSRequest(
+            method="POST",
+            url=gateway_url,
+            data=body_bytes,
+            headers=headers,
+        )
+        
+        # Sign the request with AWS Sig V4
+        SigV4Auth(credentials, "bedrock", region).add_auth(aws_request)
+        
+        # Send signed request
+        with httpx.Client(timeout=60.0) as client:
+            response = client.post(
+                gateway_url,
+                content=body_bytes,
+                headers=dict(aws_request.headers),
+            )
+            response.raise_for_status()
+            response_data = response.json()
+        
+        logger.debug(f"[GATEWAY] Received AgentCore response from gateway")
+        set_inspection_context(decision=Decision.allow(reasons=["Gateway handled inspection"]), done=True)
+        
+        return response_data
+        
+    except httpx.HTTPStatusError as e:
+        logger.error(f"[GATEWAY] HTTP error: {e}")
+        if _state.get_gateway_mode_fail_open_llm():
+            logger.warning(f"[GATEWAY] fail_open=True, but gateway call failed")
+            set_inspection_context(decision=Decision.allow(reasons=["Gateway error, fail_open=True"]), done=True)
+        raise SecurityPolicyError(
+            Decision.block(reasons=["AgentCore gateway unavailable"]),
+            f"Gateway HTTP error: {e}"
+        )
+    except ImportError as e:
+        logger.error(f"[GATEWAY] Missing dependency for AWS Sig V4: {e}")
+        raise SecurityPolicyError(
+            Decision.block(reasons=["Missing AWS SDK dependencies"]),
+            f"boto3/botocore required for AgentCore gateway: {e}"
+        )
+    except Exception as e:
+        logger.error(f"[GATEWAY] Error: {e}")
+        raise
+
+
+def _handle_agentcore_api_mode(operation_name: str, api_params: Dict, wrapped, args, kwargs) -> Dict:
+    """
+    Handle AgentCore call in API mode (inspection via AI Defense API).
+    
+    Args:
+        operation_name: AgentCore operation name
+        api_params: AgentCore API parameters
+        wrapped: Original wrapped function
+        args: Original args
+        kwargs: Original kwargs
+        
+    Returns:
+        AgentCore response from the original call
+    """
+    payload = api_params.get("payload", b"")
+    agent_runtime_arn = api_params.get("agentRuntimeArn", "")
+    
+    # Parse messages from payload
+    messages = _parse_agentcore_payload(payload)
+    
+    metadata = get_inspection_context().metadata
+    metadata["agent_runtime_arn"] = agent_runtime_arn
+    metadata["provider"] = "agentcore"
+    
+    mode = _state.get_llm_mode()
+    integration_mode = _state.get_llm_integration_mode()
+    logger.debug(f"")
+    logger.debug(f"╔══════════════════════════════════════════════════════════════")
+    logger.debug(f"║ [PATCHED] LLM CALL: AgentCore")
+    logger.debug(f"║ Operation: AgentCore.{operation_name} | LLM Mode: {mode} | Integration: {integration_mode}")
+    logger.debug(f"║ AgentRuntime: {agent_runtime_arn}")
+    logger.debug(f"╚══════════════════════════════════════════════════════════════")
+    
+    # Pre-call inspection
+    if messages:
+        try:
+            logger.debug(f"[PATCHED CALL] AgentCore.{operation_name} - Request inspection ({len(messages)} messages)")
+            inspector = _get_inspector()
+            decision = inspector.inspect_conversation(messages, metadata)
+            logger.debug(f"[PATCHED CALL] AgentCore.{operation_name} - Request decision: {decision.action}")
+            set_inspection_context(decision=decision)
+            _enforce_decision(decision)
+        except SecurityPolicyError:
+            raise
+        except Exception as e:
+            decision = _handle_patcher_error(e, f"AgentCore.{operation_name} pre-call")
+            if decision:
+                set_inspection_context(decision=decision)
+    
+    # Call original
+    logger.debug(f"[PATCHED CALL] AgentCore.{operation_name} - calling original method")
+    response = wrapped(*args, **kwargs)
+    
+    # Post-call inspection
+    try:
+        # AgentCore response can have either "payload" or "response" key
+        response_key = "payload" if "payload" in response else "response"
+        response_payload = response.get(response_key)
+        
+        # Read StreamingBody and buffer it for re-use
+        response_bytes = b""
+        if response_payload is not None:
+            if hasattr(response_payload, 'read'):
+                response_bytes = response_payload.read()
+                # Replace StreamingBody with a wrapper that mimics StreamingBody interface
+                response[response_key] = _StreamingBodyWrapper(response_bytes)
+            elif isinstance(response_payload, bytes):
+                response_bytes = response_payload
+            else:
+                response_bytes = str(response_payload).encode('utf-8')
+        
+        assistant_content = _parse_agentcore_response(response_bytes)
+        
+        if assistant_content and messages:
+            logger.debug(f"[PATCHED CALL] AgentCore.{operation_name} - Response inspection (response: {len(assistant_content)} chars)")
+            messages_with_response = messages + [
+                {"role": "assistant", "content": assistant_content}
+            ]
+            inspector = _get_inspector()
+            decision = inspector.inspect_conversation(messages_with_response, metadata)
+            logger.debug(f"[PATCHED CALL] AgentCore.{operation_name} - Response decision: {decision.action}")
+            set_inspection_context(decision=decision, done=True)
+            _enforce_decision(decision)
+    except SecurityPolicyError:
+        raise
+    except Exception as e:
+        logger.warning(f"[AgentCore.{operation_name} post-call] Inspection error: {e}")
+    
+    logger.debug(f"[PATCHED CALL] AgentCore.{operation_name} - complete")
+    return response
 
 
 def _should_inspect() -> bool:
@@ -550,6 +1036,36 @@ class _BedrockEventStreamWrapper:
         pass
 
 
+def _handle_agentcore_call(wrapped, instance, args, kwargs, operation_name: str, api_params: Dict):
+    """
+    Handle AgentCore operations (InvokeAgentRuntime).
+    
+    Routes to either gateway mode or API mode based on configuration.
+    
+    Args:
+        wrapped: Original wrapped function
+        instance: The boto client instance
+        args: Original args
+        kwargs: Original kwargs
+        operation_name: AgentCore operation name
+        api_params: AgentCore API parameters
+        
+    Returns:
+        AgentCore response
+    """
+    if not _should_inspect():
+        logger.debug(f"[PATCHED CALL] AgentCore.{operation_name} - inspection skipped (mode=off or already done)")
+        return wrapped(*args, **kwargs)
+    
+    # Gateway mode: route through AI Defense Gateway with AWS Sig V4
+    if _should_use_agentcore_gateway():
+        logger.debug(f"[PATCHED CALL] AgentCore.{operation_name} - Gateway mode - routing to AI Defense Gateway")
+        return _handle_agentcore_gateway_call(operation_name, api_params, instance)
+    
+    # API mode: use LLMInspector for inspection
+    return _handle_agentcore_api_mode(operation_name, api_params, wrapped, args, kwargs)
+
+
 def _wrap_make_api_call(wrapped, instance, args, kwargs):
     """Wrapper for botocore BaseClient._make_api_call.
     
@@ -558,9 +1074,16 @@ def _wrap_make_api_call(wrapped, instance, args, kwargs):
     
     Supports both API mode (inspection via AI Defense API) and Gateway mode
     (routing through AI Defense Gateway with format conversion).
+    
+    Handles both Bedrock operations (InvokeModel, Converse, etc.) and
+    AgentCore operations (InvokeAgentRuntime).
     """
     operation_name = args[0] if args else kwargs.get("operation_name", "")
     api_params = args[1] if len(args) > 1 else kwargs.get("api_params", {})
+    
+    # Check for AgentCore operations first (more specific check)
+    if _is_agentcore_operation(operation_name, instance):
+        return _handle_agentcore_call(wrapped, instance, args, kwargs, operation_name, api_params)
     
     # Only intercept Bedrock operations
     if not _is_bedrock_operation(operation_name, api_params):
@@ -655,9 +1178,8 @@ def _wrap_make_api_call(wrapped, instance, args, kwargs):
                 if response_body:
                     if hasattr(response_body, "read"):
                         response_content = response_body.read()
-                        # Reset stream for caller
-                        import io
-                        response["body"] = io.BytesIO(response_content)
+                        # Replace with wrapper that mimics StreamingBody interface
+                        response["body"] = _StreamingBodyWrapper(response_content)
                     else:
                         response_content = response_body
                     
@@ -712,3 +1234,5 @@ def patch_bedrock() -> bool:
     except Exception as e:
         logger.warning(f"Failed to patch Bedrock: {e}")
         return False
+
+

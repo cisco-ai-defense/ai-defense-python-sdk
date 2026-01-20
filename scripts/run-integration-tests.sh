@@ -5,11 +5,14 @@
 # Usage:
 #   ./scripts/run-integration-tests.sh              # Run all integration tests
 #   ./scripts/run-integration-tests.sh --simple     # Run only simple examples tests
-#   ./scripts/run-integration-tests.sh --agents     # Run only agent examples tests
+#   ./scripts/run-integration-tests.sh --agents     # Run only agent framework tests
+#   ./scripts/run-integration-tests.sh --runtimes   # Run only agent runtime tests
 #   ./scripts/run-integration-tests.sh --api        # Run only API mode tests
 #   ./scripts/run-integration-tests.sh --gateway    # Run only Gateway mode tests
-#   ./scripts/run-integration-tests.sh strands      # Run specific agent tests
-#  ./scripts/run-integration-tests.sh --agents --gateway   # Combine flags
+#   ./scripts/run-integration-tests.sh strands      # Run specific agent framework tests
+#   ./scripts/run-integration-tests.sh amazon-bedrock-agentcore       # Run specific runtime tests
+#   ./scripts/run-integration-tests.sh gcp-vertex-ai-agent-engine     # Run specific runtime tests
+#   ./scripts/run-integration-tests.sh --agents --gateway   # Combine flags
 #
 
 set -e
@@ -42,17 +45,26 @@ echo ""
 # Parse arguments
 RUN_SIMPLE=true
 RUN_AGENTS=true
+RUN_RUNTIMES=true
 SPECIFIC_AGENT=""
+SPECIFIC_RUNTIME=""
 MODE_FLAG=""  # --api or --gateway to pass to test scripts
 
 while [[ $# -gt 0 ]]; do
     case $1 in
         --simple)
             RUN_AGENTS=false
+            RUN_RUNTIMES=false
             shift
             ;;
         --agents)
             RUN_SIMPLE=false
+            RUN_RUNTIMES=false
+            shift
+            ;;
+        --runtimes)
+            RUN_SIMPLE=false
+            RUN_AGENTS=false
             shift
             ;;
         --api)
@@ -65,12 +77,25 @@ while [[ $# -gt 0 ]]; do
             ;;
         strands|langgraph|langchain|crewai|autogen|openai)
             RUN_SIMPLE=false
+            RUN_RUNTIMES=false
             SPECIFIC_AGENT="$1-agent"
+            shift
+            ;;
+        amazon-bedrock-agentcore)
+            RUN_SIMPLE=false
+            RUN_AGENTS=false
+            SPECIFIC_RUNTIME="amazon-bedrock-agentcore"
+            shift
+            ;;
+        gcp-vertex-ai-agent-engine)
+            RUN_SIMPLE=false
+            RUN_AGENTS=false
+            SPECIFIC_RUNTIME="gcp-vertex-ai-agent-engine"
             shift
             ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: $0 [--simple] [--agents] [--api] [--gateway] [strands|langgraph|langchain|crewai|autogen|openai]"
+            echo "Usage: $0 [--simple] [--agents] [--runtimes] [--api] [--gateway] [strands|langgraph|langchain|crewai|autogen|openai|amazon-bedrock-agentcore|gcp-vertex-ai-agent-engine]"
             exit 1
             ;;
     esac
@@ -127,13 +152,13 @@ if [ "$RUN_SIMPLE" = true ]; then
     echo -e "══════════════════════════════════════════════${NC}"
     echo ""
     
-    run_test "Simple Examples" "examples/agentsec/1_simple/tests/integration/test-simple-examples.sh" "$MODE_FLAG"
+    run_test "Simple Examples" "examples/agentsec/1-simple/tests/integration/test-simple-examples.sh" "$MODE_FLAG"
 fi
 
 # Run agent examples integration tests
 if [ "$RUN_AGENTS" = true ]; then
     echo -e "${BLUE}══════════════════════════════════════════════"
-    echo "  Agent Examples Integration Tests"
+    echo "  Agent Framework Integration Tests"
     echo -e "══════════════════════════════════════════════${NC}"
     echo ""
     
@@ -145,11 +170,36 @@ if [ "$RUN_AGENTS" = true ]; then
             continue
         fi
         
-        test_script="examples/agentsec/2_agent-frameworks/$agent/tests/integration/test-all-providers.sh"
+        test_script="examples/agentsec/2-agent-frameworks/$agent/tests/integration/test-all-providers.sh"
         if [ -f "$test_script" ]; then
             run_test "$agent" "$test_script" "$MODE_FLAG"
         else
             echo -e "${YELLOW}  ⚠ No integration test found for $agent${NC}"
+            echo ""
+        fi
+    done
+fi
+
+# Run agent runtime integration tests
+if [ "$RUN_RUNTIMES" = true ]; then
+    echo -e "${BLUE}══════════════════════════════════════════════"
+    echo "  Agent Runtime Integration Tests"
+    echo -e "══════════════════════════════════════════════${NC}"
+    echo ""
+    
+    RUNTIMES=("amazon-bedrock-agentcore" "gcp-vertex-ai-agent-engine")
+    
+    for runtime in "${RUNTIMES[@]}"; do
+        # Skip if specific runtime requested and this isn't it
+        if [ -n "$SPECIFIC_RUNTIME" ] && [ "$runtime" != "$SPECIFIC_RUNTIME" ]; then
+            continue
+        fi
+        
+        test_script="examples/agentsec/3-agent-runtimes/$runtime/tests/integration/test-all-modes.sh"
+        if [ -f "$test_script" ]; then
+            run_test "$runtime" "$test_script" "$MODE_FLAG"
+        else
+            echo -e "${YELLOW}  ⚠ No integration test found for $runtime${NC}"
             echo ""
         fi
     done

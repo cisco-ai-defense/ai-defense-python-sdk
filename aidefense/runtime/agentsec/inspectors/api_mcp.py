@@ -1,20 +1,4 @@
-# Copyright 2025 Cisco Systems, Inc. and its affiliates
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
-# SPDX-License-Identifier: Apache-2.0
-
-"""MCP Inspector for tool call inspection using Cisco AI Defense MCP Inspection API."""
+"""MCP Inspector for tool, prompt, and resource inspection using Cisco AI Defense MCP Inspection API."""
 
 import json
 import logging
@@ -31,10 +15,16 @@ logger = logging.getLogger("aidefense.runtime.agentsec.inspectors.mcp")
 
 class MCPInspector:
     """
-    Inspector for MCP (Model Context Protocol) tool calls using Cisco AI Defense.
+    Inspector for MCP (Model Context Protocol) operations using Cisco AI Defense.
     
     This class integrates with the Cisco AI Defense MCP Inspection API to
-    inspect MCP tool requests and responses for security policy violations.
+    inspect MCP tool calls, prompt retrievals, and resource reads for security
+    policy violations.
+    
+    Supported MCP methods:
+    - tools/call: Tool execution inspection
+    - prompts/get: Prompt retrieval inspection
+    - resources/read: Resource access inspection
     
     The API expects raw MCP JSON-RPC 2.0 messages and returns inspection results
     with is_safe boolean and action (Allow/Block).
@@ -44,7 +34,7 @@ class MCPInspector:
         endpoint: Base URL for the AI Defense MCP API
         timeout_ms: Request timeout in milliseconds
         retry_attempts: Number of retry attempts (default 1 = no retry)
-        fail_open: Whether to allow tool calls when API is unreachable
+        fail_open: Whether to allow operations when API is unreachable
     """
     
     def __init__(
@@ -111,26 +101,49 @@ class MCPInspector:
         self,
         tool_name: str,
         arguments: Dict[str, Any],
+        method: str = "tools/call",
     ) -> Dict[str, Any]:
         """
-        Build a JSON-RPC 2.0 request message for MCP tool call inspection.
+        Build a JSON-RPC 2.0 request message for MCP inspection.
         
         Args:
-            tool_name: Name of the tool being called
-            arguments: Arguments passed to the tool
+            tool_name: Name of the tool/prompt/resource being accessed
+            arguments: Arguments passed to the operation
+            method: MCP method (tools/call, prompts/get, resources/read)
             
         Returns:
             JSON-RPC 2.0 request message dict
         """
-        return {
-            "jsonrpc": "2.0",
-            "method": "tools/call",
-            "params": {
-                "name": tool_name,
-                "arguments": arguments,
-            },
-            "id": self._get_next_id(),
-        }
+        if method == "prompts/get":
+            return {
+                "jsonrpc": "2.0",
+                "method": method,
+                "params": {
+                    "name": tool_name,
+                    "arguments": arguments,
+                },
+                "id": self._get_next_id(),
+            }
+        elif method == "resources/read":
+            return {
+                "jsonrpc": "2.0",
+                "method": method,
+                "params": {
+                    "uri": tool_name,  # For resources, the "name" is the URI
+                },
+                "id": self._get_next_id(),
+            }
+        else:
+            # Default: tools/call
+            return {
+                "jsonrpc": "2.0",
+                "method": "tools/call",
+                "params": {
+                    "name": tool_name,
+                    "arguments": arguments,
+                },
+                "id": self._get_next_id(),
+            }
     
     def _build_response_message(
         self,
@@ -259,32 +272,34 @@ class MCPInspector:
         tool_name: str,
         arguments: Dict[str, Any],
         metadata: Dict[str, Any],
+        method: str = "tools/call",
     ) -> Decision:
         """
-        Inspect an MCP tool request before execution (sync).
+        Inspect an MCP request before execution (sync).
         
-        Sends the tool call to Cisco AI Defense MCP Inspection API for
-        security analysis before the tool is executed.
+        Sends the request to Cisco AI Defense MCP Inspection API for
+        security analysis before execution.
         
         Args:
-            tool_name: Name of the tool being called
-            arguments: Arguments passed to the tool
+            tool_name: Name of the tool/prompt/resource being accessed
+            arguments: Arguments passed to the operation
             metadata: Additional metadata about the request (not sent to API)
+            method: MCP method (tools/call, prompts/get, resources/read)
             
         Returns:
-            Decision indicating whether to allow or block the tool call
+            Decision indicating whether to allow or block the request
             
         Raises:
             SecurityPolicyError: If fail_open=False and API is unreachable
         """
         # If no API configured, allow by default (backward compatible)
         if not self.endpoint or not self.api_key:
-            logger.debug(f"MCP request intercepted: tool={tool_name}, allowing by default (no API configured)")
+            logger.debug(f"MCP request intercepted: {method}={tool_name}, allowing by default (no API configured)")
             return Decision.allow()
         
         # Build JSON-RPC request message
-        mcp_message = self._build_request_message(tool_name, arguments)
-        logger.debug(f"MCP inspection request: tool={tool_name}, method=tools/call")
+        mcp_message = self._build_request_message(tool_name, arguments, method)
+        logger.debug(f"MCP inspection request: {method}={tool_name}")
         
         headers = {
             "X-Cisco-AI-Defense-API-Key": self.api_key,
@@ -315,18 +330,20 @@ class MCPInspector:
         arguments: Dict[str, Any],
         result: Any,
         metadata: Dict[str, Any],
+        method: str = "tools/call",
     ) -> Decision:
         """
-        Inspect an MCP tool response after execution (sync).
+        Inspect an MCP response after execution (sync).
         
-        Sends the tool response to Cisco AI Defense MCP Inspection API for
-        security analysis after the tool has executed.
+        Sends the response to Cisco AI Defense MCP Inspection API for
+        security analysis after execution.
         
         Args:
-            tool_name: Name of the tool that was called
-            arguments: Arguments that were passed to the tool
-            result: The result returned by the tool
+            tool_name: Name of the tool/prompt/resource that was accessed
+            arguments: Arguments that were passed to the operation
+            result: The result returned by the operation
             metadata: Additional metadata about the request (not sent to API)
+            method: MCP method (tools/call, prompts/get, resources/read)
             
         Returns:
             Decision indicating whether to allow or block the response
@@ -336,12 +353,12 @@ class MCPInspector:
         """
         # If no API configured, allow by default (backward compatible)
         if not self.endpoint or not self.api_key:
-            logger.debug(f"MCP response intercepted: tool={tool_name}, allowing by default (no API configured)")
+            logger.debug(f"MCP response intercepted: {method}={tool_name}, allowing by default (no API configured)")
             return Decision.allow()
         
         # Build JSON-RPC response message
         mcp_message = self._build_response_message(result)
-        logger.debug(f"MCP inspection response: tool={tool_name}")
+        logger.debug(f"MCP inspection response: {method}={tool_name}")
         
         headers = {
             "X-Cisco-AI-Defense-API-Key": self.api_key,
@@ -371,29 +388,31 @@ class MCPInspector:
         tool_name: str,
         arguments: Dict[str, Any],
         metadata: Dict[str, Any],
+        method: str = "tools/call",
     ) -> Decision:
         """
-        Inspect an MCP tool request before execution (async).
+        Inspect an MCP request before execution (async).
         
         Args:
-            tool_name: Name of the tool being called
-            arguments: Arguments passed to the tool
+            tool_name: Name of the tool/prompt/resource being accessed
+            arguments: Arguments passed to the operation
             metadata: Additional metadata about the request (not sent to API)
+            method: MCP method (tools/call, prompts/get, resources/read)
             
         Returns:
-            Decision indicating whether to allow or block the tool call
+            Decision indicating whether to allow or block the request
             
         Raises:
             SecurityPolicyError: If fail_open=False and API is unreachable
         """
         # If no API configured, allow by default (backward compatible)
         if not self.endpoint or not self.api_key:
-            logger.debug(f"MCP request intercepted: tool={tool_name}, allowing by default (no API configured)")
+            logger.debug(f"MCP request intercepted: {method}={tool_name}, allowing by default (no API configured)")
             return Decision.allow()
         
         # Build JSON-RPC request message
-        mcp_message = self._build_request_message(tool_name, arguments)
-        logger.debug(f"MCP async inspection request: tool={tool_name}, method=tools/call")
+        mcp_message = self._build_request_message(tool_name, arguments, method)
+        logger.debug(f"MCP async inspection request: {method}={tool_name}")
         
         headers = {
             "X-Cisco-AI-Defense-API-Key": self.api_key,
@@ -427,15 +446,17 @@ class MCPInspector:
         arguments: Dict[str, Any],
         result: Any,
         metadata: Dict[str, Any],
+        method: str = "tools/call",
     ) -> Decision:
         """
-        Inspect an MCP tool response after execution (async).
+        Inspect an MCP response after execution (async).
         
         Args:
-            tool_name: Name of the tool that was called
-            arguments: Arguments that were passed to the tool
-            result: The result returned by the tool
+            tool_name: Name of the tool/prompt/resource that was accessed
+            arguments: Arguments that were passed to the operation
+            result: The result returned by the operation
             metadata: Additional metadata about the request (not sent to API)
+            method: MCP method (tools/call, prompts/get, resources/read)
             
         Returns:
             Decision indicating whether to allow or block the response
@@ -445,12 +466,12 @@ class MCPInspector:
         """
         # If no API configured, allow by default (backward compatible)
         if not self.endpoint or not self.api_key:
-            logger.debug(f"MCP response intercepted: tool={tool_name}, allowing by default (no API configured)")
+            logger.debug(f"MCP response intercepted: {method}={tool_name}, allowing by default (no API configured)")
             return Decision.allow()
         
         # Build JSON-RPC response message
         mcp_message = self._build_response_message(result)
-        logger.debug(f"MCP async inspection response: tool={tool_name}")
+        logger.debug(f"MCP async inspection response: {method}={tool_name}")
         
         headers = {
             "X-Cisco-AI-Defense-API-Key": self.api_key,

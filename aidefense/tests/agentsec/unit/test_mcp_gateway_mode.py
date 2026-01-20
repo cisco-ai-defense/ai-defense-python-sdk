@@ -320,3 +320,197 @@ class TestMCPPatcherModeSelection:
             # Wrapped should also be called
             assert wrapped.called
             assert result == mock_result
+
+
+class TestMCPPromptResourceWrappers:
+    """Test MCP get_prompt and read_resource wrapper functions."""
+
+    @pytest.mark.asyncio
+    async def test_wrap_get_prompt_api_mode(self):
+        """Test _wrap_get_prompt uses API inspector in api mode."""
+        set_state(
+            initialized=True,
+            llm_rules=None,
+            api_mode_llm="on_monitor",
+            api_mode_mcp="on_monitor",
+            mcp_integration_mode="api",
+        )
+        
+        mock_api_inspector = MagicMock()
+        mock_api_inspector.ainspect_request = AsyncMock(return_value=MagicMock(action="allow"))
+        mock_api_inspector.ainspect_response = AsyncMock(return_value=MagicMock(action="allow"))
+        
+        mock_result = MagicMock()
+        mock_result.messages = [{"role": "user", "content": "prompt template"}]
+        wrapped = AsyncMock(return_value=mock_result)
+        
+        with patch.object(mcp_patcher, "_get_api_inspector", return_value=mock_api_inspector):
+            result = await mcp_patcher._wrap_get_prompt(
+                wrapped, None,
+                ["code_review_prompt", {"language": "python"}], {}
+            )
+            
+            # API inspector should be called with prompts/get method
+            mock_api_inspector.ainspect_request.assert_called_once()
+            call_args = mock_api_inspector.ainspect_request.call_args
+            assert call_args[1].get("method") == "prompts/get" or call_args[0][3] == "prompts/get"
+            
+            mock_api_inspector.ainspect_response.assert_called_once()
+            assert wrapped.called
+            assert result == mock_result
+
+    @pytest.mark.asyncio
+    async def test_wrap_get_prompt_skips_when_off(self):
+        """Test _wrap_get_prompt skips inspection when mode is off."""
+        set_state(
+            initialized=True,
+            llm_rules=None,
+            api_mode_llm="on_monitor",
+            api_mode_mcp="off",
+            mcp_integration_mode="api",
+        )
+        
+        mock_api_inspector = MagicMock()
+        mock_api_inspector.ainspect_request = AsyncMock()
+        
+        mock_result = MagicMock()
+        wrapped = AsyncMock(return_value=mock_result)
+        
+        with patch.object(mcp_patcher, "_get_api_inspector", return_value=mock_api_inspector):
+            result = await mcp_patcher._wrap_get_prompt(
+                wrapped, None,
+                ["code_review_prompt"], {}
+            )
+            
+            # Inspector should NOT be called when mode is off
+            mock_api_inspector.ainspect_request.assert_not_called()
+            assert wrapped.called
+            assert result == mock_result
+
+    @pytest.mark.asyncio
+    async def test_wrap_read_resource_api_mode(self):
+        """Test _wrap_read_resource uses API inspector in api mode."""
+        set_state(
+            initialized=True,
+            llm_rules=None,
+            api_mode_llm="on_monitor",
+            api_mode_mcp="on_monitor",
+            mcp_integration_mode="api",
+        )
+        
+        mock_api_inspector = MagicMock()
+        mock_api_inspector.ainspect_request = AsyncMock(return_value=MagicMock(action="allow"))
+        mock_api_inspector.ainspect_response = AsyncMock(return_value=MagicMock(action="allow"))
+        
+        mock_result = MagicMock()
+        mock_result.contents = [{"type": "text", "text": "file content"}]
+        wrapped = AsyncMock(return_value=mock_result)
+        
+        with patch.object(mcp_patcher, "_get_api_inspector", return_value=mock_api_inspector):
+            result = await mcp_patcher._wrap_read_resource(
+                wrapped, None,
+                ["file:///config.yaml"], {}
+            )
+            
+            # API inspector should be called with resources/read method
+            mock_api_inspector.ainspect_request.assert_called_once()
+            call_args = mock_api_inspector.ainspect_request.call_args
+            assert call_args[1].get("method") == "resources/read" or call_args[0][3] == "resources/read"
+            
+            mock_api_inspector.ainspect_response.assert_called_once()
+            assert wrapped.called
+            assert result == mock_result
+
+    @pytest.mark.asyncio
+    async def test_wrap_read_resource_skips_when_off(self):
+        """Test _wrap_read_resource skips inspection when mode is off."""
+        set_state(
+            initialized=True,
+            llm_rules=None,
+            api_mode_llm="on_monitor",
+            api_mode_mcp="off",
+            mcp_integration_mode="api",
+        )
+        
+        mock_api_inspector = MagicMock()
+        mock_api_inspector.ainspect_request = AsyncMock()
+        
+        mock_result = MagicMock()
+        wrapped = AsyncMock(return_value=mock_result)
+        
+        with patch.object(mcp_patcher, "_get_api_inspector", return_value=mock_api_inspector):
+            result = await mcp_patcher._wrap_read_resource(
+                wrapped, None,
+                ["file:///config.yaml"], {}
+            )
+            
+            # Inspector should NOT be called when mode is off
+            mock_api_inspector.ainspect_request.assert_not_called()
+            assert wrapped.called
+            assert result == mock_result
+
+    @pytest.mark.asyncio
+    async def test_wrap_get_prompt_gateway_mode(self):
+        """Test _wrap_get_prompt in gateway mode."""
+        set_state(
+            initialized=True,
+            llm_rules=None,
+            api_mode_llm="on_monitor",
+            api_mode_mcp="on_monitor",
+            mcp_integration_mode="gateway",
+            gateway_mode_mcp="on",
+            gateway_mode_mcp_url="https://gateway.example.com/mcp",
+            gateway_mode_mcp_api_key="test-key",
+        )
+        
+        mock_gateway_inspector = MagicMock()
+        mock_gateway_inspector.is_configured = True
+        mock_gateway_inspector.ainspect_request = AsyncMock(return_value=MagicMock(action="allow"))
+        mock_gateway_inspector.ainspect_response = AsyncMock(return_value=MagicMock(action="allow"))
+        
+        mock_result = MagicMock()
+        wrapped = AsyncMock(return_value=mock_result)
+        
+        with patch.object(mcp_patcher, "_get_gateway_inspector", return_value=mock_gateway_inspector):
+            result = await mcp_patcher._wrap_get_prompt(
+                wrapped, None,
+                ["code_review_prompt", {"language": "python"}], {}
+            )
+            
+            assert mock_gateway_inspector.ainspect_request.called
+            assert mock_gateway_inspector.ainspect_response.called
+            assert wrapped.called
+            assert result == mock_result
+
+    @pytest.mark.asyncio
+    async def test_wrap_read_resource_gateway_mode(self):
+        """Test _wrap_read_resource in gateway mode."""
+        set_state(
+            initialized=True,
+            llm_rules=None,
+            api_mode_llm="on_monitor",
+            api_mode_mcp="on_monitor",
+            mcp_integration_mode="gateway",
+            gateway_mode_mcp="on",
+            gateway_mode_mcp_url="https://gateway.example.com/mcp",
+            gateway_mode_mcp_api_key="test-key",
+        )
+        
+        mock_gateway_inspector = MagicMock()
+        mock_gateway_inspector.is_configured = True
+        mock_gateway_inspector.ainspect_request = AsyncMock(return_value=MagicMock(action="allow"))
+        mock_gateway_inspector.ainspect_response = AsyncMock(return_value=MagicMock(action="allow"))
+        
+        mock_result = MagicMock()
+        wrapped = AsyncMock(return_value=mock_result)
+        
+        with patch.object(mcp_patcher, "_get_gateway_inspector", return_value=mock_gateway_inspector):
+            result = await mcp_patcher._wrap_read_resource(
+                wrapped, None,
+                ["file:///config.yaml"], {}
+            )
+            
+            assert mock_gateway_inspector.ainspect_request.called
+            assert mock_gateway_inspector.ainspect_response.called
+            assert wrapped.called
+            assert result == mock_result

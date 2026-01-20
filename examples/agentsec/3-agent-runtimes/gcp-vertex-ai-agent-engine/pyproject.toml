@@ -1,0 +1,53 @@
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "gcp-vertex-ai-agent-engine-example"
+version = "0.1.0"
+description = "GCP Vertex AI Agent Engine example with agentsec (Cisco AI Defense) protection"
+authors = ["Cisco <ai-defense@cisco.com>"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.14"
+
+# Cisco AI Defense SDK
+cisco-aidefense-sdk = { path = "../../../..", develop = true }
+
+# Google Cloud AI libraries (both patched by agentsec)
+# - google-cloud-aiplatform: vertexai SDK (legacy but stable)
+# - google-genai: modern unified SDK (recommended, set GOOGLE_AI_SDK=google_genai)
+google-cloud-aiplatform = ">=1.40.0"
+google-genai = ">=1.0.0"
+
+# LangChain for agent framework (similar to Strands in AWS)
+langchain = ">=0.3.0"
+langchain-google-vertexai = ">=2.0.0"
+langchain-core = ">=0.3.0"
+
+# Web framework for Cloud Run and GKE
+fastapi = ">=0.100.0"
+uvicorn = ">=0.23.0"
+pydantic = ">=2.0.0"
+
+# Environment loading
+python-dotenv = ">=1.0.0"
+
+# Nested event loops for sync tool calling async MCP
+nest-asyncio = ">=1.6.0"
+
+# MCP client for MCP tool protection
+mcp = ">=1.11.0,<2.0.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = ">=8.0.0"
+pytest-asyncio = ">=0.23.0"
+pytest-mock = ">=3.12.0"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
