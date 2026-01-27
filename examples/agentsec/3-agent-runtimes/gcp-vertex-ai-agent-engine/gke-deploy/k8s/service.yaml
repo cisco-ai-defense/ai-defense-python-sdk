@@ -1,0 +1,41 @@
+# Kubernetes Service for SRE Agent
+# Exposes the agent deployment with a LoadBalancer
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: sre-agent-service
+  labels:
+    app: sre-agent
+spec:
+  type: LoadBalancer
+  selector:
+    app: sre-agent
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+    protocol: TCP
+
+---
+# Optional: Ingress for custom domain and TLS
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sre-agent-ingress
+  annotations:
+    kubernetes.io/ingress.class: "gce"
+    kubernetes.io/ingress.global-static-ip-name: "sre-agent-ip"
+    networking.gke.io/managed-certificates: "sre-agent-cert"
+spec:
+  rules:
+  - host: sre-agent.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: sre-agent-service
+            port:
+              number: 80

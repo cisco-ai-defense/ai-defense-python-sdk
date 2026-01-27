@@ -1,0 +1,16 @@
+# Ignore files that shouldn't be in the Docker image
+venv/
+.venv/
+__pycache__/
+.bedrock_agentcore/
+*.pyc
+*.pyo
+*.egg-info/
+.git/
+.gitignore
+*.md
+poetry.lock
+pyproject.toml
+direct-deploy/
+lambda-deploy/
+build/

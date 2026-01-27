@@ -17,6 +17,7 @@
 from .http_inspect import HttpInspectionClient
 from .chat_inspect import ChatInspectionClient
 from .chat_inspect import Message, Role, ChatInspectRequest
+from .mcp_inspect import MCPInspectionClient
 from .models import (
     Action,
     Rule,
@@ -34,4 +35,20 @@ from .http_models import (
     HttpHdrObject,
     HttpHdrKvObject,
 )
+from .mcp_models import (
+    MCPMessage,
+    MCPError,
+    MCPInspectResponse,
+    MCPInspectError,
+)
 from .utils import to_base64_bytes
+
+# Agent Security SDK (agentsec)
+from .agentsec import (
+    protect,
+    get_patched_clients,
+    Decision,
+    SecurityPolicyError,
+    skip_inspection,
+    no_inspection,
+)

@@ -1,0 +1,23 @@
+# =============================================================================
+# OpenAI Agent - Default Configuration
+# =============================================================================
+# This is the default config. To use a different provider, either:
+# 1. Edit this file
+# 2. Run with: CONFIG_FILE=config-azure.yaml python agent.py
+# 3. Run with: ./scripts/run.sh --azure
+# =============================================================================
+# WARNING: Never hardcode secrets. Use .env file and ${VAR} syntax.
+# =============================================================================
+
+provider: openai
+
+openai:
+  model: gpt-4o-mini
+  auth:
+    method: api_key
+    api_key: ${OPENAI_API_KEY}
+
+llm_settings:
+  temperature: 0.7
+  max_tokens: 4096
+

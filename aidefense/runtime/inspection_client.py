@@ -189,31 +189,41 @@ class InspectionClient(ABC):
             except ValueError:
                 # Log invalid classification but don't add it
                 self.config.logger.warning(f"Invalid classification type: {cls}")
-        # Parse rules if present
-        rules = []
-        for rule_data in response_data.get("rules", []):
-            # Try to convert to enum, keep original string if not in enum
-            rule_name = rule_data["rule_name"]
-            try:
-                rule_name = RuleName(rule_data["rule_name"])
-            except ValueError:
-                # Keep the original string for custom rule names
-                pass
-            # Try to convert to enum, keep original string if not in enum
-            classification = rule_data.get("classification")
-            try:
-                classification = Classification(rule_data["classification"])
-            except ValueError:
-                # Keep the original string for custom classifications
-                pass
-            rules.append(
-                Rule(
-                    rule_name=rule_name,
-                    entity_types=rule_data.get("entity_types"),
-                    rule_id=rule_data.get("rule_id"),
-                    classification=classification,
+
+        # Helper function to parse a list of rules
+        def parse_rules(rules_data):
+            parsed_rules = []
+            for rule_data in rules_data:
+                # Try to convert to enum, keep original string if not in enum
+                rule_name = rule_data.get("rule_name")
+                try:
+                    rule_name = RuleName(rule_data["rule_name"])
+                except (ValueError, KeyError):
+                    # Keep the original string for custom rule names
+                    pass
+                # Try to convert to enum, keep original string if not in enum
+                classification = rule_data.get("classification")
+                try:
+                    classification = Classification(rule_data["classification"])
+                except (ValueError, KeyError):
+                    # Keep the original string for custom classifications
+                    pass
+                parsed_rules.append(
+                    Rule(
+                        rule_name=rule_name,
+                        entity_types=rule_data.get("entity_types"),
+                        rule_id=rule_data.get("rule_id"),
+                        classification=classification,
+                    )
                 )
-            )
+            return parsed_rules
+
+        # Parse rules if present
+        rules = parse_rules(response_data.get("rules", []))
+
+        # Parse processed_rules if present
+        processed_rules = parse_rules(response_data.get("processed_rules", []))
+
         # Parse severity if present
         severity = None
         action = None
@@ -238,6 +248,7 @@ class InspectionClient(ABC):
             client_transaction_id=response_data.get("client_transaction_id"),
             event_id=response_data.get("event_id"),
             action=action,
+            processed_rules=processed_rules or None,
         )
 
     def _prepare_inspection_metadata(self, metadata: Metadata) -> Dict:

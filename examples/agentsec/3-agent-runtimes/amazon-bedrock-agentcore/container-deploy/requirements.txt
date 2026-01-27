@@ -1,0 +1,7 @@
+# Requirements for AgentCore Container Deploy
+# These are installed in the Docker image
+
+strands-agents
+bedrock-agentcore
+cisco-aidefense-sdk
+python-dotenv

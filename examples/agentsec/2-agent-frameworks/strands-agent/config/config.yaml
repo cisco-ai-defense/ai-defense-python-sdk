@@ -1,0 +1,26 @@
+# =============================================================================
+# Strands Agent - Default Configuration
+# =============================================================================
+# This is the default config. To use a different provider, either:
+# 1. Edit this file
+# 2. Run with: CONFIG_FILE=config-azure.yaml python agent.py
+# 3. Run with: ./scripts/run.sh --azure
+# =============================================================================
+# WARNING: Never hardcode secrets. Use .env file and ${VAR} syntax.
+# =============================================================================
+
+provider: bedrock
+
+bedrock:
+  model_id: anthropic.claude-3-haiku-20240307-v1:0
+  region: us-east-1
+  auth:
+    method: session_token
+    access_key_id: ${AWS_ACCESS_KEY_ID}
+    secret_access_key: ${AWS_SECRET_ACCESS_KEY}
+    session_token: ${AWS_SESSION_TOKEN}
+
+llm_settings:
+  temperature: 0.7
+  max_tokens: 4096
+

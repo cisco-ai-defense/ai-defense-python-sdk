@@ -1,0 +1,28 @@
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "agentsec-simple-examples"
+version = "0.1.0"
+description = "Simple agentsec usage examples"
+authors = ["Cisco <ai-defense@cisco.com>"]
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.14"
+cisco-aidefense-sdk = { path = "../../..", develop = true }
+
+# OpenAI Python client
+openai = ">=1.0.0"
+
+# Strands Agents SDK for building AI agents
+strands-agents = ">=0.1.0"
+
+# AWS SDK for Bedrock
+boto3 = ">=1.34.0"
+
+# MCP client library for tool integration
+mcp = ">=1.0.0"
+
+# Environment variable loading from .env files
+python-dotenv = ">=1.0.0"

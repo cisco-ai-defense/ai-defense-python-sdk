@@ -15,16 +15,33 @@ packages = [{include = "aidefense"}]
 
 [tool.poetry.dependencies]
 aiohttp = "^3.13.2"
-python = "^3.9"
+python = "^3.10"
 requests = "^2.32.3"
 uuid = "^1.30"
 pydantic = "^2.12.5"
+# agentsec dependencies
+wrapt = ">=1.14.0"
+httpx = ">=0.24.0"
+pyyaml = "^6.0"
+python-dotenv = "^1.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"
 pytest-cov = "^4.1.0"
+pytest-asyncio = ">=0.21.0"
+pytest-mock = ">=3.10.0"
+pytest-httpx = ">=0.30.0"
 black = "^24.3.0"
 mypy = "^1.5.0"
+ruff = ">=0.1.0"
+
+[tool.pytest.ini_options]
+testpaths = ["aidefense/tests"]
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+source = ["aidefense"]
+omit = ["*/tests/*", "*/__pycache__/*"]
 
 [build-system]
 requires = ["poetry-core"]

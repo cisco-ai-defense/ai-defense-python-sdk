@@ -1,0 +1,57 @@
+# =============================================================================
+# Azure OpenAI Configuration
+# =============================================================================
+# WARNING: Never hardcode secrets. Use .env file and ${VAR} syntax.
+# =============================================================================
+
+provider: azure
+
+azure:
+  # Azure OpenAI endpoint - get from Azure Portal
+  endpoint: ${AZURE_OPENAI_ENDPOINT}
+
+  # Deployment name - the name you gave your model deployment
+  deployment_name: gpt-4.1
+
+  # API version - check Azure docs for latest
+  api_version: "2024-02-15-preview"
+
+  auth:
+    # Authentication method (choose one):
+    # - api_key (default): Azure OpenAI API key
+    # - managed_identity: Azure Managed Identity (for Azure-hosted apps)
+    # - service_principal: Azure AD service principal with client secret
+    # - cli: Azure CLI credentials (az login)
+
+    method: api_key
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # For method: api_key (default)
+    # Get from Azure Portal > Your OpenAI resource > Keys and Endpoint
+    # ─────────────────────────────────────────────────────────────────────────
+    api_key: ${AZURE_OPENAI_API_KEY}
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # For method: managed_identity
+    # For apps running on Azure (App Service, Functions, AKS, etc.)
+    # ─────────────────────────────────────────────────────────────────────────
+    # client_id: optional-user-assigned-identity-client-id
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # For method: service_principal
+    # Azure AD app registration with client secret
+    # ─────────────────────────────────────────────────────────────────────────
+    # tenant_id: ${AZURE_TENANT_ID}
+    # client_id: ${AZURE_CLIENT_ID}
+    # client_secret: ${AZURE_CLIENT_SECRET}
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # For method: cli
+    # Uses Azure CLI credentials (run 'az login' first)
+    # No additional config needed
+    # ─────────────────────────────────────────────────────────────────────────
+
+# Common LLM settings
+llm_settings:
+  temperature: 0.7
+  max_tokens: 8192

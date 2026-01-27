@@ -1,0 +1,32 @@
+# =============================================================================
+# OpenAI Configuration
+# =============================================================================
+# WARNING: Never hardcode secrets. Use .env file and ${VAR} syntax.
+# =============================================================================
+
+provider: openai
+
+openai:
+  # OpenAI model ID
+  model: gpt-4-turbo
+  
+  # Optional: Organization ID (for org-scoped API keys)
+  # organization: org-xxx
+  
+  auth:
+    # Authentication method:
+    # - api_key (default): OpenAI API key - only option for OpenAI
+    
+    method: api_key
+    
+    # ─────────────────────────────────────────────────────────────────────────
+    # For method: api_key
+    # Get from OpenAI: https://platform.openai.com/api-keys
+    # ─────────────────────────────────────────────────────────────────────────
+    api_key: ${OPENAI_API_KEY}
+
+# Common LLM settings
+llm_settings:
+  temperature: 0.7
+  max_tokens: 8192
+

@@ -1,0 +1,27 @@
+# Requirements for GKE deployment
+
+# Cisco AI Defense SDK
+cisco-aidefense-sdk
+
+# Google Cloud AI
+google-genai>=1.0.0
+google-cloud-aiplatform>=1.40.0
+
+# LangChain for agent framework
+langchain>=0.3.0
+langchain-google-vertexai>=2.0.0
+langchain-core>=0.3.0
+
+# Web framework
+fastapi>=0.100.0
+uvicorn>=0.23.0
+pydantic>=2.0.0
+
+# Nested event loops for sync tool calling async MCP
+nest-asyncio>=1.6.0
+
+# MCP client for MCP tool protection
+mcp>=1.11.0
+
+# Environment loading
+python-dotenv>=1.0.0

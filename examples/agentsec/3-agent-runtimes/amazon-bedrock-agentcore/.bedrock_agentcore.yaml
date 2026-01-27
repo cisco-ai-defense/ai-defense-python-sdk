@@ -1,0 +1,118 @@
+default_agent: agentcore_sre_container
+agents:
+  agentcore_sre_direct:
+    name: agentcore_sre_direct
+    entrypoint: /Users/vmuthusu/code/cisco/agentsec copy/examples/3_agent-runtimes/agentcore/direct-deploy/agentcore_app.py
+    deployment_type: direct_code_deploy
+    runtime_type: PYTHON_3_11
+    platform: linux/arm64
+    container_runtime: null
+    source_path: /Users/vmuthusu/code/cisco/agentsec copy/examples/3_agent-runtimes/agentcore/direct-deploy
+    aws:
+      execution_role: arn:aws:iam::422940237045:role/AmazonBedrockAgentCoreSDKRuntime-us-west-2-778ad7f570
+      execution_role_auto_create: false
+      account: '422940237045'
+      region: us-west-2
+      ecr_repository: null
+      ecr_auto_create: false
+      s3_path: s3://bedrock-agentcore-codebuild-sources-422940237045-us-west-2
+      s3_auto_create: false
+      network_configuration:
+        network_mode: PUBLIC
+        network_mode_config: null
+      protocol_configuration:
+        server_protocol: HTTP
+      observability:
+        enabled: false
+      lifecycle_configuration:
+        idle_runtime_session_timeout: null
+        max_lifetime: null
+    bedrock_agentcore:
+      agent_id: agentcore_sre_direct-EzSn16C7LD
+      agent_arn: arn:aws:bedrock-agentcore:us-west-2:422940237045:runtime/agentcore_sre_direct-EzSn16C7LD
+      agent_session_id: 53ea39b8-dff1-4193-b9f9-1ea964b763a0
+    codebuild:
+      project_name: null
+      execution_role: null
+      source_bucket: null
+    memory:
+      mode: STM_ONLY
+      memory_id: agentcore_sre_direct_mem-npQiwb36tT
+      memory_arn: arn:aws:bedrock-agentcore:us-west-2:422940237045:memory/agentcore_sre_direct_mem-npQiwb36tT
+      memory_name: agentcore_sre_direct_mem
+      event_expiry_days: 30
+      first_invoke_memory_check_done: true
+      was_created_by_toolkit: false
+    identity:
+      credential_providers: []
+      workload: null
+    aws_jwt:
+      enabled: false
+      audiences: []
+      signing_algorithm: ES384
+      issuer_url: null
+      duration_seconds: 300
+    authorizer_configuration: null
+    request_header_configuration: null
+    oauth_configuration: null
+    api_key_env_var_name: null
+    api_key_credential_provider_name: null
+    is_generated_by_agentcore_create: false
+  agentcore_sre_container:
+    name: agentcore_sre_container
+    entrypoint: container-deploy/agentcore_app.py
+    deployment_type: container
+    runtime_type: null
+    platform: linux/arm64
+    container_runtime: none
+    source_path: /Users/vmuthusu/code/cisco/agentsec copy/examples/3_agent-runtimes/agentcore
+    aws:
+      execution_role: arn:aws:iam::422940237045:role/AmazonBedrockAgentCoreSDKRuntime-us-west-2-5a80f48d50
+      execution_role_auto_create: false
+      account: '422940237045'
+      region: us-west-2
+      ecr_repository: 422940237045.dkr.ecr.us-west-2.amazonaws.com/bedrock-agentcore-my_agent
+      ecr_auto_create: false
+      s3_path: null
+      s3_auto_create: false
+      network_configuration:
+        network_mode: PUBLIC
+        network_mode_config: null
+      protocol_configuration:
+        server_protocol: HTTP
+      observability:
+        enabled: false
+      lifecycle_configuration:
+        idle_runtime_session_timeout: null
+        max_lifetime: null
+    bedrock_agentcore:
+      agent_id: agentcore_sre_container-U6UOjbEndJ
+      agent_arn: arn:aws:bedrock-agentcore:us-west-2:422940237045:runtime/agentcore_sre_container-U6UOjbEndJ
+      agent_session_id: a59b8e24-2e0e-436c-b874-d9c085e0be55
+    codebuild:
+      project_name: bedrock-agentcore-agentcore_sre_container-builder
+      execution_role: arn:aws:iam::422940237045:role/AmazonBedrockAgentCoreSDKCodeBuild-us-west-2-5a80f48d50
+      source_bucket: bedrock-agentcore-codebuild-sources-422940237045-us-west-2
+    memory:
+      mode: STM_ONLY
+      memory_id: agentcore_sre_container_mem-oHEfeC2nq6
+      memory_arn: arn:aws:bedrock-agentcore:us-west-2:422940237045:memory/agentcore_sre_container_mem-oHEfeC2nq6
+      memory_name: agentcore_sre_container_mem
+      event_expiry_days: 30
+      first_invoke_memory_check_done: true
+      was_created_by_toolkit: false
+    identity:
+      credential_providers: []
+      workload: null
+    aws_jwt:
+      enabled: false
+      audiences: []
+      signing_algorithm: ES384
+      issuer_url: null
+      duration_seconds: 300
+    authorizer_configuration: null
+    request_header_configuration: null
+    oauth_configuration: null
+    api_key_env_var_name: null
+    api_key_credential_provider_name: null
+    is_generated_by_agentcore_create: false
