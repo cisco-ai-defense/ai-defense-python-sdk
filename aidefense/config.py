@@ -292,7 +292,7 @@ class AsyncConfig(BaseConfig):
         management_base_url (str): Base API URL for the selected region.
         logger (logging.Logger): Logger instance.
         retry_config (dict): Retry configuration.
-        connection_pool (requests.adapters.HTTPAdapter): HTTP connection pool adapter.
+        connection_pool (aiohttp.TCPConnector): Async HTTP connection pool connector.
         pool_config (dict): Parameters for connection pool.
     """
 
@@ -308,6 +308,26 @@ class AsyncConfig(BaseConfig):
         connection_pool: aiohttp.TCPConnector = None,
         pool_config: dict = None,
     ):
+        """
+        Initialize the async configuration settings.
+
+        Sets up region, URLs, timeout, logger, retry config, and connection pool
+        for async HTTP operations.
+
+        Args:
+            region (str, optional): Region for API endpoint selection.
+            runtime_base_url (str, optional): Custom base URL for runtime API.
+            management_base_url (str, optional): Custom base URL for management API.
+            timeout (int, optional): HTTP request timeout in seconds.
+            logger (logging.Logger, optional): Custom logger instance.
+            logger_params (dict, optional): Parameters for logger creation.
+            retry_config (dict, optional): Retry configuration dictionary.
+            connection_pool (aiohttp.TCPConnector, optional): Custom TCPConnector.
+            pool_config (dict, optional): Parameters for connection pool creation.
+
+        Raises:
+            TypeError: If connection_pool is not an aiohttp.TCPConnector instance.
+        """
         self._set_region(region)
         self._set_timeout(timeout)
         self._set_runtime_base_url(runtime_base_url)
@@ -328,3 +348,8 @@ class AsyncConfig(BaseConfig):
                 limit_per_host=self.pool_config.get("pool_maxsize"),
                 ttl_dns_cache=300,
             )
+
+    async def close(self):
+        """Explicitly close the connection pool (optional, for graceful shutdown)."""
+        if self.connection_pool and not self.connection_pool.closed:
+            await self.connection_pool.close()

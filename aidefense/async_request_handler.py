@@ -19,7 +19,16 @@ from typing import Dict, Optional
 import aiohttp
 import asyncio
 
+from tenacity import (
+    retry,
+    retry_if_exception,
+    stop_after_attempt,
+    RetryCallState,
+    wait_random_exponential,
+)
+
 from .config import AsyncConfig
+from .exceptions import ApiError
 from .request_handler import BaseRequestHandler
 from .runtime.auth import AsyncAuth
 
@@ -28,19 +37,28 @@ class AsyncRequestHandler(BaseRequestHandler):
     """Async request handler for interacting with APIs."""
 
     def __init__(self, config: AsyncConfig):
+        """
+        Initialize the async request handler.
+
+        Args:
+            config (AsyncConfig): Async configuration object containing timeout,
+                connection pool, retry settings, and other HTTP client options.
+        """
         super().__init__(config)
         self._session = None
         self._timeout = aiohttp.ClientTimeout(total=config.timeout)
         self._session_lock = asyncio.Lock()
         self._connector = config.connection_pool
         self._retry_config = config.retry_config
+        self._apply_retry_decorator()
 
     async def close(self):
         """Clean up resources."""
-        if self._session:
+        if self._session and not self._session.closed:
             await self._session.close()
-        if self._connector:
-            await self._connector.close()
+        # Note: We don't close the connector here because it's owned by AsyncConfig (singleton)
+        # and may be shared across multiple handlers. The connector will be cleaned up when
+        # the process exits or when AsyncConfig is explicitly cleaned up.
 
     async def ensure_session(self):
         """Ensure session is created and configured."""
@@ -53,12 +71,55 @@ class AsyncRequestHandler(BaseRequestHandler):
             if self._session is None or self._session.closed:
                 self._session = aiohttp.ClientSession(
                     connector=self._connector,
+                    # connector_owner=False ensures the session doesn't close the connector
+                    # when session.close() is called. The connector is owned by AsyncConfig
+                    # and may be shared across multiple handlers/clients.
+                    connector_owner=False,
                     timeout=self._timeout,
                     headers={
                         "User-Agent": self.USER_AGENT,
                         "Content-Type": "application/json",
                     },
                 )
+
+    def _apply_retry_decorator(self):
+        """Apply tenacity retry decorator."""
+
+        max_tries = self._retry_config.get("total") + 1
+        backoff_factor = self._retry_config.get("backoff_factor")
+
+        self.request = retry(
+            stop=stop_after_attempt(max_tries),
+            wait=wait_random_exponential(multiplier=backoff_factor, min=backoff_factor, max=60),
+            retry=retry_if_exception(self._should_retry_exception),
+            before_sleep=self._log_retry_attempt,
+            reraise=True,
+        )(self.request)
+
+    def _should_retry_exception(self, exception):
+        """Determines whether to give up retrying."""
+        # Retry asyncio timeout errors
+        if isinstance(exception, asyncio.TimeoutError):
+            return True
+
+        # Retry network/timeout errors (but not HTTP status errors)
+        if isinstance(exception, aiohttp.ClientError):
+            # HTTP errors are handled as ApiError
+            if isinstance(exception, aiohttp.ClientResponseError):
+                return False
+
+            return True
+
+        if isinstance(exception, ApiError):
+            return exception.status_code in self._retry_config.get("status_forcelist")
+
+        # Don't retry ValidationError, SDKError, or other exceptions
+        return False
+
+    def _log_retry_attempt(self, retry_state: RetryCallState) -> None:
+        """Logs retry attempt."""
+        self.config.logger.info(f"Retry state: {retry_state.__dict__}, Retry attempt: {retry_state.attempt_number}")
+
 
     async def request(
         self,
@@ -96,14 +157,18 @@ class AsyncRequestHandler(BaseRequestHandler):
             f"request called | method: {method}, url: {url}, request_id: {request_id}, headers: {headers}, json_data: {json_data}"
         )
 
-        if not self._session:
-            raise RuntimeError("Session not initialized. Use 'async with AsyncRequestHandler(config)'")
+        if not self._session or self._session.closed:
+            raise RuntimeError(
+                "Session not initialized. Use 'async with AsyncChatInspectionClient(...) as client' "
+                "or call ensure_session() before request()."
+            )
 
         try:
             self._validate_method(method)
             self._validate_url(url)
 
-            request_headers = self._session.headers
+            # Make a copy of the session headers to avoid modifying the original headers
+            request_headers = dict(self._session.headers)
             if headers:
                 request_headers.update(headers)
 
@@ -119,7 +184,7 @@ class AsyncRequestHandler(BaseRequestHandler):
                 method=method,
                 url=url,
                 middlewares=(auth,),
-                headers=headers,
+                headers=request_headers,
                 params=params,
                 json=json_data,
                 timeout=timeout_instance,
