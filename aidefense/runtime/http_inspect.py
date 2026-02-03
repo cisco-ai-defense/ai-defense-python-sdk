@@ -597,7 +597,7 @@ class HttpInspectionClient(InspectionClient):
         self.config.logger.debug(f"Prepared request_dict: {request_dict}")
         # Overwrite config with a serializable version
         request_dict.update(self._prepare_inspection_config(config))
-        self.validate_inspection_request(request_dict)
+        self._validate_inspection_request(request_dict)
         headers = {
             "Content-Type": "application/json",
         }
@@ -633,7 +633,7 @@ class HttpInspectionClient(InspectionClient):
         self.config.logger.debug(f"Prepared request_dict: {request_dict}")
         return request_dict
 
-    def validate_inspection_request(self, request_dict: Dict[str, Any]) -> None:
+    def _validate_inspection_request(self, request_dict: Dict[str, Any]) -> None:
         """
         Validate both the inspection request dictionary and the config for required structure and fields.
 

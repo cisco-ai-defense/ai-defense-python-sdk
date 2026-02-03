@@ -15,7 +15,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from .http_inspect import HttpInspectionClient
-from .chat_inspect import ChatInspectionClient
+from .chat_inspect import AsyncChatInspectionClient, ChatInspectionClient
 from .chat_inspect import Message, Role, ChatInspectRequest
 from .models import (
     Action,
