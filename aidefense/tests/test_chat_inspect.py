@@ -208,41 +208,41 @@ def test_validation_empty_messages(client):
         client._inspect([])
 
 
-def test_validate_inspection_request_non_list_messages():
+def test__validate_inspection_request_non_list_messages():
     client = ChatInspectionClient(api_key=TEST_API_KEY, config=Config())
     with pytest.raises(ValidationError, match="'messages' must be a non-empty list"):
-        client.validate_inspection_request({"messages": "not a list"})
+        client._validate_inspection_request({"messages": "not a list"})
 
 
-def test_validate_inspection_request_message_not_dict():
+def test__validate_inspection_request_message_not_dict():
     client = ChatInspectionClient(api_key=TEST_API_KEY, config=Config())
     with pytest.raises(ValidationError, match="Each message must be a dict"):
-        client.validate_inspection_request({"messages": ["not a dict"]})
+        client._validate_inspection_request({"messages": ["not a dict"]})
 
 
-def test_validate_inspection_request_invalid_role():
+def test__validate_inspection_request_invalid_role():
     client = ChatInspectionClient(api_key=TEST_API_KEY, config=Config())
     with pytest.raises(ValidationError, match="Message role must be one of"):
-        client.validate_inspection_request({"messages": [{"role": "invalid_role", "content": "hi"}]})
+        client._validate_inspection_request({"messages": [{"role": "invalid_role", "content": "hi"}]})
 
 
-def test_validate_inspection_request_empty_content():
+def test__validate_inspection_request_empty_content():
     client = ChatInspectionClient(api_key=TEST_API_KEY, config=Config())
     with pytest.raises(ValidationError, match="Each message must have non-empty string content"):
-        client.validate_inspection_request({"messages": [{"role": "user", "content": ""}]})
+        client._validate_inspection_request({"messages": [{"role": "user", "content": ""}]})
 
 
-def test_validate_inspection_request_no_prompt_or_completion():
+def test__validate_inspection_request_no_prompt_or_completion():
     client = ChatInspectionClient(api_key=TEST_API_KEY, config=Config())
     # Only system message, no user or assistant
     with pytest.raises(ValidationError, match="At least one message must be a prompt.*or completion"):
-        client.validate_inspection_request({"messages": [{"role": "system", "content": "instruction"}]})
+        client._validate_inspection_request({"messages": [{"role": "system", "content": "instruction"}]})
 
 
-def test_validate_inspection_request_invalid_metadata():
+def test__validate_inspection_request_invalid_metadata():
     client = ChatInspectionClient(api_key=TEST_API_KEY, config=Config())
     with pytest.raises(ValidationError, match="'metadata' must be a dict"):
-        client.validate_inspection_request(
+        client._validate_inspection_request(
             {
                 "messages": [{"role": "user", "content": "valid content"}],
                 "metadata": "not a dict",
@@ -250,10 +250,10 @@ def test_validate_inspection_request_invalid_metadata():
         )
 
 
-def test_validate_inspection_request_invalid_config():
+def test__validate_inspection_request_invalid_config():
     client = ChatInspectionClient(api_key=TEST_API_KEY, config=Config())
     with pytest.raises(ValidationError, match="'config' must be a dict"):
-        client.validate_inspection_request(
+        client._validate_inspection_request(
             {
                 "messages": [{"role": "user", "content": "valid content"}],
                 "config": "not a dict",
@@ -261,7 +261,7 @@ def test_validate_inspection_request_invalid_config():
         )
 
 
-def test_validate_inspection_request_valid():
+def test__validate_inspection_request_valid():
     client = ChatInspectionClient(api_key=TEST_API_KEY, config=Config())
 
     # This should not raise any exception
@@ -275,7 +275,7 @@ def test_validate_inspection_request_valid():
         "config": {"enabled_rules": []},
     }
     # If no exception is raised, the test passes
-    client.validate_inspection_request(request_dict)
+    client._validate_inspection_request(request_dict)
 
 
 # ============================================================================
