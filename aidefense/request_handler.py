@@ -15,28 +15,23 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """Base client implementation for interacting with APIs."""
-from abc import ABC, abstractmethod
 from enum import Enum
-import platform
-from typing import Dict, Any, Optional
-import uuid
 
 import requests
+import uuid
+import platform
+from abc import ABC, abstractmethod
+from typing import Dict, Any, Optional
 from requests.auth import AuthBase
 
 from .version import version
-from .config import BaseConfig, Config
+from .config import Config
 from .exceptions import SDKError, ValidationError, ApiError
-from .runtime.constants import VALID_HTTP_METHODS
+
+REQUEST_ID_HEADER = "x-aidefense-request-id"
 
 
 class HttpMethod(str, Enum):
-    """
-    Enumeration of supported HTTP methods.
-
-    Provides type-safe HTTP method constants for API requests.
-    """
-
     GET = "GET"
     PUT = "PUT"
     POST = "POST"
@@ -54,100 +49,24 @@ class BaseRequestHandler(ABC):
 
     USER_AGENT = f"Cisco-AI-Defense-Python-SDK/{version} (Python {platform.python_version()})"
     VALID_HTTP_METHODS = {"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"}
-    REQUEST_ID_HEADER = "x-aidefense-request-id"
 
-    def __init__(self, config: BaseConfig):
-        """
-        Initialize the base request handler.
-
-        Args:
-            config (BaseConfig): Configuration object containing timeout, logging,
-                and other HTTP client settings.
-        """
+    def __init__(self, config: Config):
         self.config = config
 
     def get_request_id(self) -> str:
-        """
-        Generate a unique request ID for request tracing.
-
-        Returns:
-            str: A UUID string to uniquely identify the request.
-        """
         request_id = str(uuid.uuid4())
         self.config.logger.debug(f"get_request_id called | returning: {request_id}")
         return request_id
 
-    def _validate_method(self, method):
-        """
-        Validate that the HTTP method is supported.
-
-        Args:
-            method (str): The HTTP method to validate.
-
-        Raises:
-            ValidationError: If the method is not a valid HTTP method.
-        """
-        if method not in VALID_HTTP_METHODS:
-            raise ValidationError(f"Invalid HTTP method: {method}")
-
-    def _validate_url(self, url):
-        """
-        Validate that the URL is properly formatted.
-
-        Args:
-            url (str): The URL to validate.
-
-        Raises:
-            ValidationError: If the URL is empty or doesn't start with http:// or https://.
-        """
-        if not url or not url.startswith(("http://", "https://")):
-            raise ValidationError(f"Invalid URL: {url}")
-
-    def _raise_appropriate_exception(self, status_code: int, error_message: str, request_id: str = None):
-        """
-        Raise the appropriate exception based on HTTP status code.
-
-        Args:
-            status_code (int): The HTTP status code from the response.
-            error_message (str): The error message to include in the exception.
-            request_id (str, optional): The request ID for tracing.
-
-        Raises:
-            SDKError: For 401 authentication errors.
-            ValidationError: For 400 bad request errors.
-            ApiError: For all other error status codes.
-        """
-        if status_code == 401:
-            raise SDKError(f"Authentication error: {error_message}", status_code)
-        elif status_code == 400:
-            raise ValidationError(f"Bad request: {error_message}", status_code)
-        else:
-            raise ApiError(
-                f"API error {status_code}: {error_message}",
-                status_code,
-                request_id=request_id,
-            )
-
     @abstractmethod
     def request(self, *args, **kwargs):
-        """
-        Make an HTTP request (abstract method).
-
-        Subclasses must implement this method to perform actual HTTP requests.
-
-        Args:
-            *args: Variable positional arguments for the request.
-            **kwargs: Variable keyword arguments for the request.
-
-        Returns:
-            The response from the API.
-        """
         pass
 
 
 class RequestHandler(BaseRequestHandler):
     """
     Request handler for all API interactions.
+
     Provides methods for making HTTP requests, handling errors, and managing
     session configurations.
 
@@ -158,15 +77,6 @@ class RequestHandler(BaseRequestHandler):
     """
 
     def __init__(self, config: Config):
-        """
-        Initialize the sync request handler.
-
-        Creates an HTTP session with connection pooling and default headers.
-
-        Args:
-            config (Config): Configuration object containing timeout, connection pool,
-                and other HTTP client settings.
-        """
         super().__init__(config)
         self._session = requests.Session()
         self._session.mount("https://", config.connection_pool)
@@ -208,8 +118,11 @@ class RequestHandler(BaseRequestHandler):
             f"request called | method: {method}, url: {url}, request_id: {request_id}, headers: {headers}, json_data: {json_data}"
         )
         try:
-            self._validate_method(method)
-            self._validate_url(url)
+            if method not in self.VALID_HTTP_METHODS:
+                raise ValidationError(f"Invalid HTTP method: {method}")
+
+            if not url or not url.startswith(("http://", "https://")):
+                raise ValidationError(f"Invalid URL: {url}")
 
             request_headers = dict(self._session.headers)
 
@@ -218,7 +131,7 @@ class RequestHandler(BaseRequestHandler):
                 request_headers.update(headers)
 
             request_id = request_id or self.get_request_id()
-            request_headers[self.REQUEST_ID_HEADER] = request_id
+            request_headers[REQUEST_ID_HEADER] = request_id
 
             if auth:
                 request = requests.Request(
@@ -249,12 +162,15 @@ class RequestHandler(BaseRequestHandler):
             self.config.logger.error(f"Request failed: {e}")
             raise
 
-    def _handle_error_response(self, response: requests.Response, request_id: str = None):
+    def _handle_error_response(self, response: requests.Response, request_id: str = None) -> Dict:
         """Handle error responses from the API.
 
         Args:
             response (requests.Response): The HTTP response object.
             request_id (str, optional): The unique request ID for tracing the failed API call.
+
+        Returns:
+            Dict: The parsed error data.
 
         Raises:
             SDKError: For authentication errors.
@@ -268,6 +184,14 @@ class RequestHandler(BaseRequestHandler):
             error_data = response.json()
         except ValueError:
             error_data = {"message": response.text or "Unknown error"}
-
         error_message = error_data.get("message", "Unknown error")
-        self._raise_appropriate_exception(response.status_code, error_message, request_id)
+        if response.status_code == 401:
+            raise SDKError(f"Authentication error: {error_message}", response.status_code)
+        elif response.status_code == 400:
+            raise ValidationError(f"Bad request: {error_message}", response.status_code)
+        else:
+            raise ApiError(
+                f"API error {response.status_code}: {error_message}",
+                response.status_code,
+                request_id=request_id,
+            )

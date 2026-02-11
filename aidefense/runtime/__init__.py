@@ -15,7 +15,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from .http_inspect import HttpInspectionClient
-from .chat_inspect import AsyncChatInspectionClient, ChatInspectionClient
+from .chat_inspect import ChatInspectionClient
 from .chat_inspect import Message, Role, ChatInspectRequest
 from .models import (
     Action,
@@ -33,5 +33,12 @@ from .http_models import (
     HttpMetaObject,
     HttpHdrObject,
     HttpHdrKvObject,
+)
+from .mcp_inspect import MCPInspectionClient
+from .mcp_models import (
+    MCPMessage,
+    MCPError,
+    MCPInspectResponse,
+    MCPInspectError,
 )
 from .utils import to_base64_bytes

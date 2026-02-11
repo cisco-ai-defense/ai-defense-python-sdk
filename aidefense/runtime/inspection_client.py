@@ -18,7 +18,7 @@ from abc import abstractmethod, ABC
 from typing import Dict, Any
 from dataclasses import asdict
 
-from .auth import RuntimeAuth, AsyncAuth
+from .auth import RuntimeAuth
 from .models import PII_ENTITIES, PCI_ENTITIES, PHI_ENTITIES
 from .models import (
     Action,
@@ -31,12 +31,12 @@ from .models import (
     InspectResponse,
 )
 from .constants import INTEGRATION_DETAILS
+from ..exceptions import ValidationError
 from ..request_handler import RequestHandler
-from ..config import Config, AsyncConfig, BaseConfig
-from ..async_request_handler import AsyncRequestHandler
+from ..config import Config
 
 
-class BaseInspectionClient(ABC):
+class InspectionClient(ABC):
     """
     Abstract base class for all AI Defense inspection clients (e.g., HTTP and Chat inspection).
 
@@ -56,10 +56,13 @@ class BaseInspectionClient(ABC):
 
     Args:
         api_key (str): Your AI Defense API key.
+        config (Config, optional): SDK configuration for endpoints, logging, retries, etc. If not provided, a default singleton Config is used.
 
     Attributes:
         default_enabled_rules (list): List of Rule objects for all RuleNames. Only rules present in DEFAULT_ENTITY_MAP (PII, PCI, PHI)
             will have their associated entity_types set; all others will have entity_types as None.
+        auth (RuntimeAuth): The authentication object for API requests.
+        config (Config): The runtime configuration object.
         api_key (str): The API key used for authentication.
     """
 
@@ -70,27 +73,27 @@ class BaseInspectionClient(ABC):
         "PHI": PHI_ENTITIES,
     }
 
-    def __new__(cls, *args, **kwargs):
-        if cls is BaseInspectionClient:
-            raise TypeError("BaseInspectionClient cannot be instantiated directly.")
-
-        return super().__new__(cls, *args, **kwargs)
-
-    def __init__(self, api_key: str, config: BaseConfig):
+    def __init__(self, api_key: str, config: Config = None):
         """
         Initialize the InspectionClient.
 
         Args:
             api_key (str): Your AI Defense API key for authentication.
+            config (Config, optional): SDK configuration for endpoints, logging, retries, etc.
+                If not provided, a default singleton Config is used.
 
         Attributes:
+            auth (RuntimeAuth): Authentication object for API requests.
+            config (Config): The runtime configuration object.
             api_key (str): The API key used for authentication.
-            config (BaseConfig): The configuration object.
             default_enabled_rules (list): List of Rule objects for all RuleNames. Only rules present in
                 DEFAULT_ENTITY_MAP (PII, PCI, PHI) will have their associated entity_types set; all others will have entity_types as None.
         """
-        self.api_key = api_key
+        config = config or Config()
+        self.auth = RuntimeAuth(api_key)
         self.config = config
+        self.api_key = api_key
+        self._request_handler = RequestHandler(config)
         self.default_enabled_rules = [
             Rule(
                 rule_name=rn,
@@ -114,7 +117,7 @@ class BaseInspectionClient(ABC):
         Raises:
             NotImplementedError: If the method is not implemented by a subclass.
         """
-        pass
+        raise NotImplementedError("Subclasses must implement _inspect.")
 
     def _parse_inspect_response(self, response_data: Dict[str, Any]) -> "InspectResponse":
         """
@@ -186,31 +189,41 @@ class BaseInspectionClient(ABC):
             except ValueError:
                 # Log invalid classification but don't add it
                 self.config.logger.warning(f"Invalid classification type: {cls}")
-        # Parse rules if present
-        rules = []
-        for rule_data in response_data.get("rules", []):
-            # Try to convert to enum, keep original string if not in enum
-            rule_name = rule_data["rule_name"]
-            try:
-                rule_name = RuleName(rule_data["rule_name"])
-            except ValueError:
-                # Keep the original string for custom rule names
-                pass
-            # Try to convert to enum, keep original string if not in enum
-            classification = rule_data.get("classification")
-            try:
-                classification = Classification(rule_data["classification"])
-            except ValueError:
-                # Keep the original string for custom classifications
-                pass
-            rules.append(
-                Rule(
-                    rule_name=rule_name,
-                    entity_types=rule_data.get("entity_types"),
-                    rule_id=rule_data.get("rule_id"),
-                    classification=classification,
+
+        # Helper function to parse a list of rules
+        def parse_rules(rules_data):
+            parsed_rules = []
+            for rule_data in rules_data:
+                # Try to convert to enum, keep original string if not in enum
+                rule_name = rule_data.get("rule_name")
+                try:
+                    rule_name = RuleName(rule_data["rule_name"])
+                except (ValueError, KeyError):
+                    # Keep the original string for custom rule names
+                    pass
+                # Try to convert to enum, keep original string if not in enum
+                classification = rule_data.get("classification")
+                try:
+                    classification = Classification(rule_data["classification"])
+                except (ValueError, KeyError):
+                    # Keep the original string for custom classifications
+                    pass
+                parsed_rules.append(
+                    Rule(
+                        rule_name=rule_name,
+                        entity_types=rule_data.get("entity_types"),
+                        rule_id=rule_data.get("rule_id"),
+                        classification=classification,
+                    )
                 )
-            )
+            return parsed_rules
+
+        # Parse rules if present
+        rules = parse_rules(response_data.get("rules", []))
+
+        # Parse processed_rules if present
+        processed_rules = parse_rules(response_data.get("processed_rules", []))
+
         # Parse severity if present
         severity = None
         action = None
@@ -235,6 +248,7 @@ class BaseInspectionClient(ABC):
             client_transaction_id=response_data.get("client_transaction_id"),
             event_id=response_data.get("event_id"),
             action=action,
+            processed_rules=processed_rules or None,
         )
 
     def _prepare_inspection_metadata(self, metadata: Metadata) -> Dict:
@@ -250,7 +264,6 @@ class BaseInspectionClient(ABC):
         request_dict = {}
         if metadata:
             request_dict["metadata"] = asdict(metadata)
-
         return request_dict
 
     def _prepare_inspection_config(self, config: InspectionConfig) -> Dict:
@@ -289,162 +302,4 @@ class BaseInspectionClient(ABC):
 
         if config_dict:
             request_dict["config"] = config_dict
-
         return request_dict
-
-
-class InspectionClient(BaseInspectionClient):
-    """
-    Base class for all AI Defense sync inspection clients (e.g., HTTP and Chat inspection).
-
-    This class provides foundational logic for SDK-level configuration, connection pooling, authentication,
-    logging, and retry behavior. It is responsible for initializing the runtime configuration (from aidefense/config.py),
-    setting up the HTTP session, and managing authentication for API requests.
-
-    Key Features:
-    - Centralizes all runtime options for AI Defense SDK clients, such as API endpoints, HTTP timeouts, logging, retry logic, and connection pooling.
-    - Handles the creation and mounting of a configured HTTPAdapter with retry logic, as specified in the Config object.
-    - Provides a consistent authentication mechanism using API keys via the RuntimeAuth class.
-    - Precomputes a default set of enabled rules for inspection, including entity types only for rules that require them (PII, PCI, PHI).
-
-    Usage:
-        Subclass this client to implement specific inspection logic (e.g., HttpInspectionClient, ChatInspectionClient).
-        Pass a Config instance to apply consistent settings across all SDK operations.
-
-    Args:
-        api_key (str): Your AI Defense API key.
-        config (Config, optional): SDK configuration for endpoints, logging, retries, etc. If not provided, a default singleton Config is used.
-
-    Attributes:
-        auth (RuntimeAuth): The authentication object for API requests.
-        config (Config): The runtime configuration object.
-    """
-
-    def __new__(cls, *args, **kwargs):
-        if cls is InspectionClient:
-            raise TypeError("InspectionClient cannot be instantiated directly.")
-
-        return super().__new__(cls)
-
-    def __init__(self, api_key: str, config: Config):
-        """
-        Initialize the InspectionClient.
-
-        Args:
-            api_key (str): Your AI Defense API key for authentication.
-            config (Config, optional): SDK configuration for endpoints, logging, retries, etc.
-                If not provided, a default singleton Config is used.
-
-        Attributes:
-            auth (RuntimeAuth): Authentication object for API requests.
-            config (Config): The runtime configuration object.
-            api_key (str): The API key used for authentication.
-            default_enabled_rules (list): List of Rule objects for all RuleNames. Only rules present in
-                DEFAULT_ENTITY_MAP (PII, PCI, PHI) will have their associated entity_types set; all others will have entity_types as None.
-        """
-        super().__init__(api_key, config)
-        self.auth = RuntimeAuth(api_key)
-        self._request_handler = RequestHandler(config)
-
-    def _inspect(self, *args, **kwargs):
-        """
-        Sync method for performing an inspection request.
-
-        This method must be implemented by subclasses. It should handle validation and send
-        the inspection request to the API endpoint.
-
-        Args:
-            *args: Variable length argument list for implementation-specific parameters.
-            **kwargs: Arbitrary keyword arguments for implementation-specific parameters.
-
-        Raises:
-            NotImplementedError: If the method is not implemented by a subclass.
-        """
-        raise NotImplementedError("Subclasses must implement _inspect.")
-
-
-class AsyncInspectionClient(BaseInspectionClient):
-    """
-    Base class for all AI Defense async inspection clients (e.g., HTTP and Chat inspection).
-
-    This class provides foundational logic for SDK-level configuration, connection pooling, authentication,
-    logging, and retry behavior. It is responsible for initializing the runtime configuration (from aidefense/config.py),
-    setting up the HTTP session, and managing authentication for API requests.
-
-    Key Features:
-    - Centralizes all runtime options for AI Defense SDK clients, such as API endpoints, HTTP timeouts, logging, retry logic, and connection pooling.
-    - Handles the creation and mounting of a configured async auth middleware with retry logic, as specified in the Config object.
-    - Provides a consistent authentication mechanism using API keys via the AsyncAuth class.
-    - Precomputes a default set of enabled rules for inspection, including entity types only for rules that require them (PII, PCI, PHI).
-
-    Usage:
-        Subclass this client to implement specific inspection logic (e.g., HttpInspectionClient, ChatInspectionClient).
-        Pass a Config instance to apply consistent settings across all SDK operations.
-
-    Args:
-        api_key (str): Your AI Defense API key.
-        config (AsyncConfig, optional): SDK configuration for endpoints, logging, retries, etc. If not provided, a default singleton Config is used.
-
-    Attributes:
-        auth (AsyncAuth): The authentication object for API requests.
-        config (AsyncConfig): The runtime configuration object.
-    """
-
-    def __new__(cls, *args, **kwargs):
-        if cls is AsyncInspectionClient:
-            raise TypeError("AsyncInspectionClient cannot be instantiated directly.")
-
-        return super().__new__(cls)
-
-    def __init__(self, api_key: str, config: AsyncConfig):
-        """
-        Initialize the async inspection client.
-
-        Args:
-            api_key (str): Your AI Defense API key for authentication.
-            config (AsyncConfig): Async SDK configuration for endpoints, logging, retries, etc.
-        """
-        super().__init__(api_key, config)
-        self.auth = AsyncAuth(api_key)
-        self._request_handler = AsyncRequestHandler(config)
-
-    async def __aenter__(self):
-        """
-        Enter the async context manager.
-
-        Initializes the HTTP session for making API requests.
-
-        Returns:
-            AsyncInspectionClient: The client instance ready for making requests.
-        """
-        await self._request_handler.ensure_session()
-        return self
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        """
-        Exit the async context manager.
-
-        Closes the HTTP session and cleans up resources.
-
-        Args:
-            exc_type: Exception type if an exception was raised, None otherwise.
-            exc_val: Exception value if an exception was raised, None otherwise.
-            exc_tb: Exception traceback if an exception was raised, None otherwise.
-        """
-        await self._request_handler.close()
-
-    async def _inspect(self, *args, **kwargs):
-        """
-        Async method for performing an inspection request.
-
-        This method must be implemented by subclasses. It should handle validation and send
-        the inspection request to the API endpoint.
-
-        Args:
-            *args: Variable length argument list for implementation-specific parameters.
-            **kwargs: Arbitrary keyword arguments for implementation-specific parameters.
-
-        Raises:
-            NotImplementedError: If the method is not implemented by a subclass.
-        """
-        raise NotImplementedError("Subclasses must implement _inspect.")
