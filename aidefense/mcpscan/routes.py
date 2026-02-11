@@ -86,11 +86,6 @@ def resource_connection_by_id(connection_id: str) -> str:
     return f"{RESOURCE_CONNECTIONS}/{connection_id}"
 
 
-def resource_connections_by_resource_id(resource_id: str) -> str:
-    """Route for deleting resource connections by resource ID."""
-    return f"{RESOURCE}/{resource_id}/connections"
-
-
 def resource_connection_by_resource_id(resource_id: str) -> str:
     """Route for getting resource connection by resource ID."""
     return f"{RESOURCE}/{resource_id}/connection"

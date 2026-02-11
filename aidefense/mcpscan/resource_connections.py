@@ -43,7 +43,6 @@ from aidefense.mcpscan.models import (
 from aidefense.mcpscan.routes import (
     resource_connections,
     resource_connection_by_id,
-    resource_connections_by_resource_id,
     resource_connection_by_resource_id,
     resource_connections_filter,
     resources_by_connection_id,
@@ -204,40 +203,6 @@ class ResourceConnectionClient(BaseClient):
             path=resource_connection_by_id(connection_id),
         )
         self.config.logger.debug(f"Deleted resource connection: {connection_id}")
-
-    def delete_connections_by_resource_id(self, resource_id: str) -> None:
-        """
-        Delete all resource connections associated with a specific resource.
-
-        This method removes all connections linked to the specified resource ID.
-
-        Args:
-            resource_id (str): The unique identifier of the resource (UUID).
-
-        Returns:
-            None
-
-        Raises:
-            ValidationError: If the resource_id is invalid.
-            ApiError: If the API returns an error response.
-            SDKError: For other SDK-related errors.
-
-        Example:
-            ```python
-            from aidefense.mcpscan import ResourceConnectionClient
-
-            client = ResourceConnectionClient(api_key="YOUR_API_KEY")
-
-            resource_id = "550e8400-e29b-41d4-a716-446655440000"
-            client.delete_connections_by_resource_id(resource_id)
-            print(f"Deleted all connections for resource {resource_id}")
-            ```
-        """
-        self.make_request(
-            method=HttpMethod.DELETE,
-            path=resource_connections_by_resource_id(resource_id),
-        )
-        self.config.logger.debug(f"Deleted connections for resource: {resource_id}")
 
     def get_connection(
             self,

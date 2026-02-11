@@ -418,6 +418,8 @@ class RegisterMCPServerRequest(AIDefenseModel):
         connection_type: Transport type for connecting to the server.
         scan_enabled: Whether to enable scanning for this server.
         auth_config: Optional authentication configuration for the server.
+        repository_url: Optional absolute URL of the source code repository (e.g. GitHub URL).
+            When provided, must be a valid absolute URI. Required by the API in some environments.
     """
     name: str = Field(
         ...,
@@ -442,6 +444,11 @@ class RegisterMCPServerRequest(AIDefenseModel):
     auth_config: Optional[AuthConfig] = Field(
         None,
         description="Authentication configuration"
+    )
+    repository_url: Optional[str] = Field(
+        None,
+        alias="repositoryUrl",
+        description="Absolute URL of the source code repository (e.g. https://github.com/org/repo)"
     )
 
 

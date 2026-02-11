@@ -31,7 +31,6 @@ from aidefense.mcpscan.routes import (
     # Resource Connection routes
     resource_connections,
     resource_connection_by_id,
-    resource_connections_by_resource_id,
     resource_connection_by_resource_id,
     resource_connections_filter,
     resources_by_connection_id,
@@ -101,11 +100,6 @@ class TestResourceConnectionRoutes:
         """Test the resource connection by ID route."""
         connection_id = "conn-123"
         assert resource_connection_by_id(connection_id) == f"resource/connections/{connection_id}"
-
-    def test_resource_connections_by_resource_id(self):
-        """Test the resource connections by resource ID route."""
-        resource_id = "res-456"
-        assert resource_connections_by_resource_id(resource_id) == f"resource/{resource_id}/connections"
 
     def test_resource_connection_by_resource_id(self):
         """Test the resource connection by resource ID route."""

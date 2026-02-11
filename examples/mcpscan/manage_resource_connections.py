@@ -252,20 +252,8 @@ def main():
     except Exception as e:
         print(f"❌ Failed to delete connection: {e}")
 
-    # ===========================================
-    # Delete Connections by Resource ID (Example - Commented Out)
-    # ===========================================
-    # This method deletes ALL connections associated with a resource.
-    # Uncomment to use - be careful as this is destructive!
-
-    # print(f"\n🗑️ Deleting All Connections for Resource...")
-    # print("=" * 50)
-    # resource_id_to_delete = "your-resource-uuid-here"
-    # try:
-    #     client.delete_connections_by_resource_id(resource_id=resource_id_to_delete)
-    #     print(f"✅ All connections for resource {resource_id_to_delete} deleted successfully")
-    # except Exception as e:
-    #     print(f"❌ Failed to delete connections: {e}")
+    # Bulk delete by resource ID is not exposed by the Management API; delete connections
+    # individually with delete_connection(connection_id) or delete the MCP server.
 
 
 if __name__ == "__main__":
