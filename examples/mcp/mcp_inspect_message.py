@@ -22,7 +22,7 @@ for security, privacy, and safety violations.
 
 Environment Variables:
     AIDEFENSE_API_KEY: Your Cisco AI Defense API key
-    AIDEFENSE_RUNTIME_URL: The runtime API base URL (e.g., https://your-instance.api.inspect.aidefense.aiteam.cisco.com)
+    AIDEFENSE_RUNTIME_URL: The runtime API base URL (e.g., https://<region>.api.inspect.aidefense.aiteam.cisco.com)
 """
 
 import os

@@ -22,7 +22,9 @@ for completion, and then poll for results separately. Useful for non-blocking
 operations or when integrating with async frameworks.
 """
 import os
+import sys
 import time
+from pathlib import Path
 
 from aidefense import Config
 from aidefense.mcpscan import MCPScanClient
@@ -38,8 +40,11 @@ from aidefense.mcpscan.models import (
     RemoteServerInput,
 )
 
-# Import utility functions for displaying results
-from examples.mcpscan.utils import print_scan_status, format_status
+# Allow importing utils when run as script (e.g. python examples/mcpscan/scan_mcp_server_async.py)
+_here = Path(__file__).resolve().parent
+if str(_here) not in sys.path:
+    sys.path.insert(0, str(_here))
+from utils import print_scan_status, format_status
 
 
 def main():

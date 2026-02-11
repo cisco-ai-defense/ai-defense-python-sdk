@@ -167,6 +167,7 @@ class InspectResponse:
         is_safe (bool): Whether the inspected content is considered safe.
         severity (Optional[Severity]): Severity level of the detected issue (if any).
         rules (Optional[List[Rule]]): List of rules that matched during inspection.
+        processed_rules (Optional[List[Rule]]): List of rules that were evaluated (same structure as rules).
         attack_technique (Optional[str]): Attack technique detected, if applicable.
         explanation (Optional[str]): Human-readable explanation of the inspection result.
         client_transaction_id (Optional[str]): Unique client-provided transaction ID for tracing.
@@ -178,6 +179,7 @@ class InspectResponse:
     action: Action
     severity: Optional[Severity] = None
     rules: Optional[List[Rule]] = None
+    processed_rules: Optional[List[Rule]] = None
     attack_technique: Optional[str] = None
     explanation: Optional[str] = None
     client_transaction_id: Optional[str] = None
