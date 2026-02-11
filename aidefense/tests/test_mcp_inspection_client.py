@@ -301,15 +301,39 @@ class TestMCPMessageValidation:
         mcp_client.validate_mcp_message(request_dict)
 
     def test_validate_valid_response(self, mcp_client):
-        """Test validation passes for valid response message."""
+        """Test validation passes for valid response message (method and params required)."""
         request_dict = {
             "jsonrpc": "2.0",
+            "method": "tools/call",
+            "params": {"name": "get_info", "arguments": {}},
             "result": {"content": []},
             "id": 1,
         }
 
         # Should not raise
         mcp_client.validate_mcp_message(request_dict)
+
+    def test_validate_response_requires_method(self, mcp_client):
+        """Test response body without method raises ValidationError."""
+        request_dict = {
+            "jsonrpc": "2.0",
+            "params": {},
+            "result": {"content": []},
+            "id": 1,
+        }
+        with pytest.raises(ValidationError, match="method"):
+            mcp_client.validate_mcp_message(request_dict)
+
+    def test_validate_response_requires_params(self, mcp_client):
+        """Test response body without params raises ValidationError."""
+        request_dict = {
+            "jsonrpc": "2.0",
+            "method": "tools/call",
+            "result": {"content": []},
+            "id": 1,
+        }
+        with pytest.raises(ValidationError, match="params"):
+            mcp_client.validate_mcp_message(request_dict)
 
     def test_validate_valid_error_response(self, mcp_client):
         """Test validation passes for valid error response."""
@@ -430,3 +454,33 @@ class TestMCPClientInput:
         )
 
         assert result.result.is_safe is True
+
+    def test_inspect_response_requires_method(self, mcp_client):
+        """Test inspect_response raises ValidationError when method is missing or empty."""
+        with pytest.raises(ValidationError, match="method"):
+            mcp_client.inspect_response(
+                result_data={"content": []},
+                method="",
+                params={},
+            )
+        with pytest.raises(ValidationError, match="method"):
+            mcp_client.inspect_response(
+                result_data={"content": []},
+                method=None,
+                params={},
+            )
+
+    def test_inspect_response_requires_params(self, mcp_client):
+        """Test inspect_response raises ValidationError when params is missing or not a dict."""
+        with pytest.raises(ValidationError, match="params"):
+            mcp_client.inspect_response(
+                result_data={"content": []},
+                method="tools/call",
+                params=None,
+            )
+        with pytest.raises(ValidationError, match="params"):
+            mcp_client.inspect_response(
+                result_data={"content": []},
+                method="tools/call",
+                params="not-a-dict",
+            )

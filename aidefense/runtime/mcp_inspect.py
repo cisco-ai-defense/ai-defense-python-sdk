@@ -293,6 +293,16 @@ class MCPInspectionClient(InspectionClient):
                 print("Response contains sensitive data!")
             ```
         """
+        # Mandatory for response inspection: method and params provide context for the API
+        if not method or not isinstance(method, str):
+            raise ValidationError(
+                "inspect_response requires 'method' (original request method, non-empty string)."
+            )
+        if params is None or not isinstance(params, dict):
+            raise ValidationError(
+                "inspect_response requires 'params' (original request params) as a dict."
+            )
+
         self.config.logger.debug(
             f"Inspecting MCP response: {result_data} | Method: {method}, Params: {params}, Message ID: {message_id}, Request ID: {request_id}"
         )
@@ -358,8 +368,8 @@ class MCPInspectionClient(InspectionClient):
         Validates according to JSON-RPC 2.0 and MCP specification:
             - 'jsonrpc' must be "2.0"
             - Must have either 'method' (for requests/notifications) or 'result'/'error' (for responses)
-            - 'id' must be present for requests (has method) and responses (has result/error)
-            - 'params', 'result', 'error', and 'data' must be dicts if present
+            - For response body (has 'result'): 'method' and 'params' are mandatory for API context
+            - 'params', 'result', 'error', and 'data' must be dicts when present
 
         Args:
             request_dict (Dict[str, Any]): The request dictionary to validate.
@@ -375,12 +385,11 @@ class MCPInspectionClient(InspectionClient):
         jsonrpc = request_dict.get("jsonrpc")
         if jsonrpc != "2.0":
             self.config.logger.error("'jsonrpc' must be '2.0'.")
-            raise ValidationError("'jsonrpc' must be '2.0'.")
+            raise ValidationError("MCP message: 'jsonrpc' must be '2.0'.")
 
         has_method = "method" in request_dict and request_dict.get("method")
         has_result = "result" in request_dict and request_dict.get("result") is not None
         has_error = "error" in request_dict and request_dict.get("error") is not None
-        has_id = "id" in request_dict and request_dict.get("id") is not None
 
         # Must have method (request/notification) or result/error (response)
         if not has_method and not has_result and not has_error:
@@ -391,39 +400,75 @@ class MCPInspectionClient(InspectionClient):
                 "MCP message must have 'method' (for requests/notifications) or 'result'/'error' (for responses)."
             )
 
-        # If it's a request (has method), check params is dict if present
+        # Request or notification message (has method)
         if has_method:
             params = request_dict.get("params")
             if params is not None and not isinstance(params, dict):
-                self.config.logger.error("'params' must be a dict if provided.")
-                raise ValidationError("'params' must be a dict if provided.")
+                self.config.logger.error(
+                    "Request/notification message: 'params' must be a dict if provided."
+                )
+                raise ValidationError(
+                    "Request/notification message: 'params' must be a dict if provided."
+                )
 
-        # If it's a response (has result), check result is dict
+        # Response message (has result): result must be dict; method and params required
         if has_result:
             result = request_dict.get("result")
             if not isinstance(result, dict):
-                self.config.logger.error("'result' must be a dict.")
-                raise ValidationError("'result' must be a dict.")
+                self.config.logger.error(
+                    "Response message: 'result' must be a dict."
+                )
+                raise ValidationError(
+                    "Response message: 'result' must be a dict."
+                )
+            if not has_method:
+                self.config.logger.error(
+                    "Response message must include 'method' (original request method)."
+                )
+                raise ValidationError(
+                    "Response message must include 'method' (original request method)."
+                )
+            params = request_dict.get("params")
+            if params is None or not isinstance(params, dict):
+                self.config.logger.error(
+                    "Response message must include 'params' (original request params) as a dict."
+                )
+                raise ValidationError(
+                    "Response message must include 'params' (original request params) as a dict."
+                )
 
-        # If it's an error response (has error), validate error structure
+        # Error response message (has error)
         if has_error:
             error = request_dict.get("error")
             if not isinstance(error, dict):
-                self.config.logger.error("'error' must be a dict.")
-                raise ValidationError("'error' must be a dict.")
-
+                self.config.logger.error(
+                    "Error response message: 'error' must be a dict."
+                )
+                raise ValidationError(
+                    "Error response message: 'error' must be a dict."
+                )
             if "code" not in error or not isinstance(error.get("code"), int):
-                self.config.logger.error("'error.code' must be an integer.")
-                raise ValidationError("'error.code' must be an integer.")
-
+                self.config.logger.error(
+                    "Error response message: 'error.code' must be an integer."
+                )
+                raise ValidationError(
+                    "Error response message: 'error.code' must be an integer."
+                )
             if "message" not in error or not isinstance(error.get("message"), str):
-                self.config.logger.error("'error.message' must be a string.")
-                raise ValidationError("'error.message' must be a string.")
-
+                self.config.logger.error(
+                    "Error response message: 'error.message' must be a string."
+                )
+                raise ValidationError(
+                    "Error response message: 'error.message' must be a string."
+                )
             if "data" in error and error.get("data") is not None:
                 if not isinstance(error.get("data"), dict):
-                    self.config.logger.error("'error.data' must be a dict if provided.")
-                    raise ValidationError("'error.data' must be a dict if provided.")
+                    self.config.logger.error(
+                        "Error response message: 'error.data' must be a dict if provided."
+                    )
+                    raise ValidationError(
+                        "Error response message: 'error.data' must be a dict if provided."
+                    )
 
     def _prepare_request_data(self, message: MCPMessage) -> Dict[str, Any]:
         """
