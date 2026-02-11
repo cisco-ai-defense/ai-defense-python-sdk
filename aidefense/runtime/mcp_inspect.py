@@ -87,6 +87,7 @@ class MCPInspectionClient(InspectionClient):
             api_key (str): Your Cisco AI Defense API key for authentication.
             config (Config, optional): SDK-level configuration for endpoints, logging, retries, etc.
         """
+        config = config or Config()
         super().__init__(api_key, config)
         self.endpoint = f"{self.config.runtime_base_url}/api/v1/inspect/mcp"
 
