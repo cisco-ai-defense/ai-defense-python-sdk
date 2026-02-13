@@ -34,4 +34,11 @@ from .http_models import (
     HttpHdrObject,
     HttpHdrKvObject,
 )
+from .mcp_inspect import MCPInspectionClient
+from .mcp_models import (
+    MCPMessage,
+    MCPError,
+    MCPInspectResponse,
+    MCPInspectError,
+)
 from .utils import to_base64_bytes

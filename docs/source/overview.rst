@@ -1,7 +1,14 @@
 Overview
 ========
 
-The AI Defense Python SDK is designed to provide developers with tools to detect security, privacy, and safety risks in real-time through chat and HTTP inspection.
+The AI Defense Python SDK is designed to provide developers with tools to detect security, privacy, and safety risks in real-time. It offers multiple integration approaches:
+
+* **Chat Inspection**: Analyze chat prompts and responses
+* **HTTP Inspection**: Inspect HTTP requests and responses
+* **MCP Inspection**: Inspect Model Context Protocol messages
+* **MCP Server Scanning**: Scan MCP servers for threats and manage policies
+* **Model Scanning**: Scan AI/ML models for threats
+* **Management API**: Manage applications, connections, and policies
 
 Quick Start
 -----------
@@ -75,9 +82,17 @@ Both clients utilize a common configuration and authentication system, allowing 
 Key Components
 -------------
 
+Inspection Clients
+~~~~~~~~~~~~~~~~~~
+
 - ``runtime/chat_inspect.py`` — ChatInspectionClient for chat-related inspection
 - ``runtime/http_inspect.py`` — HttpInspectionClient for HTTP request/response inspection
+- ``runtime/mcp_inspect.py`` — MCPInspectionClient for MCP message inspection
 - ``runtime/models.py`` — Data models and enums for requests, responses, rules, etc.
+
+Common
+~~~~~~
+
 - ``config.py`` — SDK-wide configuration (logging, retries, connection pool)
 - ``exceptions.py`` — Custom exception classes for robust error handling
 

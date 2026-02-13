@@ -140,3 +140,6 @@ class ListEventsRequest(AIDefenseModel):
         None, description="Field name to sort the events returned"
     )
     order: Optional[str] = Field(None, description="Sort order of the events returned")
+    resource_types: Optional[List[str]] = Field(
+        None, description="Filter by resource types (e.g., ['MCP_SERVER'])"
+    )
