@@ -105,7 +105,9 @@ class Policy(AIDefenseModel):
     policy_name: Optional[str] = Field(None, description="Policy name")
     description: Optional[str] = Field(None, description="Description")
     status: Optional[str] = Field(None, description="Status")
-    connection_type: Optional[ConnectionType] = Field(
+    # Keep response parsing forward-compatible with newly introduced server
+    # connection types that older SDK enums may not include yet.
+    connection_type: Optional[str] = Field(
         None, description="Connection type"
     )
     updated_at: Optional[datetime] = Field(None, description="Updated timestamp")
