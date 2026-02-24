@@ -105,8 +105,8 @@ class Policy(AIDefenseModel):
     policy_name: Optional[str] = Field(None, description="Policy name")
     description: Optional[str] = Field(None, description="Description")
     status: Optional[str] = Field(None, description="Status")
-    connection_type: Optional[ConnectionType] = Field(
-        None, description="Connection type"
+    connection_type: Optional[Union[ConnectionType, str]] = Field(
+    None, description="Connection type"
     )
     updated_at: Optional[datetime] = Field(None, description="Updated timestamp")
     created_at: Optional[datetime] = Field(None, description="Created timestamp")
@@ -138,8 +138,8 @@ class ListPoliciesRequest(AIDefenseModel):
         None, description="Sort order of the policies returned"
     )
     language_type: Optional[str] = Field(None, description="Filter by language type")
-    connection_type: Optional[ConnectionType] = Field(
-        None, description="Filter by connection type"
+    connection_type: Optional[Union[ConnectionType, str]] = Field(
+    None, description="Connection type"
     )
     policy_status: Optional[str] = Field(None, description="Filter by policy status")
     policy_name: Optional[str] = Field(None, description="Filter by policy name")
