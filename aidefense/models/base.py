@@ -17,26 +17,33 @@
 """SDK-wide base Pydantic model utilities."""
 
 import json
+import warnings
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, field_serializer
 
 
 class AIDefenseModel(BaseModel):
-    """Base model for all SDK models (Pydantic v1).
+    """Base model for all SDK models (Pydantic v2).
 
     - Serializes Enum fields to their .value automatically.
     - Allows using field names even when aliases are defined.
     """
 
-    class Config:
-        use_enum_values = True
-        allow_population_by_field_name = True
-        # Ensure datetimes are serialized with a trailing 'Z' (UTC)
-        json_encoders = {
-            datetime: lambda v: (
-                v.strftime("%Y-%m-%dT%H:%M:%SZ") if isinstance(v, datetime) else v
-            ),
-        }
+    model_config = ConfigDict(
+        use_enum_values=True,
+        populate_by_name=True,
+    )
+
+    @field_serializer("*", mode="wrap")
+    def _serialize_datetime(self, value, handler):
+        """Ensure datetimes are serialized with a trailing 'Z' (UTC)."""
+        if isinstance(value, datetime):
+            return value.strftime("%Y-%m-%dT%H:%M:%SZ")
+        # Suppress PydanticSerializationUnexpectedValue warnings for enum fields
+        # that have already been converted to strings by use_enum_values=True
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            return handler(value)
 
     # ---- Serialization helpers ----
     def to_params(self) -> dict:
@@ -46,7 +53,7 @@ class AIDefenseModel(BaseModel):
         - Applies field aliases
         - Enums already flattened via Config.use_enum_values
         """
-        return self.dict(by_alias=True, exclude_none=True)
+        return self.model_dump(by_alias=True, exclude_none=True)
 
     def to_body_dict(self, *, patch: bool = False) -> dict:
         """Serialize this model to a JSON-serializable dict for request bodies.
@@ -60,4 +67,4 @@ class AIDefenseModel(BaseModel):
 
     def to_body_json(self, *, patch: bool = False) -> str:
         """Serialize this model to a JSON string for request bodies."""
-        return self.json(by_alias=True, exclude_none=True, exclude_unset=patch)
+        return self.model_dump_json(by_alias=True, exclude_none=True, exclude_unset=patch)

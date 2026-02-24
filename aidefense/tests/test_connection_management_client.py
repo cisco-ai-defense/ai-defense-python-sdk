@@ -47,10 +47,10 @@ TEST_API_KEY = "0123456789" * 6 + "0123"  # 64 characters
 def reset_config_singleton():
     """Reset Config singleton before each test."""
     # Reset the singleton instance
-    Config._instance = None
+    Config._instances = {}
     yield
     # Clean up after test
-    Config._instance = None
+    Config._instances = {}
 
 
 @pytest.fixture
@@ -63,9 +63,7 @@ def mock_request_handler():
 @pytest.fixture
 def connection_client(mock_request_handler):
     """Create a ConnectionManagementClient with a mock request handler."""
-    client = ConnectionManagementClient(
-        auth=ManagementAuth(TEST_API_KEY), request_handler=mock_request_handler
-    )
+    client = ConnectionManagementClient(auth=ManagementAuth(TEST_API_KEY), request_handler=mock_request_handler)
     # Replace the make_request method with a mock
     client.make_request = MagicMock()
     return client
@@ -220,9 +218,7 @@ class TestConnectionManagementClient:
         response = connection_client.delete_connection(connection_id)
 
         # Verify the make_request call
-        connection_client.make_request.assert_called_once_with(
-            "DELETE", f"connections/{connection_id}"
-        )
+        connection_client.make_request.assert_called_once_with("DELETE", f"connections/{connection_id}")
 
         # Verify the response
         assert response is None
@@ -256,9 +252,7 @@ class TestConnectionManagementClient:
         response = connection_client.get_api_keys(connection_id)
 
         # Verify the make_request call
-        connection_client.make_request.assert_called_once_with(
-            "GET", f"connections/{connection_id}/keys"
-        )
+        connection_client.make_request.assert_called_once_with("GET", f"connections/{connection_id}/keys")
 
         # Verify the response
         assert isinstance(response, ApiKeys)
@@ -318,12 +312,9 @@ class TestConnectionManagementClient:
             key=None,
         )
 
-        # Mock the parse_obj method to avoid validation errors
-        with patch(
-            "aidefense.management.models.connection.ApiKeyResponse.parse_obj"
-        ) as mock_parse_obj:
-            mock_parse_obj.return_value = ApiKeyResponse(key_id="key-123", api_key="")
-
+        # Mock the model_validate method to avoid validation errors
+        with patch("aidefense.management.models.connection.ApiKeyResponse.model_validate") as mock_model_validate:
+            mock_model_validate.return_value = ApiKeyResponse(key_id="key-123", api_key="")
             # Call the method
             response = connection_client.update_api_key(connection_id, request)
 
@@ -353,24 +344,16 @@ class TestConnectionManagementClient:
 
     def test_update_api_key_generate_without_key(self, connection_client):
         """Fail fast when GENERATE_API_KEY op is missing key payload."""
-        req = UpdateConnectionRequest(
-            operation_type=EditConnectionOperationType.GENERATE_API_KEY
-        )
+        req = UpdateConnectionRequest(operation_type=EditConnectionOperationType.GENERATE_API_KEY)
         with pytest.raises(ValueError) as excinfo:
-            connection_client.update_api_key(
-                "123e4567-e89b-12d3-a456-426614174331", req
-            )
+            connection_client.update_api_key("123e4567-e89b-12d3-a456-426614174331", req)
         assert "must be provided for API key generation" in str(excinfo.value)
         connection_client.make_request.assert_not_called()
 
     def test_update_api_key_revoke_without_key_id(self, connection_client):
         """Fail fast when REVOKE_API_KEY op is missing key_id."""
-        req = UpdateConnectionRequest(
-            operation_type=EditConnectionOperationType.REVOKE_API_KEY
-        )
+        req = UpdateConnectionRequest(operation_type=EditConnectionOperationType.REVOKE_API_KEY)
         with pytest.raises(ValueError) as excinfo:
-            connection_client.update_api_key(
-                "123e4567-e89b-12d3-a456-426614174331", req
-            )
+            connection_client.update_api_key("123e4567-e89b-12d3-a456-426614174331", req)
         assert "key_id' must be provided" in str(excinfo.value)
         connection_client.make_request.assert_not_called()

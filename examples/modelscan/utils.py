@@ -1,3 +1,19 @@
+# Copyright 2025 Cisco Systems, Inc. and its affiliates
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """
 Utility functions for displaying scan results in the AI Defense Python SDK examples.
 """
@@ -8,7 +24,7 @@ from aidefense.modelscan.models import (
     Severity,
     ScanStatus,
     AnalysisResult,
-    FileInfo
+    FileInfo,
 )
 
 
@@ -31,24 +47,30 @@ def print_threats(techniques: List[Technique], indent: int = 0) -> None:
     indent_str = "  " * indent
     for technique in techniques:
         print(f"{indent_str}🔍 {technique.technique_name} ({technique.technique_id})")
-        
+
         for sub_technique in technique.items:
             print(f"{indent_str}  │")
-            print(f"{indent_str}  ├─ 🎯 {sub_technique.sub_technique_name} ({sub_technique.sub_technique_id})")
-            print(f"{indent_str}  │  ├─ Severity: {format_severity(sub_technique.max_severity)}")
-            
+            print(
+                f"{indent_str}  ├─ 🎯 {sub_technique.sub_technique_name} ({sub_technique.sub_technique_id})"
+            )
+            print(
+                f"{indent_str}  │  ├─ Severity: {format_severity(sub_technique.max_severity)}"
+            )
+
             if sub_technique.description:
                 print(f"{indent_str}  │  ├─ Description: {sub_technique.description}")
-                
+
             if sub_technique.indicators:
                 print(f"{indent_str}  │  ├─ Indicators:")
                 for indicator in sub_technique.indicators:
                     print(f"{indent_str}  │  │  • {indicator}")
-            
+
             if sub_technique.items:
                 print(f"{indent_str}  │  └─ Detections:")
                 for threat in sub_technique.items:
-                    print(f"{indent_str}  │     • {threat.threat_type.value}: {threat.description}")
+                    print(
+                        f"{indent_str}  │     • {threat.threat_type.value}: {threat.description}"
+                    )
                     if threat.details:
                         print(f"{indent_str}  │       Details: {threat.details}")
             print(f"{indent_str}  │")
@@ -79,9 +101,11 @@ def print_file_info(file_info: FileInfo) -> None:
         print("  ✅ No threats detected")
 
 
-def print_analysis_results(analysis_results: AnalysisResult, scan_id: str = None) -> None:
+def print_analysis_results(
+    analysis_results: AnalysisResult, scan_id: str = None
+) -> None:
     """Print analysis results with pagination information.
-    
+
     Args:
         analysis_results: The analysis results to display
         scan_id: Optional scan ID to display in the results
@@ -97,4 +121,6 @@ def print_analysis_results(analysis_results: AnalysisResult, scan_id: str = None
     paging = analysis_results.paging
     if paging.offset + len(analysis_results.items) < paging.total:
         remaining = paging.total - (paging.offset + len(analysis_results.items))
-        print(f"\n📄 {remaining} more files available. Use file_offset to retrieve additional results.")
+        print(
+            f"\n📄 {remaining} more files available. Use file_offset to retrieve additional results."
+        )

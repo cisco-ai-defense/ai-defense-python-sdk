@@ -114,7 +114,7 @@ class ModelScan(BaseClient):
             path=f"{scan_by_id(scan_id)}/{SCAN_OBJECTS}",
             data=req.to_body_dict(patch=True),
         )
-        result = CreateScanObjectResponse.parse_obj(res)
+        result = CreateScanObjectResponse.model_validate(res)
         self.config.logger.debug(f"Raw API response: {result}")
 
         return result.object_id, result.upload_url
@@ -204,7 +204,7 @@ class ModelScan(BaseClient):
             method=HttpMethod.POST,
             path=f"{SCANS}/register",
         )
-        result = RegisterScanResponse.parse_obj(res)
+        result = RegisterScanResponse.model_validate(res)
         self.config.logger.debug(f"Raw API response: {result}")
         return result
 
@@ -319,7 +319,7 @@ class ModelScan(BaseClient):
             path=SCANS,
             params=req.to_params(),
         )
-        result = ListScansResponse.parse_obj(res)
+        result = ListScansResponse.model_validate(res)
         self.config.logger.debug(f"Raw API response: {result}")
         return result
 
@@ -356,7 +356,7 @@ class ModelScan(BaseClient):
             path=scan_by_id(scan_id),
             params=req.to_params(),
         )
-        result = GetScanStatusResponse.parse_obj(res)
+        result = GetScanStatusResponse.model_validate(res)
         self.config.logger.debug(f"Raw API response: {result}")
         return result
 
@@ -460,6 +460,6 @@ class ModelScan(BaseClient):
             path=f"{scan_by_id(scan_id)}/validate_url",
             data=req.to_body_dict(),
         )
-        result = ValidateModelUrlResponse.parse_obj(res)
+        result = ValidateModelUrlResponse.model_validate(res)
         self.config.logger.debug(f"Raw API response: {result}")
         return result

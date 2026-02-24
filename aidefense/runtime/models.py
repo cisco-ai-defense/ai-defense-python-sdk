@@ -38,6 +38,15 @@ PCI_ENTITIES = [
 PHI_ENTITIES = ["Medical License Number (US)", "National Health Service (NHS) Number"]
 
 
+class Action(str, Enum):
+    """
+    Actions for violations detected in inspections.
+    """
+
+    ALLOW = "Allow"
+    BLOCK = "Block"
+
+
 class Classification(str, Enum):
     """
     Classifications for violations detected in inspections.
@@ -166,6 +175,7 @@ class InspectResponse:
 
     classifications: List[Classification]
     is_safe: bool
+    action: Action
     severity: Optional[Severity] = None
     rules: Optional[List[Rule]] = None
     attack_technique: Optional[str] = None

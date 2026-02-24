@@ -1,5 +1,3 @@
-from aidefense.tests.test_ai_validation_client import validation_client
-
 # cisco-aidefense-sdk
 
 **Cisco AI Defense Python SDK**
