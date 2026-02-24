@@ -16,6 +16,7 @@
 
 import pytest
 from unittest.mock import MagicMock
+from pydantic import ValidationError
 
 from aidefense.mcpscan import MCPScanClient
 from aidefense.mcpscan.models import (
@@ -27,6 +28,12 @@ from aidefense.mcpscan.models import (
     ApiKeyConfig,
     ServerType,
     RemoteServerInput,
+    OAuthConfig,
+    StdioServerInput,
+    ResourceConnectionType,
+    CreateResourceConnectionRequest,
+    ResourceDetails,
+    ResourceType,
 )
 from aidefense.config import Config
 from aidefense.exceptions import ApiError
@@ -190,3 +197,54 @@ class TestMCPScanClient:
 
         scan_id = mcp_scan_client.scan_mcp_server_async(request)
         assert scan_id == "scan-streamable"
+
+
+class TestMCPScanModelValidation:
+    """Validation tests for MCP scan request/auth models."""
+
+    def test_auth_config_rejects_extra_api_key_for_no_auth(self):
+        with pytest.raises(ValidationError, match="must not be set when auth_type is NO_AUTH"):
+            AuthConfig(
+                auth_type=AuthType.NO_AUTH,
+                api_key=ApiKeyConfig(header_name="X-API-Key", api_key="secret"),
+            )
+
+    def test_auth_config_rejects_mixed_oauth_and_api_key(self):
+        with pytest.raises(ValidationError, match="must not be set when auth_type is API_KEY"):
+            AuthConfig(
+                auth_type=AuthType.API_KEY,
+                api_key=ApiKeyConfig(header_name="X-API-Key", api_key="secret"),
+                oauth=OAuthConfig(
+                    client_id="id",
+                    client_secret="secret",
+                    auth_server_url="https://auth.example.com",
+                ),
+            )
+
+    def test_start_scan_request_rejects_mixed_remote_and_stdio(self):
+        with pytest.raises(ValidationError, match="must not be set when server_type is REMOTE"):
+            StartMCPServerScanRequest(
+                name="Mixed Request",
+                server_type=ServerType.REMOTE,
+                remote=RemoteServerInput(
+                    url="https://mcp-server.example.com/sse",
+                    connection_type=TransportType.SSE,
+                ),
+                stdio=StdioServerInput(),
+            )
+
+    def test_resource_connection_type_serializes_to_canonical_unspecified(self):
+        request = CreateResourceConnectionRequest(
+            connection_name="test-conn",
+            connection_type=ResourceConnectionType.UNSPECIFIED,
+            resource_ids=[],
+        )
+
+        payload = request.to_body_dict()
+        assert payload["connection_type"] == "Unspecified"
+
+    def test_resource_type_serializes_to_proto_unspecified(self):
+        details = ResourceDetails(resource_id="res-1")
+        payload = details.to_body_dict()
+        assert payload["resource_type"] == "NONE_RESOURCE_TYPE"
+        assert details.resource_type == ResourceType.UNSPECIFIED

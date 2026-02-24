@@ -172,7 +172,7 @@ class MCPScan(BaseClient):
             data=request.to_body_dict(),
         )
         result = StartMCPServerScanResponse.model_validate(res)
-        self.config.logger.debug(f"Raw API response: {result}")
+        self.config.logger.debug(f"start_scan response: {result}")
         return result
 
     def get_scan_status(self, scan_id: str) -> GetMCPScanStatusResponse:
@@ -232,7 +232,7 @@ class MCPScan(BaseClient):
             path=mcp_scan_status(scan_id),
         )
         result = GetMCPScanStatusResponse.model_validate(res)
-        self.config.logger.debug(f"Raw API response: {result}")
+        self.config.logger.debug(f"get_scan_status response for scan_id={scan_id}: {result}")
         return result
 
     def register_server(self, request: RegisterMCPServerRequest) -> RegisterMCPServerResponse:
@@ -747,4 +747,3 @@ class MCPScan(BaseClient):
         result = UpdateAuthConfigResponse.parse_obj(res)
         self.config.logger.debug(f"Updated auth config for server {request.server_id}: {result}")
         return result
-

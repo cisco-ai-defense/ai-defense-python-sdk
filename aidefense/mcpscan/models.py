@@ -164,10 +164,18 @@ class AuthConfig(AIDefenseModel):
 
     @model_validator(mode='after')
     def _validate_auth_config(self):
-        if self.auth_type == AuthType.OAUTH and self.oauth is None:
-            raise ValueError("OAuth configuration is required when auth_type is OAUTH")
-        if self.auth_type == AuthType.API_KEY and self.api_key is None:
-            raise ValueError("API key configuration is required when auth_type is API_KEY")
+        if self.auth_type == AuthType.OAUTH:
+            if self.oauth is None:
+                raise ValueError("OAuth configuration is required when auth_type is OAUTH")
+            if self.api_key is not None:
+                raise ValueError("API key configuration must not be set when auth_type is OAUTH")
+        elif self.auth_type == AuthType.API_KEY:
+            if self.api_key is None:
+                raise ValueError("API key configuration is required when auth_type is API_KEY")
+            if self.oauth is not None:
+                raise ValueError("OAuth configuration must not be set when auth_type is API_KEY")
+        elif self.auth_type == AuthType.NO_AUTH and (self.oauth is not None or self.api_key is not None):
+            raise ValueError("OAuth and API key configuration must not be set when auth_type is NO_AUTH")
 
         return self
 
@@ -666,10 +674,16 @@ class StartMCPServerScanRequest(AIDefenseModel):
 
     @model_validator(mode='after')
     def _validate_server_input(self):
-        if self.server_type == ServerType.REMOTE and self.remote is None:
-            raise ValueError("Remote configuration is required when server_type is REMOTE")
-        if self.server_type == ServerType.STDIO and self.stdio is None:
-            raise ValueError("Stdio configuration is required when server_type is STDIO")
+        if self.server_type == ServerType.REMOTE:
+            if self.remote is None:
+                raise ValueError("Remote configuration is required when server_type is REMOTE")
+            if self.stdio is not None:
+                raise ValueError("Stdio configuration must not be set when server_type is REMOTE")
+        elif self.server_type == ServerType.STDIO:
+            if self.stdio is None:
+                raise ValueError("Stdio configuration is required when server_type is STDIO")
+            if self.remote is not None:
+                raise ValueError("Remote configuration must not be set when server_type is STDIO")
 
         return self
 
@@ -839,16 +853,18 @@ class ResourceConnectionStatus(str, Enum):
 class ResourceConnectionType(str, Enum):
     """Type of resource connection."""
     UNSPECIFIED = "Unspecified"
-    CONNECTION_TYPE_UNSPECIFIED = "ConnectionTypeUnspecified"
     API = "API"
     GATEWAY = "Gateway"
     MCP_GATEWAY = "MCPGateway"
+    MCP_API = "MCPAPI"
 
 
 class ResourceType(str, Enum):
     """Type of resource."""
-    UNSPECIFIED = "ResourceTypeUnspecified"
+    UNSPECIFIED = "NONE_RESOURCE_TYPE"
     MCP_SERVER = "MCP_SERVER"
+    LLM = "LLM"
+    MCP_API = "MCP_API"
 
 
 class ResourceConnectionSortBy(str, Enum):
