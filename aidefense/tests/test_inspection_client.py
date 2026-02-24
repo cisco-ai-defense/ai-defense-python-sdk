@@ -173,6 +173,49 @@ def test_parse_inspect_response_with_custom_rule_name():
     assert result.rules[0].classification == Classification.SECURITY_VIOLATION
 
 
+def test_parse_inspect_response_with_processed_rules():
+    """Test parsing a response with processed_rules (and processedRules fallback)."""
+    client = TestInspectionClient(TEST_API_KEY, Config())
+
+    response_data = {
+        "is_safe": False,
+        "processed_rules": [
+            {
+                "rule_name": "PROMPT_INJECTION",
+                "rule_id": 10,
+                "classification": "SECURITY_VIOLATION",
+            },
+        ],
+    }
+
+    result = client._parse_inspect_response(response_data)
+
+    assert result.processed_rules is not None
+    assert len(result.processed_rules) == 1
+    assert result.processed_rules[0].rule_name == "PROMPT_INJECTION"
+    assert result.processed_rules[0].rule_id == 10
+    assert result.processed_rules[0].classification == Classification.SECURITY_VIOLATION
+
+
+def test_parse_inspect_response_processed_rules_camel_case():
+    """Test that processedRules (camelCase) is parsed when processed_rules is absent."""
+    client = TestInspectionClient(TEST_API_KEY, Config())
+
+    response_data = {
+        "is_safe": False,
+        "processedRules": [
+            {"rule_name": "PII", "rule_id": 20, "classification": "PII"},
+        ],
+    }
+
+    result = client._parse_inspect_response(response_data)
+
+    assert result.processed_rules is not None
+    assert len(result.processed_rules) == 1
+    assert result.processed_rules[0].rule_name == "PII"
+    assert result.processed_rules[0].rule_id == 20
+
+
 def test_parse_inspect_response_with_severity():
     """Test parsing a response with severity information."""
     client = TestInspectionClient(TEST_API_KEY, Config())

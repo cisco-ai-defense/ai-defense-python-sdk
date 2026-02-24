@@ -125,6 +125,29 @@ class TestPolicyManagementClient:
         assert response.paging.count == 2
         assert response.paging.offset == 0
 
+    def test_list_policies_allows_unknown_connection_type(self, policy_client):
+        """List policies should not fail for new server connection types."""
+        mock_response = {
+            "policies": {
+                "items": [
+                    {
+                        "policy_id": "policy-789",
+                        "policy_name": "Future Policy",
+                        "connection_type": "FutureType",
+                        "created_at": "2025-01-01T00:00:00Z",
+                        "updated_at": "2025-01-02T00:00:00Z",
+                    }
+                ],
+                "paging": {"total": 1, "count": 1, "offset": 0},
+            }
+        }
+        policy_client.make_request.return_value = mock_response
+
+        response = policy_client.list_policies(ListPoliciesRequest(limit=1, offset=0))
+
+        assert len(response.items) == 1
+        assert response.items[0].connection_type == "FutureType"
+
     def test_get_policy(self, policy_client):
         """Test getting a policy by ID."""
         # Setup mock response

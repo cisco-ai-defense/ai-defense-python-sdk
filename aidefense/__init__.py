@@ -32,3 +32,6 @@ from .management import (
     PolicyManagementClient,
     EventManagementClient,
 )
+
+# MCP inspection and MCP scan
+from .mcpscan import MCPScanClient, ResourceConnectionClient, MCPPolicyClient
