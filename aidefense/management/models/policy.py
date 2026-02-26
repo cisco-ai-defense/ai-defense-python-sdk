@@ -17,7 +17,7 @@
 """Policy models for the AI Defense Management API."""
 
 from enum import Enum
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 from datetime import datetime
 from pydantic import Field
 from ...models.base import AIDefenseModel
