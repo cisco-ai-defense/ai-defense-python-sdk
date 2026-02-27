@@ -17,7 +17,7 @@
 """Application models for the AI Defense Management API."""
 
 from enum import Enum
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 from datetime import datetime
 from pydantic import Field
 from ...models.base import AIDefenseModel
@@ -86,8 +86,8 @@ class ListApplicationsRequest(AIDefenseModel):
     order: Optional[str] = Field(
         None, description="Sort order of the applications returned"
     )
-    connection_type: Optional[ConnectionType] = Field(
-        None, description="Filter by connection type"
+    connection_type: Optional[Union[ConnectionType, str]] = Field(
+    None, description="Filter by connection type"
     )
     application_name: Optional[str] = Field(
         None, description="Search by application name"
