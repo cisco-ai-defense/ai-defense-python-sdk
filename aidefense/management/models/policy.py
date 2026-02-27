@@ -106,7 +106,7 @@ class Policy(AIDefenseModel):
     description: Optional[str] = Field(None, description="Description")
     status: Optional[str] = Field(None, description="Status")
     connection_type: Optional[Union[ConnectionType, str]] = Field(
-    None, description="Filter by connection type"
+    None, description="Connection type"
     )
     updated_at: Optional[datetime] = Field(None, description="Updated timestamp")
     created_at: Optional[datetime] = Field(None, description="Created timestamp")
