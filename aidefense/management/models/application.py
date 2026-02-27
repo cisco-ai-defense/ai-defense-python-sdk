@@ -87,7 +87,7 @@ class ListApplicationsRequest(AIDefenseModel):
         None, description="Sort order of the applications returned"
     )
     connection_type: Optional[Union[ConnectionType, str]] = Field(
-    None, description="Connection type"
+    None, description="Filter by connection type"
     )
     application_name: Optional[str] = Field(
         None, description="Search by application name"
