@@ -167,6 +167,46 @@ class TestMCPInspectionClient:
         assert result.result.is_safe is True
         assert result.id == "prompt-1"
 
+    def test_inspect_prompt_get_defaults_arguments_to_empty_dict(self, mcp_client, mock_request_handler):
+        """Test inspect_prompt_get sends empty arguments when not provided."""
+        mock_request_handler.request.return_value = {
+            "jsonrpc": "2.0",
+            "result": {"is_safe": True, "classifications": [], "action": "ALLOW"},
+            "id": "prompt-empty-args",
+        }
+
+        result = mcp_client.inspect_prompt_get(
+            prompt_name="summarize_report",
+            message_id="prompt-empty-args",
+        )
+
+        mock_request_handler.request.assert_called_once()
+        sent_json = mock_request_handler.request.call_args.kwargs["json_data"]
+        assert sent_json["method"] == "prompts/get"
+        assert sent_json["params"] == {"name": "summarize_report", "arguments": {}}
+        assert result.id == "prompt-empty-args"
+
+    def test_inspect_prompt_get_forwards_request_id_and_timeout(self, mcp_client, mock_request_handler):
+        """Test inspect_prompt_get forwards request context to request handler."""
+        mock_request_handler.request.return_value = {
+            "jsonrpc": "2.0",
+            "result": {"is_safe": True, "classifications": [], "action": "ALLOW"},
+            "id": "prompt-with-context",
+        }
+
+        mcp_client.inspect_prompt_get(
+            prompt_name="summarize_report",
+            arguments={"style": "concise"},
+            message_id="prompt-with-context",
+            request_id="req-123",
+            timeout=15,
+        )
+
+        mock_request_handler.request.assert_called_once()
+        kwargs = mock_request_handler.request.call_args.kwargs
+        assert kwargs["request_id"] == "req-123"
+        assert kwargs["timeout"] == 15
+
     def test_inspect_raw_message(self, mcp_client, mock_request_handler):
         """Test inspecting a raw MCPMessage."""
         mock_request_handler.request.return_value = {
