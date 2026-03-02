@@ -16,7 +16,7 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from pydantic import Field, model_validator
 
@@ -605,15 +605,6 @@ class RemoteServerInput(AIDefenseModel):
     )
 
 
-class StdioServerInput(AIDefenseModel):
-    """Input configuration for stdio-based MCP servers.
-
-    Used when scanning a stdio-based MCP server spawned from packages/repos.
-    This is a placeholder - fields will be defined when implementing stdio/repo-based server scanning.
-    """
-    pass
-
-
 # --------------------
 # Request/Response Models for StartMCPServerScan
 # --------------------
@@ -663,7 +654,7 @@ class StartMCPServerScanRequest(AIDefenseModel):
         None,
         description="Configuration for remote URL-based servers"
     )
-    stdio: Optional[StdioServerInput] = Field(
+    stdio: Optional[Dict[str, Any]] = Field(
         None,
         description="Configuration for stdio-based servers (placeholder)"
     )
@@ -1074,15 +1065,6 @@ class GetResourceConnectionByIDResponse(AIDefenseModel):
         connection: The resource connection details.
     """
     connection: Optional[ResourceConnection] = Field(None, description="Connection details")
-
-
-class GetResourceConnectionByResourceIDResponse(AIDefenseModel):
-    """Response for getting resource connections by resource ID.
-
-    Args:
-        connections: List of resource connections.
-    """
-    connections: Optional[ResourceConnections] = Field(None, description="Resource connections")
 
 
 class MCPServerFilters(AIDefenseModel):

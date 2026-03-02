@@ -243,6 +243,38 @@ class MCPInspectionClient(InspectionClient):
         )
         return self._inspect(message, request_id, timeout)
 
+    def inspect_prompt_get(
+        self,
+        prompt_name: str,
+        arguments: Optional[Dict[str, Any]] = None,
+        message_id: Optional[Union[str, int]] = None,
+        request_id: Optional[str] = None,
+        timeout: Optional[int] = None,
+    ) -> MCPInspectResponse:
+        """
+        Convenience method to inspect an MCP prompts/get request.
+
+        Args:
+            prompt_name (str): The name of the prompt being fetched.
+            arguments (Dict[str, Any], optional): Arguments passed to prompt template variables.
+            message_id (Union[str, int], optional): The JSON-RPC message ID.
+            request_id (str, optional): Unique identifier for the request to enable tracing.
+            timeout (int, optional): Request timeout in seconds.
+
+        Returns:
+            MCPInspectResponse: Inspection results wrapped in JSON-RPC 2.0 format.
+        """
+        self.config.logger.debug(
+            f"Inspecting MCP prompt get: {prompt_name} | Arguments: {arguments}, Message ID: {message_id}, Request ID: {request_id}"
+        )
+        message = MCPMessage(
+            jsonrpc="2.0",
+            method="prompts/get",
+            params={"name": prompt_name, "arguments": arguments or {}},
+            id=message_id,
+        )
+        return self._inspect(message, request_id, timeout)
+
     def inspect_response(
         self,
         result_data: Dict[str, Any],
@@ -554,4 +586,3 @@ class MCPInspectionClient(InspectionClient):
             result=inspect_result,
             id=response_id,
         )
-

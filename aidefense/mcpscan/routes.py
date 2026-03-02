@@ -86,11 +86,6 @@ def resource_connection_by_id(connection_id: str) -> str:
     return f"{RESOURCE_CONNECTIONS}/{connection_id}"
 
 
-def resource_connection_by_resource_id(resource_id: str) -> str:
-    """Route for getting resource connection by resource ID."""
-    return f"{RESOURCE}/{resource_id}/connection"
-
-
 def resource_connections_filter() -> str:
     """Route for filtering resource connections."""
     return f"{RESOURCE_CONNECTIONS}/filter"
@@ -104,5 +99,4 @@ def resources_by_connection_id(connection_id: str) -> str:
 def add_or_update_resource_connections(connection_id: str) -> str:
     """Route for adding or updating resource connections."""
     return f"{RESOURCE_CONNECTIONS}/{connection_id}"
-
 

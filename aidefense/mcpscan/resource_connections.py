@@ -33,7 +33,6 @@ from aidefense.mcpscan.models import (
     CreateResourceConnectionRequest,
     CreateResourceConnectionResponse,
     GetResourceConnectionByIDResponse,
-    GetResourceConnectionByResourceIDResponse,
     FilterResourceConnectionsRequest,
     FilterResourceConnectionsResponse,
     FilterResourcesByConnectionIDRequest,
@@ -43,7 +42,6 @@ from aidefense.mcpscan.models import (
 from aidefense.mcpscan.routes import (
     resource_connections,
     resource_connection_by_id,
-    resource_connection_by_resource_id,
     resource_connections_filter,
     resources_by_connection_id,
     add_or_update_resource_connections,
@@ -257,47 +255,6 @@ class ResourceConnectionClient(BaseClient):
         self.config.logger.debug(f"Retrieved resource connection: {response}")
         return response.connection
 
-    def get_connection_by_resource_id(self, resource_id: str) -> ResourceConnections:
-        """
-        Get resource connections associated with a specific resource.
-
-        This method retrieves all connections linked to the specified resource ID.
-
-        Args:
-            resource_id (str): The unique identifier of the resource (UUID).
-
-        Returns:
-            ResourceConnections: Object containing:
-                - items: List of ResourceConnection objects
-                - paging: Pagination information
-
-        Raises:
-            ValidationError: If the resource_id is invalid.
-            ApiError: If the API returns an error response.
-            SDKError: For other SDK-related errors.
-
-        Example:
-            ```python
-            from aidefense.mcpscan import ResourceConnectionClient
-
-            client = ResourceConnectionClient(api_key="YOUR_API_KEY")
-
-            resource_id = "550e8400-e29b-41d4-a716-446655440000"
-            connections = client.get_connection_by_resource_id(resource_id)
-
-            print(f"Found {len(connections.items)} connections")
-            for conn in connections.items:
-                print(f"  - {conn.connection_name}: {conn.connection_status}")
-            ```
-        """
-        res = self.make_request(
-            method=HttpMethod.GET,
-            path=resource_connection_by_resource_id(resource_id),
-        )
-        response = GetResourceConnectionByResourceIDResponse.parse_obj(res)
-        self.config.logger.debug(f"Retrieved connections for resource: {response}")
-        return response.connections
-
     def filter_connections(
             self,
             request: FilterResourceConnectionsRequest
@@ -500,4 +457,3 @@ class ResourceConnectionClient(BaseClient):
             data=body,
         )
         self.config.logger.debug(f"Updated resource connections for: {connection_id}")
-

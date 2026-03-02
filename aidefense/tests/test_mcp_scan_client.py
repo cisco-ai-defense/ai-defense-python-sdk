@@ -29,7 +29,6 @@ from aidefense.mcpscan.models import (
     ServerType,
     RemoteServerInput,
     OAuthConfig,
-    StdioServerInput,
     ResourceConnectionType,
     CreateResourceConnectionRequest,
     ResourceDetails,
@@ -230,7 +229,7 @@ class TestMCPScanModelValidation:
                     url="https://mcp-server.example.com/sse",
                     connection_type=TransportType.SSE,
                 ),
-                stdio=StdioServerInput(),
+                stdio={},
             )
 
     def test_resource_connection_type_serializes_to_canonical_unspecified(self):

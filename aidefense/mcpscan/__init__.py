@@ -52,7 +52,6 @@ from .models import (
     Paging,
     # Server Input Models
     RemoteServerInput,
-    StdioServerInput,
     # Scan Request/Response Models
     StartMCPServerScanRequest,
     StartMCPServerScanResponse,
@@ -156,7 +155,6 @@ from .models import (
     DeleteResourceConnectionByIDResponse,
     DeleteResourceConnectionsByResourceIdResponse,
     GetResourceConnectionByIDResponse,
-    GetResourceConnectionByResourceIDResponse,
     MCPServerFilters,
     ResourceTypeSpecificFilters,
     FilterResourceConnectionsRequest,

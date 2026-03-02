@@ -143,6 +143,30 @@ class TestMCPInspectionClient:
         assert result.result is not None
         assert result.result.is_safe is False
 
+    def test_inspect_prompt_get(self, mcp_client, mock_request_handler):
+        """Test inspecting an MCP prompt get request."""
+        mock_request_handler.request.return_value = {
+            "jsonrpc": "2.0",
+            "result": {
+                "is_safe": True,
+                "classifications": [],
+                "action": "ALLOW",
+            },
+            "id": "prompt-1",
+        }
+
+        result = mcp_client.inspect_prompt_get(
+            prompt_name="summarize_report",
+            arguments={"format": "bullets"},
+            message_id="prompt-1",
+        )
+
+        mock_request_handler.request.assert_called_once()
+        assert isinstance(result, MCPInspectResponse)
+        assert result.result is not None
+        assert result.result.is_safe is True
+        assert result.id == "prompt-1"
+
     def test_inspect_raw_message(self, mcp_client, mock_request_handler):
         """Test inspecting a raw MCPMessage."""
         mock_request_handler.request.return_value = {
