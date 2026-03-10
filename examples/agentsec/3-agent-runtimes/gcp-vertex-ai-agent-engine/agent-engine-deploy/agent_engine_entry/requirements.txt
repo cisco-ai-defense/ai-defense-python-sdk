@@ -1,0 +1,29 @@
+# Requirements for Vertex AI Agent Engine deployment (LangChain template)
+# Pin exact versions for reproducible deployments
+
+# IMPORTANT: Dependencies for bundled aidefense SDK MUST be installed first
+# These are required at module import time before any agent code runs
+aiohttp>=3.9.0
+requests>=2.28.0
+pydantic>=2.0.0,<3.0.0
+wrapt>=1.14.0
+httpx>=0.24.0
+pyyaml>=6.0
+
+# Google Cloud AI Platform with LangChain support (pinned version)
+google-cloud-aiplatform[agent_engines,langchain]==1.133.0
+
+# LangChain for agent framework
+langchain>=0.3.0
+langchain-google-genai>=2.0.0
+langchain-google-vertexai>=2.0.0
+langchain-core>=0.3.0
+
+# Nested event loops for sync tool calling async MCP
+nest-asyncio>=1.6.0
+
+# MCP client for MCP tool protection
+mcp>=1.11.0
+
+# Environment loading
+python-dotenv>=1.0.0
