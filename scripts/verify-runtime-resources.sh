@@ -56,8 +56,12 @@ if [ -z "${FUNCTION_NAME:-}" ]; then
     echo -e "  ${YELLOW}skip${NC} no AWS resource names in .last_new_resources_run"
 elif command -v aws &>/dev/null; then
     export AWS_REGION="${AWS_REGION:-us-east-1}"
-    aws lambda get-function --function-name "${FUNCTION_NAME}" --region "$AWS_REGION" &>/dev/null
-    check "Lambda: $FUNCTION_NAME"
+    if aws lambda get-function --function-name "${FUNCTION_NAME}" --region "$AWS_REGION" &>/dev/null; then
+        check "Lambda: $FUNCTION_NAME"
+    else
+        echo -e "  ${RED}✗${NC} Lambda: $FUNCTION_NAME"
+        FAIL=$((FAIL + 1))
+    fi
 else
     echo -e "  ${YELLOW}skip${NC} aws CLI not found"
 fi
@@ -94,14 +98,26 @@ if [ -z "${AGENT_ENDPOINT_NAME:-}" ] && [ -z "${AZURE_FUNCTION_APP_NAME:-}" ]; t
     echo -e "  ${YELLOW}skip${NC} no Azure resource names in .last_new_resources_run"
 elif command -v az &>/dev/null && [ -n "${AZURE_RESOURCE_GROUP:-}" ] && [ -n "${AZURE_AI_FOUNDRY_PROJECT:-}" ]; then
     az account set --subscription "${AZURE_SUBSCRIPTION_ID}" &>/dev/null || true
-    az ml online-endpoint show --name "${AGENT_ENDPOINT_NAME}" --resource-group "$AZURE_RESOURCE_GROUP" --workspace-name "$AZURE_AI_FOUNDRY_PROJECT" &>/dev/null
-    check "ML endpoint (agent): $AGENT_ENDPOINT_NAME"
+    if az ml online-endpoint show --name "${AGENT_ENDPOINT_NAME}" --resource-group "$AZURE_RESOURCE_GROUP" --workspace-name "$AZURE_AI_FOUNDRY_PROJECT" &>/dev/null; then
+        check "ML endpoint (agent): $AGENT_ENDPOINT_NAME"
+    else
+        echo -e "  ${RED}✗${NC} ML endpoint (agent): $AGENT_ENDPOINT_NAME"
+        FAIL=$((FAIL + 1))
+    fi
 
-    az ml online-endpoint show --name "${CONTAINER_ENDPOINT_NAME}" --resource-group "$AZURE_RESOURCE_GROUP" --workspace-name "$AZURE_AI_FOUNDRY_PROJECT" &>/dev/null
-    check "ML endpoint (container): $CONTAINER_ENDPOINT_NAME"
+    if az ml online-endpoint show --name "${CONTAINER_ENDPOINT_NAME}" --resource-group "$AZURE_RESOURCE_GROUP" --workspace-name "$AZURE_AI_FOUNDRY_PROJECT" &>/dev/null; then
+        check "ML endpoint (container): $CONTAINER_ENDPOINT_NAME"
+    else
+        echo -e "  ${RED}✗${NC} ML endpoint (container): $CONTAINER_ENDPOINT_NAME"
+        FAIL=$((FAIL + 1))
+    fi
 
-    az functionapp show --name "${AZURE_FUNCTION_APP_NAME}" --resource-group "$AZURE_RESOURCE_GROUP" &>/dev/null
-    check "Function App: $AZURE_FUNCTION_APP_NAME"
+    if az functionapp show --name "${AZURE_FUNCTION_APP_NAME}" --resource-group "$AZURE_RESOURCE_GROUP" &>/dev/null; then
+        check "Function App: $AZURE_FUNCTION_APP_NAME"
+    else
+        echo -e "  ${RED}✗${NC} Function App: $AZURE_FUNCTION_APP_NAME"
+        FAIL=$((FAIL + 1))
+    fi
 else
     echo -e "  ${YELLOW}skip${NC} az CLI not found or Azure env not set"
 fi
