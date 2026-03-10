@@ -35,3 +35,6 @@ from .management import (
 
 # MCP inspection and MCP scan
 from .mcpscan import MCPScanClient, ResourceConnectionClient, MCPPolicyClient
+
+# AI-BOM (AI Bill of Materials)
+from .aibom import AIBom

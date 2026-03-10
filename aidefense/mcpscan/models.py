@@ -1891,6 +1891,174 @@ class ListMCPRegistryServersDeltaResponse(AIDefenseModel):
 
 
 # --------------------
+# MCP Registry Scan Models
+# --------------------
+
+class BulkScanStatus(str, Enum):
+    """Status of a bulk scan job."""
+    BULK_SCAN_STATUS_UNSPECIFIED = "BULK_SCAN_STATUS_UNSPECIFIED"
+    BULK_SCAN_STATUS_PENDING = "BULK_SCAN_STATUS_PENDING"
+    BULK_SCAN_STATUS_IN_PROGRESS = "BULK_SCAN_STATUS_IN_PROGRESS"
+    BULK_SCAN_STATUS_SUCCESS = "BULK_SCAN_STATUS_SUCCESS"
+    BULK_SCAN_STATUS_FAILED = "BULK_SCAN_STATUS_FAILED"
+    BULK_SCAN_STATUS_CANCELED = "BULK_SCAN_STATUS_CANCELED"
+
+
+class TriggerBulkScanRequest(AIDefenseModel):
+    """Request message for triggering a bulk scan on an MCP registry.
+
+    Args:
+        registry_id: UUID of the registry to scan (also in path).
+        server_ids: Optional list of server UUIDs to scan. If empty, all registered servers are scanned.
+    """
+    registry_id: str = Field(..., alias="registry_id", description="MCP registry identifier (UUID)")
+    server_ids: Optional[List[str]] = Field(None, alias="server_ids", description="Optional server IDs to scan")
+
+
+class TriggerBulkScanResponse(AIDefenseModel):
+    """Response message for a triggered bulk scan.
+
+    Args:
+        scan_id: Unique identifier for the bulk scan job (UUID).
+    """
+    scan_id: str = Field(..., alias="scan_id", description="Bulk scan identifier (UUID)")
+
+
+class RegistryScanSummary(AIDefenseModel):
+    """Summary of a registry bulk scan.
+
+    Args:
+        total_servers: Total number of servers scanned.
+        completed_servers: Number of completed server scans.
+        failed_servers: Number of failed server scans.
+    """
+    total_servers: int = Field(default=0, alias="total_servers", description="Total servers scanned")
+    completed_servers: int = Field(default=0, alias="completed_servers", description="Completed scans")
+    failed_servers: int = Field(default=0, alias="failed_servers", description="Failed scans")
+
+
+class GetRegistryScanSummaryResponse(AIDefenseModel):
+    """Response message for registry scan summary (latest or by ID).
+
+    Args:
+        scan_id: Bulk scan identifier (UUID).
+        status: Status of the scan.
+        summary: Aggregated scan summary.
+        completed_at: When the scan completed.
+        started_at: When the scan started.
+        last_updated_at: Last update timestamp.
+    """
+    scan_id: str = Field(..., alias="scan_id", description="Bulk scan identifier (UUID)")
+    status: BulkScanStatus = Field(..., description="Scan status")
+    summary: Optional[RegistryScanSummary] = Field(None, description="Scan summary")
+    completed_at: Optional[datetime] = Field(None, alias="completed_at", description="Completion timestamp")
+    started_at: Optional[datetime] = Field(None, alias="started_at", description="Start timestamp")
+    last_updated_at: Optional[datetime] = Field(None, alias="last_updated_at", description="Last update timestamp")
+
+    @model_validator(mode='before')
+    @classmethod
+    def __restore_enums(cls, values):
+        return restore_enum_wrapper(cls, values)
+
+
+class ListMCPServerScansRequest(AIDefenseModel):
+    """Request message for listing MCP server scans in a registry.
+
+    Args:
+        registry_id: MCP registry identifier (UUID).
+        limit: Maximum number of results.
+        offset: Pagination offset.
+        status_filter: Optional filter by scan status.
+    """
+    registry_id: str = Field(..., alias="registry_id", description="MCP registry identifier (UUID)")
+    limit: int = Field(default=25, description="Maximum results to return")
+    offset: int = Field(default=0, description="Pagination offset")
+    status_filter: Optional[str] = Field(None, alias="status_filter", description="Filter by scan status")
+
+
+class CapabilityScanReport(AIDefenseModel):
+    """Scan report for a single capability.
+
+    Args:
+        capability: The capability that was scanned.
+        threats: List of threat details.
+    """
+    capability: Optional[Capability] = Field(None, description="Capability details")
+    threats: List[ThreatDetails] = Field(default_factory=list, description="Detected threats")
+
+
+class CapabilityScanReports(AIDefenseModel):
+    """Collection of capability scan reports.
+
+    Args:
+        items: List of capability scan reports.
+    """
+    items: List[CapabilityScanReport] = Field(default_factory=list, description="Scan reports")
+
+
+class MCPServerWithScan(AIDefenseModel):
+    """MCP server with scan report information.
+
+    Args:
+        id: Server identifier (UUID).
+        name: Server name.
+        url: Server URL.
+        description: Server description.
+        connection_type: Transport type.
+        created_at: Creation timestamp.
+        onboarding_status: Onboarding status.
+        scan_enabled: Whether scanning is enabled.
+        reports: Capability scan reports.
+    """
+    id: str = Field(..., description="Server identifier (UUID)")
+    name: str = Field(..., description="Server name")
+    url: str = Field(..., description="Server URL")
+    description: str = Field(default="", description="Server description")
+    connection_type: TransportType = Field(
+        default=TransportType.TRANSPORT_TYPE_UNSPECIFIED,
+        alias="connectionType",
+        description="Transport type"
+    )
+    created_at: Optional[datetime] = Field(None, alias="createdAt", description="Creation timestamp")
+    onboarding_status: OnboardingStatus = Field(
+        default=OnboardingStatus.ONBOARDING_STATUS_UNSPECIFIED,
+        alias="onboardingStatus",
+        description="Onboarding status"
+    )
+    scan_enabled: bool = Field(default=True, alias="scanEnabled", description="Scan enabled")
+    reports: Optional[CapabilityScanReports] = Field(None, description="Capability scan reports")
+
+    @model_validator(mode='before')
+    @classmethod
+    def __restore_enums(cls, values):
+        return restore_enum_wrapper(cls, values)
+
+
+class MCPServersWithScan(AIDefenseModel):
+    """List of MCP servers with scan information and pagination.
+
+    Args:
+        items: List of MCP servers with scan data.
+        paging: Pagination information.
+    """
+    items: List[MCPServerWithScan] = Field(default_factory=list, description="Servers with scan data")
+    paging: Optional[Paging] = Field(None, description="Pagination information")
+
+
+class ListMCPServerScansResponse(AIDefenseModel):
+    """Response message for listing MCP server scans.
+
+    Args:
+        mcp_servers_with_scan: Servers with scan information and pagination.
+    """
+    mcp_servers_with_scan: Optional[MCPServersWithScan] = Field(
+        None,
+        alias="mcp_servers_with_scan",
+        description="Servers with scan data"
+    )
+
+
+# --------------------
 # Bulk Register and Scan Models
 # --------------------
 

@@ -33,6 +33,8 @@ from aidefense.mcpscan.models import (
     CreateResourceConnectionRequest,
     ResourceDetails,
     ResourceType,
+    BulkRegisterAndScanRequest,
+    BulkRegisterTarget,
 )
 from aidefense.config import Config
 from aidefense.exceptions import ApiError
@@ -247,3 +249,126 @@ class TestMCPScanModelValidation:
         payload = details.to_body_dict()
         assert payload["resource_type"] == "NONE_RESOURCE_TYPE"
         assert details.resource_type == ResourceType.UNSPECIFIED
+
+
+class TestMCPRegistryScanClient:
+    """Tests for MCP Registry Scan client methods."""
+
+    def test_trigger_bulk_scan_all_servers(self, mcp_scan_client):
+        """Test triggering bulk scan for all servers in a registry."""
+        mock_response = {"scan_id": "550e8400-e29b-41d4-a716-446655440000"}
+        mcp_scan_client.make_request.return_value = mock_response
+
+        result = mcp_scan_client.trigger_bulk_scan(
+            registry_id="550e8400-e29b-41d4-a716-446655440000"
+        )
+
+        mcp_scan_client.make_request.assert_called_once()
+        call_kwargs = mcp_scan_client.make_request.call_args[1]
+        assert call_kwargs["method"] == "POST"
+        assert "mcp/registries/" in call_kwargs["path"]
+        assert "/scan" in call_kwargs["path"]
+        assert result.scan_id == "550e8400-e29b-41d4-a716-446655440000"
+
+    def test_trigger_bulk_scan_specific_servers(self, mcp_scan_client):
+        """Test triggering bulk scan for specific servers."""
+        mock_response = {"scan_id": "scan-uuid-123"}
+        mcp_scan_client.make_request.return_value = mock_response
+
+        result = mcp_scan_client.trigger_bulk_scan(
+            registry_id="reg-uuid",
+            server_ids=["server-1", "server-2"],
+        )
+
+        mcp_scan_client.make_request.assert_called_once()
+        call_kwargs = mcp_scan_client.make_request.call_args[1]
+        assert call_kwargs["data"] == {"server_ids": ["server-1", "server-2"]}
+        assert result.scan_id == "scan-uuid-123"
+
+    def test_get_registry_scan_summary(self, mcp_scan_client):
+        """Test getting registry scan summary."""
+        mock_response = {
+            "scan_id": "scan-123",
+            "status": "BULK_SCAN_STATUS_SUCCESS",
+            "summary": {
+                "total_servers": 10,
+                "completed_servers": 10,
+                "failed_servers": 0,
+            },
+        }
+        mcp_scan_client.make_request.return_value = mock_response
+
+        result = mcp_scan_client.get_registry_scan_summary(registry_id="reg-uuid")
+
+        mcp_scan_client.make_request.assert_called_once()
+        call_kwargs = mcp_scan_client.make_request.call_args[1]
+        assert call_kwargs["method"] == "GET"
+        assert "scan/summary" in call_kwargs["path"]
+        assert result.scan_id == "scan-123"
+        assert result.summary is not None
+        assert result.summary.total_servers == 10
+
+    def test_get_registry_scan_summary_by_id(self, mcp_scan_client):
+        """Test getting registry scan summary by scan ID."""
+        mock_response = {
+            "scan_id": "scan-456",
+            "status": "BULK_SCAN_STATUS_IN_PROGRESS",
+        }
+        mcp_scan_client.make_request.return_value = mock_response
+
+        result = mcp_scan_client.get_registry_scan_summary_by_id(
+            registry_id="reg-uuid",
+            scan_id="scan-456",
+        )
+
+        mcp_scan_client.make_request.assert_called_once()
+        call_kwargs = mcp_scan_client.make_request.call_args[1]
+        assert "scan/scan-456/summary" in call_kwargs["path"]
+        assert result.scan_id == "scan-456"
+
+    def test_list_registry_scans(self, mcp_scan_client):
+        """Test listing registry scans."""
+        mock_response = {
+            "mcp_servers_with_scan": {
+                "items": [],
+                "paging": {"total": 0, "limit": 25, "offset": 0},
+            },
+        }
+        mcp_scan_client.make_request.return_value = mock_response
+
+        result = mcp_scan_client.list_registry_scans(
+            registry_id="reg-uuid",
+            limit=50,
+            offset=10,
+            status_filter="COMPLETED",
+        )
+
+        mcp_scan_client.make_request.assert_called_once()
+        call_kwargs = mcp_scan_client.make_request.call_args[1]
+        assert call_kwargs["method"] == "GET"
+        assert call_kwargs["params"] == {
+            "limit": 50,
+            "offset": 10,
+            "status_filter": "COMPLETED",
+        }
+        assert "scans" in call_kwargs["path"]
+
+    def test_bulk_register_and_scan(self, mcp_scan_client):
+        """Test bulk register and scan."""
+        mock_response = {"bulkScanId": "bulk-scan-uuid"}
+        mcp_scan_client.make_request.return_value = mock_response
+
+        request = BulkRegisterAndScanRequest(
+            registry_id="550e8400-e29b-41d4-a716-446655440000",
+            targets=[
+                BulkRegisterTarget(staged_server_id="staged-uuid-1"),
+                BulkRegisterTarget(staged_server_id="staged-uuid-2"),
+            ],
+        )
+        result = mcp_scan_client.bulk_register_and_scan(request)
+
+        mcp_scan_client.make_request.assert_called_once()
+        call_kwargs = mcp_scan_client.make_request.call_args[1]
+        assert call_kwargs["method"] == "POST"
+        assert "register-scans" in call_kwargs["path"]
+        assert result.bulk_scan_id == "bulk-scan-uuid"

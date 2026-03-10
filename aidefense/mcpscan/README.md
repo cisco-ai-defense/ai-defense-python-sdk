@@ -130,6 +130,57 @@ if status.result:
 | `CANCELLED`   | Scan was manually cancelled      |
 | `CANCELLING`  | Scan cancellation is in progress |
 
+## MCP Registry Scan
+
+Trigger bulk scans for MCP servers in a registry:
+
+```python
+from aidefense.mcpscan import MCPScanClient
+from aidefense import Config
+
+client = MCPScanClient(
+    api_key="YOUR_MANAGEMENT_API_KEY",
+    config=Config(management_base_url="https://api.security.cisco.com")
+)
+
+# Trigger bulk scan for all servers in a registry
+response = client.trigger_bulk_scan(registry_id="registry-uuid")
+print(f"Scan ID: {response.scan_id}")
+
+# Trigger scan for specific servers only
+response = client.trigger_bulk_scan(
+    registry_id="registry-uuid",
+    server_ids=["server-uuid-1", "server-uuid-2"]
+)
+
+# Get registry scan summary
+summary = client.get_registry_scan_summary(registry_id="registry-uuid")
+print(f"Status: {summary.status}")
+if summary.summary:
+    print(f"Completed: {summary.summary.completed_servers}/{summary.summary.total_servers}")
+
+# List server scans
+response = client.list_registry_scans(
+    registry_id="registry-uuid",
+    limit=25,
+    offset=0,
+    status_filter="COMPLETED"
+)
+
+# Bulk register and scan (register staged servers, then scan)
+from aidefense.mcpscan.models import BulkRegisterAndScanRequest, BulkRegisterTarget
+
+request = BulkRegisterAndScanRequest(
+    registry_id="registry-uuid",
+    targets=[
+        BulkRegisterTarget(staged_server_id="staged-uuid-1"),
+        BulkRegisterTarget(staged_server_id="staged-uuid-2"),
+    ]
+)
+response = client.bulk_register_and_scan(request)
+print(f"Bulk scan ID: {response.bulk_scan_id}")
+```
+
 ## Error Handling
 
 ```python

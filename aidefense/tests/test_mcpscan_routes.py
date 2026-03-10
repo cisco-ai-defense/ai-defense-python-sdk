@@ -28,6 +28,12 @@ from aidefense.mcpscan.routes import (
     mcp_server_capabilities,
     mcp_server_threats,
     mcp_server_scan_summary,
+    # MCP Registry routes
+    mcp_registry_scan,
+    mcp_registry_scan_summary,
+    mcp_registry_scan_summary_by_id,
+    mcp_registry_scans_list,
+    mcp_registry_register_scans,
     # Resource Connection routes
     resource_connections,
     resource_connection_by_id,
@@ -86,6 +92,38 @@ class TestMCPServerRoutes:
         """Test the MCP server scan summary route."""
         server_id = "server-summary"
         assert mcp_server_scan_summary(server_id) == f"mcp/servers/{server_id}/scan/summary"
+
+
+class TestMCPRegistryRoutes:
+    """Tests for MCP registry route functions."""
+
+    def test_mcp_registry_scan(self):
+        """Test the MCP registry scan route."""
+        registry_id = "reg-123"
+        assert mcp_registry_scan(registry_id) == f"mcp/registries/{registry_id}/scan"
+
+    def test_mcp_registry_scan_summary(self):
+        """Test the MCP registry scan summary route."""
+        registry_id = "reg-456"
+        assert mcp_registry_scan_summary(registry_id) == f"mcp/registries/{registry_id}/scan/summary"
+
+    def test_mcp_registry_scan_summary_by_id(self):
+        """Test the MCP registry scan summary by ID route."""
+        registry_id = "reg-789"
+        scan_id = "scan-abc"
+        assert mcp_registry_scan_summary_by_id(registry_id, scan_id) == (
+            f"mcp/registries/{registry_id}/scan/{scan_id}/summary"
+        )
+
+    def test_mcp_registry_scans_list(self):
+        """Test the MCP registry scans list route."""
+        registry_id = "reg-def"
+        assert mcp_registry_scans_list(registry_id) == f"mcp/registries/{registry_id}/scans"
+
+    def test_mcp_registry_register_scans(self):
+        """Test the MCP registry register-scans route."""
+        registry_id = "reg-ghi"
+        assert mcp_registry_register_scans(registry_id) == f"mcp/registries/{registry_id}/register-scans"
 
 
 class TestResourceConnectionRoutes:

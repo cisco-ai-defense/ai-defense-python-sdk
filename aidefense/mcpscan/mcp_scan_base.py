@@ -37,6 +37,11 @@ from aidefense.mcpscan.models import (
     OnboardingStatus,
     SeverityLevel,
     TransportType,
+    TriggerBulkScanResponse,
+    GetRegistryScanSummaryResponse,
+    ListMCPServerScansResponse,
+    BulkRegisterAndScanRequest,
+    BulkRegisterAndScanResponse,
 )
 from aidefense.mcpscan.routes import (
     mcp_scan_start,
@@ -49,6 +54,11 @@ from aidefense.mcpscan.routes import (
     mcp_server_get,
     mcp_servers_list,
     mcp_server_update_auth_config,
+    mcp_registry_scan,
+    mcp_registry_scan_summary,
+    mcp_registry_scan_summary_by_id,
+    mcp_registry_scans_list,
+    mcp_registry_register_scans,
 )
 
 
@@ -746,4 +756,251 @@ class MCPScan(BaseClient):
         )
         result = UpdateAuthConfigResponse.parse_obj(res)
         self.config.logger.debug(f"Updated auth config for server {request.server_id}: {result}")
+        return result
+
+    # --------------------
+    # MCP Registry Scan Methods
+    # --------------------
+
+    def trigger_bulk_scan(
+            self,
+            registry_id: str,
+            server_ids: Optional[List[str]] = None,
+    ) -> TriggerBulkScanResponse:
+        """
+        Trigger a bulk scan for servers in an MCP registry.
+
+        This method initiates a bulk security scan for MCP servers in the given registry.
+        If server_ids is provided, only those servers are scanned; otherwise all
+        registered servers in the registry are scanned.
+
+        Args:
+            registry_id (str): The unique identifier of the MCP registry (UUID string).
+            server_ids (List[str], optional): Optional list of server UUIDs to scan.
+                If empty or None, all registered servers in the registry are scanned.
+
+        Returns:
+            TriggerBulkScanResponse: Response object containing:
+                - scan_id: Unique identifier for the bulk scan job (UUID)
+
+        Raises:
+            ValidationError: If the registry_id is invalid.
+            ApiError: If the API returns an error response.
+            SDKError: For other SDK-related errors.
+
+        Example:
+            ```python
+            from aidefense.mcpscan import MCPScan
+
+            client = MCPScan(api_key="YOUR_MANAGEMENT_API_KEY")
+
+            # Scan all servers in a registry
+            response = client.trigger_bulk_scan(registry_id="550e8400-e29b-41d4-a716-446655440000")
+            print(f"Bulk scan started: {response.scan_id}")
+
+            # Scan specific servers only
+            response = client.trigger_bulk_scan(
+                registry_id="550e8400-e29b-41d4-a716-446655440000",
+                server_ids=["server-uuid-1", "server-uuid-2"]
+            )
+            ```
+        """
+        data: dict = {}
+        if server_ids:
+            data["server_ids"] = server_ids
+        res = self.make_request(
+            method=HttpMethod.POST,
+            path=mcp_registry_scan(registry_id),
+            data=data if data else None,
+        )
+        result = TriggerBulkScanResponse.model_validate(res)
+        self.config.logger.debug(f"trigger_bulk_scan response: {result}")
+        return result
+
+    def get_registry_scan_summary(self, registry_id: str) -> GetRegistryScanSummaryResponse:
+        """
+        Get the summary of the most recent bulk scan for an MCP registry.
+
+        This method retrieves the status and summary of the latest bulk scan
+        for the given registry.
+
+        Args:
+            registry_id (str): The unique identifier of the MCP registry (UUID string).
+
+        Returns:
+            GetRegistryScanSummaryResponse: Response object containing:
+                - scan_id: Bulk scan identifier
+                - status: Scan status (PENDING, IN_PROGRESS, SUCCESS, FAILED, CANCELED)
+                - summary: Aggregated counts (total, completed, failed servers)
+                - completed_at: When the scan completed
+                - started_at: When the scan started
+                - last_updated_at: Last update timestamp
+
+        Raises:
+            ValidationError: If the registry_id is invalid.
+            ApiError: If the API returns an error response.
+            SDKError: For other SDK-related errors.
+
+        Example:
+            ```python
+            from aidefense.mcpscan import MCPScan
+
+            client = MCPScan(api_key="YOUR_MANAGEMENT_API_KEY")
+
+            summary = client.get_registry_scan_summary(
+                registry_id="550e8400-e29b-41d4-a716-446655440000"
+            )
+            print(f"Status: {summary.status}")
+            if summary.summary:
+                print(f"Completed: {summary.summary.completed_servers}/{summary.summary.total_servers}")
+            ```
+        """
+        res = self.make_request(
+            method=HttpMethod.GET,
+            path=mcp_registry_scan_summary(registry_id),
+        )
+        result = GetRegistryScanSummaryResponse.model_validate(res)
+        self.config.logger.debug(f"get_registry_scan_summary response: {result}")
+        return result
+
+    def get_registry_scan_summary_by_id(
+            self,
+            registry_id: str,
+            scan_id: str,
+    ) -> GetRegistryScanSummaryResponse:
+        """
+        Get the summary of a specific bulk scan by scan ID.
+
+        This method retrieves the status and summary of a bulk scan identified
+        by its scan_id within the given registry.
+
+        Args:
+            registry_id (str): The unique identifier of the MCP registry (UUID string).
+            scan_id (str): The unique identifier of the bulk scan (UUID string).
+
+        Returns:
+            GetRegistryScanSummaryResponse: Response object containing scan status and summary.
+
+        Raises:
+            ValidationError: If registry_id or scan_id are invalid.
+            ApiError: If the API returns an error response.
+            SDKError: For other SDK-related errors.
+        """
+        res = self.make_request(
+            method=HttpMethod.GET,
+            path=mcp_registry_scan_summary_by_id(registry_id, scan_id),
+        )
+        result = GetRegistryScanSummaryResponse.model_validate(res)
+        self.config.logger.debug(f"get_registry_scan_summary_by_id response: {result}")
+        return result
+
+    def list_registry_scans(
+            self,
+            registry_id: str,
+            limit: int = 25,
+            offset: int = 0,
+            status_filter: Optional[str] = None,
+    ) -> ListMCPServerScansResponse:
+        """
+        List server scans in an MCP registry.
+
+        This method retrieves a paginated list of MCP servers with their scan
+        information for the given registry.
+
+        Args:
+            registry_id (str): The unique identifier of the MCP registry (UUID string).
+            limit (int): Maximum number of results to return (default: 25).
+            offset (int): Pagination offset (default: 0).
+            status_filter (str, optional): Filter by scan status (e.g., COMPLETED, FAILED).
+
+        Returns:
+            ListMCPServerScansResponse: Response object containing:
+                - mcp_servers_with_scan: Servers with scan data and pagination
+
+        Raises:
+            ValidationError: If the registry_id is invalid.
+            ApiError: If the API returns an error response.
+            SDKError: For other SDK-related errors.
+
+        Example:
+            ```python
+            from aidefense.mcpscan import MCPScan
+
+            client = MCPScan(api_key="YOUR_MANAGEMENT_API_KEY")
+
+            response = client.list_registry_scans(
+                registry_id="550e8400-e29b-41d4-a716-446655440000",
+                limit=50,
+                status_filter="COMPLETED"
+            )
+            if response.mcp_servers_with_scan:
+                for server in response.mcp_servers_with_scan.items:
+                    print(f"{server.name}: {server.url}")
+            ```
+        """
+        params: dict = {"limit": limit, "offset": offset}
+        if status_filter:
+            params["status_filter"] = status_filter
+        res = self.make_request(
+            method=HttpMethod.GET,
+            path=mcp_registry_scans_list(registry_id),
+            params=params,
+        )
+        result = ListMCPServerScansResponse.model_validate(res)
+        self.config.logger.debug(f"list_registry_scans response: {result}")
+        return result
+
+    def bulk_register_and_scan(
+            self,
+            request: BulkRegisterAndScanRequest,
+    ) -> BulkRegisterAndScanResponse:
+        """
+        Bulk register staged servers and trigger a scan.
+
+        This method registers multiple staged servers from a registry and
+        immediately initiates a bulk scan of the newly registered servers.
+
+        Args:
+            request (BulkRegisterAndScanRequest): Request object containing:
+                - registry_id: MCP registry identifier (UUID)
+                - shared_auth: Optional shared auth config for all targets
+                - targets: List of BulkRegisterTarget (staged_server_id, use_shared_auth, auth_config)
+
+        Returns:
+            BulkRegisterAndScanResponse: Response object containing:
+                - bulk_scan_id: Unique identifier for the initiated bulk scan (UUID)
+
+        Raises:
+            ValidationError: If the request parameters are invalid.
+            ApiError: If the API returns an error response.
+            SDKError: For other SDK-related errors.
+
+        Example:
+            ```python
+            from aidefense.mcpscan import MCPScan
+            from aidefense.mcpscan.models import (
+                BulkRegisterAndScanRequest,
+                BulkRegisterTarget,
+            )
+
+            client = MCPScan(api_key="YOUR_MANAGEMENT_API_KEY")
+
+            request = BulkRegisterAndScanRequest(
+                registry_id="550e8400-e29b-41d4-a716-446655440000",
+                targets=[
+                    BulkRegisterTarget(staged_server_id="staged-uuid-1"),
+                    BulkRegisterTarget(staged_server_id="staged-uuid-2"),
+                ]
+            )
+            response = client.bulk_register_and_scan(request)
+            print(f"Bulk scan ID: {response.bulk_scan_id}")
+            ```
+        """
+        res = self.make_request(
+            method=HttpMethod.POST,
+            path=mcp_registry_register_scans(request.registry_id),
+            data=request.to_body_dict(),
+        )
+        result = BulkRegisterAndScanResponse.model_validate(res)
+        self.config.logger.debug(f"bulk_register_and_scan response: {result}")
         return result

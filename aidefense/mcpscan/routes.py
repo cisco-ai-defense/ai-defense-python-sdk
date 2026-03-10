@@ -69,6 +69,38 @@ def mcp_server_scan_summary(server_id: str) -> str:
 
 
 # --------------------
+# MCP Registry Routes
+# --------------------
+
+MCP_REGISTRIES = "mcp/registries"
+
+
+def mcp_registry_scan(registry_id: str) -> str:
+    """Route for triggering a bulk scan on an MCP registry."""
+    return f"{MCP_REGISTRIES}/{registry_id}/scan"
+
+
+def mcp_registry_scan_summary(registry_id: str) -> str:
+    """Route for getting the latest bulk scan summary for a registry."""
+    return f"{MCP_REGISTRIES}/{registry_id}/scan/summary"
+
+
+def mcp_registry_scan_summary_by_id(registry_id: str, scan_id: str) -> str:
+    """Route for getting a specific bulk scan summary by scan ID."""
+    return f"{MCP_REGISTRIES}/{registry_id}/scan/{scan_id}/summary"
+
+
+def mcp_registry_scans_list(registry_id: str) -> str:
+    """Route for listing server scans in a registry."""
+    return f"{MCP_REGISTRIES}/{registry_id}/scans"
+
+
+def mcp_registry_register_scans(registry_id: str) -> str:
+    """Route for bulk register and scan of staged servers."""
+    return f"{MCP_REGISTRIES}/{registry_id}/register-scans"
+
+
+# --------------------
 # Resource Connection Routes
 # --------------------
 
