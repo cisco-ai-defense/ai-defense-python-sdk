@@ -131,9 +131,18 @@ class HttpInspectionClient(InspectionClient):
         )
 
         if http_req:
-            ensure_base64_body(convert(http_req))
+            http_req = convert(http_req)
+            ensure_base64_body(http_req)
         if http_res:
-            ensure_base64_body(convert(http_res))
+            http_res = convert(http_res)
+            # The API expects camelCase keys (statusCode, statusString), but
+            # callers often pass the Pythonic snake_case equivalents.  Normalize
+            # so both conventions work without forcing callers to convert.
+            if "status_code" in http_res and "statusCode" not in http_res:
+                http_res["statusCode"] = http_res.pop("status_code")
+            if "status_string" in http_res and "statusString" not in http_res:
+                http_res["statusString"] = http_res.pop("status_string")
+            ensure_base64_body(http_res)
         return self._inspect(
             http_req,
             http_res,
@@ -594,7 +603,6 @@ class HttpInspectionClient(InspectionClient):
             config=config,
         )
         request_dict = self._prepare_request_data(request)
-        self.config.logger.debug(f"Prepared request_dict: {request_dict}")
         # Overwrite config with a serializable version
         request_dict.update(self._prepare_inspection_config(config))
         self._validate_inspection_request(request_dict)
@@ -610,7 +618,6 @@ class HttpInspectionClient(InspectionClient):
             request_id=request_id,
             timeout=timeout,
         )
-        self.config.logger.debug(f"Raw API response: {result}")
         return self._parse_inspect_response(result)
 
     def _prepare_request_data(self, request: HttpInspectRequest) -> Dict[str, Any]:

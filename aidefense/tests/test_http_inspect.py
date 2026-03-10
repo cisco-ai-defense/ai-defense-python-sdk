@@ -413,3 +413,86 @@ def test_timeout_passing(client):
     assert result.is_safe is True
     args, kwargs = client._request_handler.request.call_args
     assert kwargs.get("timeout") == custom_timeout
+
+
+# ===========================================================================
+# AIFW-18631: Accept snake_case status_code in http_res dict
+# ===========================================================================
+
+def _make_http_req():
+    """Helper: minimal http_req dict for tests that focus on http_res."""
+    return {
+        "method": "POST",
+        "body": "eyJ0ZXN0IjogdHJ1ZX0=",
+    }
+
+
+def test_inspect_http_res_snake_case_status_code(client):
+    """inspect() should accept 'status_code' (snake_case) and normalize to 'statusCode'."""
+    import json as _json
+
+    mock_api_response = {"is_safe": True, "classifications": [], "risk_score": 0.1}
+    client._request_handler.request.return_value = mock_api_response
+
+    body_str = _json.dumps({"choices": [{"message": {"content": "Hello"}}]})
+    result = client.inspect(
+        http_req=_make_http_req(),
+        http_res={
+            "status_code": 200,
+            "body": body_str,
+        },
+    )
+
+    assert result.is_safe is True
+    call_args = client._request_handler.request.call_args
+    json_data = call_args.kwargs["json_data"]
+    assert json_data["http_res"]["statusCode"] == 200
+    assert "status_code" not in json_data["http_res"]
+
+
+def test_inspect_http_res_camel_case_still_works(client):
+    """inspect() should still accept 'statusCode' (camelCase) as before."""
+    import json as _json
+
+    mock_api_response = {"is_safe": True, "classifications": [], "risk_score": 0.1}
+    client._request_handler.request.return_value = mock_api_response
+
+    body_str = _json.dumps({"choices": [{"message": {"content": "Hello"}}]})
+    result = client.inspect(
+        http_req=_make_http_req(),
+        http_res={
+            "statusCode": 200,
+            "body": body_str,
+        },
+    )
+
+    assert result.is_safe is True
+    call_args = client._request_handler.request.call_args
+    json_data = call_args.kwargs["json_data"]
+    assert json_data["http_res"]["statusCode"] == 200
+
+
+def test_inspect_http_res_snake_case_status_string(client):
+    """inspect() should accept 'status_string' and normalize to 'statusString'."""
+    import json as _json
+
+    mock_api_response = {"is_safe": True, "classifications": [], "risk_score": 0.1}
+    client._request_handler.request.return_value = mock_api_response
+
+    body_str = _json.dumps({"choices": [{"message": {"content": "Hello"}}]})
+    result = client.inspect(
+        http_req=_make_http_req(),
+        http_res={
+            "status_code": 200,
+            "status_string": "OK",
+            "body": body_str,
+        },
+    )
+
+    assert result.is_safe is True
+    call_args = client._request_handler.request.call_args
+    json_data = call_args.kwargs["json_data"]
+    assert json_data["http_res"]["statusCode"] == 200
+    assert json_data["http_res"]["statusString"] == "OK"
+    assert "status_code" not in json_data["http_res"]
+    assert "status_string" not in json_data["http_res"]

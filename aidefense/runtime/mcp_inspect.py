@@ -390,7 +390,6 @@ class MCPInspectionClient(InspectionClient):
             request_id=request_id,
             timeout=timeout,
         )
-        self.config.logger.debug(f"Raw API response: {result}")
         return self._parse_mcp_inspect_response(result)
 
     def validate_mcp_message(self, request_dict: Dict[str, Any]) -> None:
@@ -548,10 +547,6 @@ class MCPInspectionClient(InspectionClient):
         Returns:
             MCPInspectResponse: The parsed MCP inspection response object.
         """
-        self.config.logger.debug(
-            f"_parse_mcp_inspect_response called | response_data: {response_data}"
-        )
-
         jsonrpc = response_data.get("jsonrpc", "2.0")
 
         # Extract ID - can be string or int
