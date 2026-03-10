@@ -1,0 +1,57 @@
+# =============================================================================
+# AWS Bedrock Configuration
+# =============================================================================
+# WARNING: Never hardcode secrets. Use .env file and ${VAR} syntax.
+# =============================================================================
+
+provider: bedrock
+
+bedrock:
+  # Model ID - see AWS Bedrock console for available models
+  model_id: anthropic.claude-3-haiku-20240307-v1:0
+  region: us-east-1
+  
+  auth:
+    # Authentication method (choose one):
+    # - session_token (default): STS temporary credentials - most secure for production
+    # - default: boto3 credential chain (env vars, ~/.aws/credentials, IAM role, etc.)
+    # - profile: Named AWS profile from ~/.aws/credentials
+    # - iam_role: Assume an IAM role via STS
+    # - access_key: Static access keys (NOT recommended for production)
+    
+    # Change to 'session_token' for explicit STS credentials, or 'default' for boto3 chain
+    method: default
+    
+    # ─────────────────────────────────────────────────────────────────────────
+    # For method: session_token
+    # Use STS temporary credentials - set these in your .env file
+    # ─────────────────────────────────────────────────────────────────────────
+    # access_key_id: ${AWS_ACCESS_KEY_ID}
+    # secret_access_key: ${AWS_SECRET_ACCESS_KEY}
+    # session_token: ${AWS_SESSION_TOKEN}
+    
+    # ─────────────────────────────────────────────────────────────────────────
+    # For method: profile
+    # Uses named profile from ~/.aws/credentials
+    # ─────────────────────────────────────────────────────────────────────────
+    # profile: default
+    
+    # ─────────────────────────────────────────────────────────────────────────
+    # For method: iam_role
+    # Assumes an IAM role via STS AssumeRole
+    # ─────────────────────────────────────────────────────────────────────────
+    # role_arn: arn:aws:iam::123456789012:role/BedrockAccessRole
+    # external_id: optional-external-id  # Optional, for cross-account access
+    
+    # ─────────────────────────────────────────────────────────────────────────
+    # For method: access_key (NOT RECOMMENDED)
+    # Static access keys - use session_token or iam_role instead
+    # ─────────────────────────────────────────────────────────────────────────
+    # access_key_id: ${AWS_ACCESS_KEY_ID}
+    # secret_access_key: ${AWS_SECRET_ACCESS_KEY}
+
+# Common LLM settings
+llm_settings:
+  temperature: 0.7
+  max_tokens: 4096
+
