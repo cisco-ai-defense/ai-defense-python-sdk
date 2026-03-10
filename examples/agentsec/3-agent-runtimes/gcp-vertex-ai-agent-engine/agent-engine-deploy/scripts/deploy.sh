@@ -123,12 +123,12 @@ ENV_VARS_JSON="${ENV_VARS_JSON}\"GOOGLE_GENAI_USE_VERTEXAI\": \"True\","
 # SDK to use in the deployed container.
 # Priority: GOOGLE_AI_SDK_DEPLOYMENT > GOOGLE_AI_SDK > google_genai
 GOOGLE_AI_SDK="${GOOGLE_AI_SDK_DEPLOYMENT:-${GOOGLE_AI_SDK:-google_genai}}"
-ENV_VARS_JSON="${ENV_VARS_JSON}\"GOOGLE_AI_SDK\": \"${GOOGLE_AI_SDK}\","
+ENV_VARS_JSON="${ENV_VARS_JSON}\"GOOGLE_AI_SDK\": \"${GOOGLE_AI_SDK}\""
 # Note: agentsec configuration (integration modes, gateway URLs, API keys, etc.)
 # is now loaded from agentsec.yaml at runtime. Only secrets referenced by the YAML
 # via ${VAR_NAME} and non-agentsec env vars need to be passed here.
 if [ -n "${AI_DEFENSE_API_MODE_LLM_API_KEY:-}" ]; then
-    ENV_VARS_JSON="${ENV_VARS_JSON}\"AI_DEFENSE_API_MODE_LLM_API_KEY\": \"${AI_DEFENSE_API_MODE_LLM_API_KEY}\""
+    ENV_VARS_JSON="${ENV_VARS_JSON}, \"AI_DEFENSE_API_MODE_LLM_API_KEY\": \"${AI_DEFENSE_API_MODE_LLM_API_KEY}\""
 fi
 if [ -n "${AI_DEFENSE_API_MODE_MCP_API_KEY:-}" ]; then
     ENV_VARS_JSON="${ENV_VARS_JSON}, \"AI_DEFENSE_API_MODE_MCP_API_KEY\": \"${AI_DEFENSE_API_MODE_MCP_API_KEY}\""
