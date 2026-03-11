@@ -12,6 +12,30 @@ The examples are organized into the following structure:
 
     examples/
     ├── README.md
+    ├── agentsec/                # Runtime protection examples
+    │   ├── agentsec.yaml        # Configuration (modes, gateways, timeouts)
+    │   ├── .env.example         # Template for environment variables
+    │   ├── 1-simple/            # Simple standalone examples
+    │   │   ├── basic_protection.py
+    │   │   ├── openai_example.py
+    │   │   ├── cohere_example.py
+    │   │   ├── mistral_example.py
+    │   │   ├── streaming_example.py
+    │   │   ├── mcp_example.py
+    │   │   ├── gateway_mode_example.py
+    │   │   ├── multi_gateway_example.py
+    │   │   └── skip_inspection_example.py
+    │   ├── 2-agent-frameworks/  # Agent framework integrations
+    │   │   ├── strands-agent/
+    │   │   ├── langchain-agent/
+    │   │   ├── langgraph-agent/
+    │   │   ├── crewai-agent/
+    │   │   ├── autogen-agent/
+    │   │   └── openai-agent/
+    │   └── 3-agent-runtimes/    # Cloud deployment examples
+    │       ├── amazon-bedrock-agentcore/
+    │       ├── gcp-vertex-ai-agent-engine/
+    │       └── microsoft-foundry/
     ├── chat/                    # Chat inspection examples
     │   ├── chat_inspect_conversation.py
     │   ├── chat_inspect_multiple_clients.py
@@ -50,17 +74,146 @@ The examples are organized into the following structure:
         ├── advanced_usage.py
         └── custom_configuration.py
 
-MCP Inspection Examples
-------------------------
+Runtime Protection Examples
+--------------------------
 
-The MCP (Model Context Protocol) Inspection API allows you to inspect JSON-RPC 2.0 messages
-for security, privacy, and safety. See ``examples/mcp/`` for runnable examples.
+Runtime protection automatically patches LLM and MCP clients to inspect all interactions.
+See the `agentsec examples README <https://github.com/cisco/ai-defense-python-sdk/tree/main/examples/agentsec>`_ for end-to-end walkthroughs.
 
-MCP Server Scanning Examples
------------------------------
+YAML Configuration (Recommended)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The MCP Server Scanning API allows you to scan MCP servers for security threats and manage
-policies and resource connections. See ``examples/mcpscan/`` for runnable examples.
+Use an ``agentsec.yaml`` file for production-grade configuration. The YAML can reference
+environment variables using ``${VAR_NAME}`` syntax -- how you provision those variables
+(shell exports, secrets manager, CI/CD injection, ``.env`` file, etc.) is up to you.
+
+.. code-block:: python
+
+    from aidefense.runtime import agentsec
+    agentsec.protect(config="agentsec.yaml")
+
+    # Import LLM client AFTER protect() -- it's automatically patched
+    from openai import OpenAI
+    client = OpenAI()
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": "Hello!"}]
+    )
+
+API Mode (Programmatic)
+^^^^^^^^^^^^^^^^^^^^^^^
+
+In API mode, the SDK inspects requests via the AI Defense API, then calls the LLM provider directly.
+
+.. code-block:: python
+
+    import os
+    from aidefense.runtime import agentsec
+
+    agentsec.protect(
+        llm_integration_mode="api",
+        api_mode={
+            "llm": {
+                "mode": "enforce",
+                "endpoint": os.environ["AI_DEFENSE_API_MODE_LLM_ENDPOINT"],
+                "api_key": os.environ["AI_DEFENSE_API_MODE_LLM_API_KEY"],
+            }
+        },
+    )
+
+    from openai import OpenAI
+    client = OpenAI()
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": "Hello!"}]
+    )
+
+Gateway Mode (Programmatic)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Route all traffic through the AI Defense Gateway:
+
+.. code-block:: python
+
+    import os
+    from aidefense.runtime import agentsec
+
+    agentsec.protect(
+        llm_integration_mode="gateway",
+        gateway_mode={
+            "llm_gateways": {
+                "openai-1": {
+                    "gateway_url": "https://gateway.aidefense.cisco.com/tenant/conn",
+                    "gateway_api_key": os.environ["OPENAI_API_KEY"],
+                    "auth_mode": "api_key",
+                    "provider": "openai",
+                    "default": True,
+                },
+            },
+        },
+    )
+
+    from openai import OpenAI
+    client = OpenAI()
+    response = client.chat.completions.create(...)
+
+Skip Inspection
+^^^^^^^^^^^^^^
+
+Exclude specific calls from inspection:
+
+.. code-block:: python
+
+    from aidefense.runtime.agentsec import skip_inspection, no_inspection
+
+    # Context manager
+    with skip_inspection():
+        response = client.chat.completions.create(...)
+
+    # Decorator
+    @no_inspection()
+    def health_check():
+        return client.chat.completions.create(...)
+
+Supported Clients
+^^^^^^^^^^^^^^^^^
+
+agentsec automatically patches the following LLM client libraries:
+
+- **OpenAI** (``openai``) -- ``chat.completions.create()``
+- **Azure OpenAI** (``openai``) -- ``chat.completions.create()`` with Azure endpoint
+- **AWS Bedrock** (``boto3``) -- ``converse()``, ``converse_stream()``
+- **Google Vertex AI** (``google-cloud-aiplatform``) -- ``generate_content()``, ``generate_content_async()``
+- **Google GenAI** (``google-genai``) -- ``generate_content()``, ``generate_content_async()``
+- **Cohere** (``cohere``) -- ``V2Client.chat()``, ``V2Client.chat_stream()``
+- **Mistral AI** (``mistralai``) -- ``Chat.complete()``, ``Chat.stream()``
+- **LiteLLM** (``litellm``) -- ``completion()``, ``acompletion()``
+- **MCP** (``mcp``) -- ``ClientSession.call_tool()``, ``ClientSession.list_tools()``
+
+Agent Framework Integration
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The SDK works with popular agent frameworks:
+
+- AWS Strands
+- LangChain / LangGraph
+- CrewAI
+- AutoGen
+- OpenAI Agents SDK
+
+See ``examples/agentsec/2-agent-frameworks/`` for complete examples.
+
+Agent Runtime Deployment
+^^^^^^^^^^^^^^^^^^^^^^^
+
+The SDK includes cloud deployment examples for:
+
+- AWS Bedrock AgentCore
+- GCP Vertex AI Agent Engine
+- Microsoft Azure AI Foundry
+
+See ``examples/agentsec/3-agent-runtimes/`` for deployment walkthroughs.
 
 Chat Inspection Examples
 -----------------------
