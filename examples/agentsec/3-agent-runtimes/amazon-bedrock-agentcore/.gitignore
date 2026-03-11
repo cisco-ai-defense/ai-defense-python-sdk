@@ -1,0 +1,27 @@
+# =============================================================================
+# Generated at deploy time - DO NOT COMMIT
+# =============================================================================
+# These directories are copied/vendored by deploy scripts and should not be
+# checked into version control.
+
+# Vendored SDK (copied by container-deploy/scripts/deploy.sh)
+aidefense/
+
+# AgentCore CLI generated files
+.bedrock_agentcore/
+.bedrock_agentcore.yaml
+
+# Dockerfile copied to root by container-deploy/scripts/deploy.sh
+Dockerfile
+
+# .env copied to root by deploy scripts
+.env
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+
+# Local environment
+.env.local

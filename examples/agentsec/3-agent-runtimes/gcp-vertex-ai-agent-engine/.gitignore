@@ -1,0 +1,18 @@
+# =============================================================================
+# Generated at deploy time - DO NOT COMMIT
+# =============================================================================
+# These directories are copied/vendored by deploy scripts and should not be
+# checked into version control.
+
+# Vendored SDK (temporary build artifact, cleaned up after deploy)
+agentsec_package/
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+
+# Local environment
+.env
+.env.local
