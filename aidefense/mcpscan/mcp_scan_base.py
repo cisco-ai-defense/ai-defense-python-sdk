@@ -31,12 +31,15 @@ from aidefense.mcpscan.models import (
     GetMCPServerScanSummaryResponse,
     CapabilityType,
     GetMCPServerResponse,
+    ListMCPServersRequest,
     ListMCPServersResponse,
     UpdateAuthConfigRequest,
     UpdateAuthConfigResponse,
     OnboardingStatus,
     SeverityLevel,
     TransportType,
+    ServersSortBy,
+    SortOrder,
 )
 from aidefense.mcpscan.routes import (
     mcp_scan_start,
@@ -603,6 +606,9 @@ class MCPScan(BaseClient):
             onboarding_status: Optional[List[OnboardingStatus]] = None,
             transport_type: Optional[List[TransportType]] = None,
             severity: Optional[List[SeverityLevel]] = None,
+            registry_id: Optional[str] = None,
+            sort_by: Optional[ServersSortBy] = None,
+            sort_order: Optional[SortOrder] = None,
     ) -> ListMCPServersResponse:
         """
         List registered MCP servers with optional filtering.
@@ -661,23 +667,31 @@ class MCPScan(BaseClient):
             )
             ```
         """
-        params = {
-            "limit": limit,
-            "offset": offset,
-        }
+
+        request = ListMCPServersRequest(
+            limit=limit,
+            offset=offset,
+        )
+
         if server_name_substr:
-            params["server_name_substr"] = server_name_substr
+            request.server_name_substr = server_name_substr
         if onboarding_status:
-            params["onboarding_status"] = [status.value for status in onboarding_status]
+            request.onboarding_status = onboarding_status
         if transport_type:
-            params["transport_type"] = [t.value for t in transport_type]
+            request.transport_type = transport_type
         if severity:
-            params["severity"] = [s.value for s in severity]
+            request.severity = severity
+        if registry_id:
+            request.registry_id = registry_id
+        if sort_by:
+            request.sort_by = sort_by
+        if sort_order:
+            request.sort_order = sort_order
 
         res = self.make_request(
             method=HttpMethod.GET,
             path=mcp_servers_list(),
-            params=params,
+            params=request.to_params(),
         )
         result = ListMCPServersResponse.parse_obj(res)
         self.config.logger.debug(f"Listed MCP servers: {result}")
