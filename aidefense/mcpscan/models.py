@@ -1120,6 +1120,20 @@ class FilterResourceConnectionsResponse(AIDefenseModel):
     """
     connections: Optional[ResourceConnections] = Field(None, description="Filtered connections")
 
+    @model_validator(mode='before')
+    @classmethod
+    def _normalize_connections(cls, values):
+        """Handle API returning connections as a bare list instead of a wrapper."""
+        if not isinstance(values, dict):
+            return values
+        conns = values.get("connections")
+        if isinstance(conns, list):
+            values["connections"] = {
+                "connections": conns,
+                "paging": values.get("paging"),
+            }
+        return values
+
 
 class FilterResourcesByConnectionIDRequest(AIDefenseModel):
     """Request to filter resources by connection ID.

@@ -16,7 +16,7 @@
 
 """Connection management client for the AI Defense Management API."""
 
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 
 from .auth import ManagementAuth
 from .base_client import BaseClient
@@ -60,6 +60,15 @@ class ConnectionManagementClient(BaseClient):
         """
         super().__init__(auth, config, request_handler)
 
+    def _warn_missing_timestamps(self, connections: List[Connection]) -> None:
+        """Log a warning when direct connection queries return null timestamps."""
+        for conn in connections:
+            if conn.created_at is None or conn.updated_at is None:
+                self.config.logger.warning(
+                    f"Connection '{conn.connection_id}' has null "
+                    f"created_at/updated_at — unexpected for direct queries"
+                )
+
     def list_connections(self, request: ListConnectionsRequest) -> Connections:
         """
         List connections.
@@ -96,6 +105,7 @@ class ConnectionManagementClient(BaseClient):
         connections = self._parse_response(
             Connections, response.get("connections", {}), "list connections response"
         )
+        self._warn_missing_timestamps(connections.items)
         return connections
 
     def create_connection(
@@ -187,6 +197,7 @@ class ConnectionManagementClient(BaseClient):
         connection = self._parse_response(
             Connection, response.get("connection", {}), "get connection response"
         )
+        self._warn_missing_timestamps([connection])
         return connection
 
     def delete_connection(self, connection_id: str) -> None:

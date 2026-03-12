@@ -61,6 +61,13 @@ class BaseConfig(ABC):
         "ap-northeast-1": "https://ap.api.aidefense.security.cisco.com",
     }
 
+    # Backward-compat: map legacy short codes to canonical AWS region names.
+    _SHORT_REGION_MAP = {
+        "us": "us-west-2",
+        "eu": "eu-central-1",
+        "apj": "ap-northeast-1",
+    }
+
     def __new__(cls, *args, **kwargs):
         if cls is BaseConfig:
             raise TypeError("BaseConfig is abstract and cannot be instantiated directly")
@@ -76,14 +83,24 @@ class BaseConfig(ABC):
         return cls._instances[cls]
 
     def __init__(self, *args, **kwargs):
-        # On the first call, _initialized doesn't exist yet. Direct access would raise AttributeError
+        # Double-checked locking: fast path avoids the lock for already-init'd
+        # singletons; the lock prevents concurrent first-time callers from both
+        # running _initialize on the same instance.
         if not getattr(self, "_initialized", False):
-            self._initialized = True
-            self._initialize(*args, **kwargs)
+            with self._lock:
+                if not getattr(self, "_initialized", False):
+                    try:
+                        self._initialize(*args, **kwargs)
+                        self._initialized = True
+                    except Exception:
+                        self._instances.pop(type(self), None)
+                        raise
 
     def _set_region(self, region: str):
         if not isinstance(region, str):
             region = self.DEFAULT_REGION
+
+        region = self._SHORT_REGION_MAP.get(region, region)
 
         if region not in self.RUNTIME_REGION_ENDPOINTS or region not in self.MANAGEMENT_REGION_ENDPOINTS:
             raise ValueError(f"Invalid region: {region}")
@@ -106,7 +123,7 @@ class BaseConfig(ABC):
         else:
             self.runtime_base_url = self.RUNTIME_REGION_ENDPOINTS.get(self.region)
 
-        self.runtime_base_url.rstrip("/")
+        self.runtime_base_url = self.runtime_base_url.rstrip("/")
 
     def _set_management_base_url(self, management_base_url: str):
         if management_base_url and isinstance(management_base_url, str):
@@ -117,7 +134,7 @@ class BaseConfig(ABC):
         else:
             self.management_base_url = self.MANAGEMENT_REGION_ENDPOINTS.get(self.region)
 
-        self.management_base_url.rstrip("/")
+        self.management_base_url = self.management_base_url.rstrip("/")
 
     def _set_logger(self, logger, logger_params: dict):
         if logger:

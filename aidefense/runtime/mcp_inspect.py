@@ -187,6 +187,9 @@ class MCPInspectionClient(InspectionClient):
                 print("Potentially dangerous tool call detected!")
             ```
         """
+        if not tool_name or not isinstance(tool_name, str) or not tool_name.strip():
+            raise ValidationError("'tool_name' must be a non-empty string.")
+
         self.config.logger.debug(
             f"Inspecting MCP tool call: {tool_name} | Arguments: {arguments}, Message ID: {message_id}, Request ID: {request_id}"
         )
@@ -232,6 +235,9 @@ class MCPInspectionClient(InspectionClient):
                 print("Sensitive resource access detected!")
             ```
         """
+        if not uri or not isinstance(uri, str) or not uri.strip():
+            raise ValidationError("'uri' must be a non-empty string.")
+
         self.config.logger.debug(
             f"Inspecting MCP resource read: {uri} | Message ID: {message_id}, Request ID: {request_id}"
         )
@@ -264,6 +270,9 @@ class MCPInspectionClient(InspectionClient):
         Returns:
             MCPInspectResponse: Inspection results wrapped in JSON-RPC 2.0 format.
         """
+        if not prompt_name or not isinstance(prompt_name, str) or not prompt_name.strip():
+            raise ValidationError("'prompt_name' must be a non-empty string.")
+
         self.config.logger.debug(
             f"Inspecting MCP prompt get: {prompt_name} | Arguments: {arguments}, Message ID: {message_id}, Request ID: {request_id}"
         )
@@ -569,9 +578,21 @@ class MCPInspectionClient(InspectionClient):
         # Parse the result (InspectResponse)
         result_data = response_data.get("result", response_data)
 
-        # If result is directly the inspect response (not wrapped in "result" key)
-        if "result" in response_data and isinstance(response_data["result"], dict):
-            result_data = response_data["result"]
+        if not isinstance(result_data, dict):
+            self.config.logger.error(
+                f"MCP inspect response 'result' is not a dict: {type(result_data)}"
+            )
+            raise ValidationError(
+                "MCP inspect response 'result' must be a dict; "
+                "cannot safely interpret a non-dict payload."
+            )
+
+        # The API may double-nest the inspect payload under result.result.
+        # Unwrap until we find the actual inspect payload (contains "is_safe").
+        if "is_safe" not in result_data:
+            inner = result_data.get("result")
+            if isinstance(inner, dict):
+                result_data = inner
 
         # Parse the InspectResponse from result_data
         inspect_result = self._parse_inspect_response(result_data)
