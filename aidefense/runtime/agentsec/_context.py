@@ -80,7 +80,16 @@ def set_inspection_context(
         metadata: Request metadata to store (agent name, role, session_id, etc.)
         decision: The inspection decision
         done: Whether inspection has been completed for this request
+
+    When *done* is explicitly set to ``False`` (start of a new call) and no
+    new *metadata*/*decision* are provided, the context is fully reset so
+    that stale values from a previous call cannot leak into the new one.
     """
+    if done is False and metadata is None and decision is None:
+        _inspection_metadata.set({})
+        _inspection_decision.set(None)
+        _inspection_done.set(False)
+        return
     if metadata is not None:
         _inspection_metadata.set(metadata)
     if decision is not None:

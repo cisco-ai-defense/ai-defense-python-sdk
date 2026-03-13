@@ -271,7 +271,10 @@ def _validate_gateway_entries(
     if llm_integration_mode == "gateway":
         for gw_name, gw_cfg in llm_gateways.items():
             if not isinstance(gw_cfg, dict):
-                continue
+                raise ConfigurationError(
+                    f"gateway_mode.llm_gateways.{gw_name}: "
+                    f"expected a mapping (dict), got {type(gw_cfg).__name__}"
+                )
             gw_url = gw_cfg.get("gateway_url", "")
             if not gw_url or not isinstance(gw_url, str) or not gw_url.strip():
                 raise ConfigurationError(
@@ -289,7 +292,10 @@ def _validate_gateway_entries(
     if mcp_integration_mode == "gateway":
         for gw_name, gw_cfg in mcp_gateways.items():
             if not isinstance(gw_cfg, dict):
-                continue
+                raise ConfigurationError(
+                    f"gateway_mode.mcp_gateways.{gw_name}: "
+                    f"expected a mapping (dict), got {type(gw_cfg).__name__}"
+                )
             gw_url = gw_cfg.get("gateway_url", "")
             if not gw_url or not isinstance(gw_url, str) or not gw_url.strip():
                 raise ConfigurationError(

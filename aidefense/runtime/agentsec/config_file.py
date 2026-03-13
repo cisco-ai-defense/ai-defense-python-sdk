@@ -22,6 +22,7 @@ _ENV_VAR_PATTERN = re.compile(r"\$\{([^}]+)\}")
 
 # Known top-level keys in agentsec.yaml
 _KNOWN_TOP_KEYS = {
+    "enabled",
     "llm_integration_mode",
     "mcp_integration_mode",
     "gateway_mode",

@@ -227,6 +227,23 @@ def _dict_to_cohere_response(data: Dict[str, Any]) -> Any:
     )
 
 
+def _build_cohere_gateway_auth_headers(gw_settings, gateway_api_key: Optional[str]) -> Dict[str, str]:
+    """Build gateway auth headers for Cohere, backward-compatible by default.
+
+    Cohere's legacy behaviour is ``Authorization: Bearer``.  The header is
+    only overridden when the user explicitly sets ``api_key_header`` to
+    something other than the GatewaySettings default (``"api-key"``).
+    """
+    headers: Dict[str, str] = {"Content-Type": "application/json"}
+    api_key_header = getattr(gw_settings, "api_key_header", "api-key")
+    key_value = gateway_api_key or ""
+    if api_key_header != "api-key":
+        headers[api_key_header] = key_value
+    else:
+        headers["Authorization"] = f"Bearer {key_value}"
+    return headers
+
+
 def _handle_gateway_call_sync(
     kwargs: Dict[str, Any],
     normalized: List[Dict[str, Any]],
@@ -256,15 +273,13 @@ def _handle_gateway_call_sync(
     full_url = gateway_url.rstrip("/")
     if "/chat" not in full_url and "/v2" not in full_url:
         full_url = f"{full_url}/v2/chat"
+    auth_headers = _build_cohere_gateway_auth_headers(gw_settings, gateway_api_key)
     try:
         with httpx.Client(timeout=float(gw_settings.timeout)) as client:
             response = client.post(
                 full_url,
                 json=request_body,
-                headers={
-                    "Authorization": f"Bearer {gateway_api_key}",
-                    "Content-Type": "application/json",
-                },
+                headers=auth_headers,
             )
             response.raise_for_status()
             response_data = response.json()
@@ -319,15 +334,13 @@ async def _handle_gateway_call_async(
     full_url = gateway_url.rstrip("/")
     if "/chat" not in full_url and "/v2" not in full_url:
         full_url = f"{full_url}/v2/chat"
+    auth_headers = _build_cohere_gateway_auth_headers(gw_settings, gateway_api_key)
     try:
         async with httpx.AsyncClient(timeout=float(gw_settings.timeout)) as client:
             response = await client.post(
                 full_url,
                 json=request_body,
-                headers={
-                    "Authorization": f"Bearer {gateway_api_key}",
-                    "Content-Type": "application/json",
-                },
+                headers=auth_headers,
             )
             response.raise_for_status()
             response_data = response.json()

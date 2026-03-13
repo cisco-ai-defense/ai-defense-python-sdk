@@ -659,6 +659,27 @@ def _wrap_chat_completions_create(wrapped, instance, args, kwargs):
     return response
 
 
+def _build_gateway_auth_headers(gw_settings, provider: str, gateway_api_key: Optional[str]) -> Dict[str, str]:
+    """Build gateway authentication headers, backward-compatible by default.
+
+    * Azure OpenAI always sends the key via ``api_key_header`` (whose
+      dataclass default ``"api-key"`` already matches the legacy behaviour).
+    * Vanilla OpenAI defaults to ``Authorization: Bearer``; the header is
+      only overridden when the user explicitly sets ``api_key_header`` to
+      something other than the GatewaySettings default (``"api-key"``).
+    """
+    headers: Dict[str, str] = {"Content-Type": "application/json"}
+    api_key_header = getattr(gw_settings, "api_key_header", "api-key")
+    key_value = gateway_api_key or ""
+    if provider == "azure_openai":
+        headers[api_key_header] = key_value
+    elif api_key_header != "api-key":
+        headers[api_key_header] = key_value
+    else:
+        headers["Authorization"] = f"Bearer {key_value}"
+    return headers
+
+
 def _handle_gateway_call_sync(kwargs: Dict[str, Any], stream: bool, normalized: List[Dict], metadata: Dict, provider: str = "openai", gw_settings=None, azure_api_version: Optional[str] = None, azure_deployment_name: Optional[str] = None) -> Any:
     """
     Handle synchronous gateway call.
@@ -708,18 +729,7 @@ def _handle_gateway_call_sync(kwargs: Dict[str, Any], stream: bool, normalized: 
             if 'chat/completions' not in full_url:
                 full_url = full_url + '/v1/chat/completions'
         
-        # Build auth headers based on provider
-        if provider == "azure_openai":
-            # Azure gateway uses api-key header
-            auth_headers = {
-                "api-key": gateway_api_key or "",
-                "Content-Type": "application/json",
-            }
-        else:
-            auth_headers = {
-                "Authorization": f"Bearer {gateway_api_key}",
-                "Content-Type": "application/json",
-            }
+        auth_headers = _build_gateway_auth_headers(gw_settings, provider, gateway_api_key)
         
         logger.debug(f"[GATEWAY] Sending request to {provider} gateway: {full_url}")
         logger.debug(f"[GATEWAY] Request body model={request_body.get('model')}, keys={list(request_body.keys())}")
@@ -1022,18 +1032,7 @@ async def _handle_gateway_call_async(kwargs: Dict[str, Any], stream: bool, norma
             if 'chat/completions' not in full_url:
                 full_url = full_url + '/v1/chat/completions'
         
-        # Build auth headers based on provider
-        if provider == "azure_openai":
-            # Azure gateway uses api-key header
-            auth_headers = {
-                "api-key": gateway_api_key or "",
-                "Content-Type": "application/json",
-            }
-        else:
-            auth_headers = {
-                "Authorization": f"Bearer {gateway_api_key}",
-                "Content-Type": "application/json",
-            }
+        auth_headers = _build_gateway_auth_headers(gw_settings, provider, gateway_api_key)
         
         logger.debug(f"[GATEWAY] Sending async request to {provider} gateway: {full_url}")
         logger.debug(f"[GATEWAY] Request body model={request_body.get('model')}, keys={list(request_body.keys())}")
