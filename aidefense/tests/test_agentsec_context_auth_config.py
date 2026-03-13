@@ -15,6 +15,8 @@ from dataclasses import dataclass
 from typing import Optional
 from unittest.mock import patch
 
+import importlib
+
 import pytest
 
 from aidefense.runtime.agentsec._context import (
@@ -25,6 +27,9 @@ from aidefense.runtime.agentsec._context import (
 from aidefense.runtime.agentsec.decision import Decision
 from aidefense.runtime.agentsec.exceptions import ConfigurationError
 from aidefense.runtime.agentsec.gateway_settings import GatewaySettings
+
+_has_wrapt = importlib.util.find_spec("wrapt") is not None
+_has_yaml = importlib.util.find_spec("yaml") is not None
 
 
 # ── Inspection context leak fix ──────────────────────────────────────
@@ -79,6 +84,9 @@ class TestInspectionContextReset:
 # ── OpenAI gateway auth header builder ───────────────────────────────
 
 
+@pytest.mark.skipif(
+    not _has_wrapt, reason="wrapt not installed (agentsec extras required)"
+)
 class TestOpenAIGatewayAuthHeaders:
     """_build_gateway_auth_headers backward compat and custom header."""
 
@@ -119,6 +127,9 @@ class TestOpenAIGatewayAuthHeaders:
 # ── Cohere gateway auth header builder ───────────────────────────────
 
 
+@pytest.mark.skipif(
+    not _has_wrapt, reason="wrapt not installed (agentsec extras required)"
+)
 class TestCohereGatewayAuthHeaders:
     """_build_cohere_gateway_auth_headers backward compat and custom header."""
 
@@ -149,6 +160,9 @@ class TestCohereGatewayAuthHeaders:
 # ── config_file: 'enabled' in _KNOWN_TOP_KEYS ───────────────────────
 
 
+@pytest.mark.skipif(
+    not _has_yaml, reason="PyYAML not installed (agentsec extras required)"
+)
 class TestConfigFileEnabledKey:
     """The 'enabled' top-level key should not trigger an unknown-key warning."""
 
