@@ -1,0 +1,317 @@
+# =============================================================================
+# agentsec.yaml — Configuration for Cisco AI Defense agentsec SDK
+# =============================================================================
+#
+# This file configures the agentsec SDK for the preview environment.
+# Use ${VAR_NAME} to reference secrets from .env or shell environment.
+#
+# Load this file via:
+#   agentsec.protect(config="agentsec.yaml")
+#
+# Values set via protect() kwargs override values in this file.
+# Merge order (highest priority wins):
+#   protect() kwargs  >  YAML file  >  hardcoded defaults
+
+# -- Integration modes -------------------------------------------------------
+# Choose "api" (side-channel inspection) or "gateway" (proxy-based inspection)
+llm_integration_mode: gateway       # gateway | api
+mcp_integration_mode: gateway       # gateway | api
+
+# -- Connection pool settings -------------------------------------------------
+# Controls the HTTP connection pool used for Cisco AI Defense API calls.
+# pool_max_connections: 100       # Max simultaneous connections (default: 100)
+# pool_max_keepalive: 20          # Max idle keep-alive connections (default: 20)
+
+# -- Gateway mode configuration ----------------------------------------------
+# Used when llm_integration_mode or mcp_integration_mode is "gateway".
+gateway_mode:
+  # Gateway on/off switches: "on" routes through the gateway, "off" disables.
+  # Enforcement is handled server-side by the Cisco AI Defense Gateway.
+  # NOTE: Values MUST be quoted — bare on/off are YAML booleans (True/False).
+  llm_mode: "on"                    # "on" | "off" (default: "on")
+  mcp_mode: "on"                    # "on" | "off" (default: "on")
+
+  # LLM defaults: inherited by all LLM gateways unless overridden
+  llm_defaults:
+    fail_open: true
+    timeout: 60                     # seconds (gateway proxies to LLM, needs time for inference)
+    retry:
+      total: 3
+      backoff_factor: 0.5
+      status_codes: [429, 500, 502, 503, 504]
+
+  # MCP defaults: inherited by all MCP gateways unless overridden
+  mcp_defaults:
+    fail_open: true
+    timeout: 10                     # MCP tool calls are typically slower
+    retry:
+      total: 2
+      backoff_factor: 1.0
+      status_codes: [429, 500, 502, 503, 504]
+
+  # LLM Gateways
+  #
+  # Each entry is a named gateway with full, explicit configuration.
+  # Set "default: true" to make it the auto-selected gateway for that
+  # provider (used when no named gateway is explicitly activated via
+  # agentsec.gateway("name")).
+  #
+  # Named gateway usage:
+  #   with agentsec.gateway("bedrock-2"):
+  #       response = bedrock_client.invoke_model(...)
+  llm_gateways:
+    openai-1:
+      gateway_url: ${OPENAI_1_GATEWAY_URL}
+      gateway_api_key: ${OPENAI_API_KEY}
+      auth_mode: api_key
+      provider: openai
+      default: true
+
+    azure-openai-1:
+      gateway_url: ${AZURE_OPENAI_1_GATEWAY_URL}
+      gateway_api_key: ${AZURE_OPENAI_API_KEY}
+      auth_mode: api_key
+      provider: azure_openai
+      default: true
+
+    vertexai-1:
+      gateway_url: ${VERTEXAI_1_GATEWAY_URL}
+      auth_mode: google_adc         # uses Google ADC, no api_key needed
+      provider: vertexai
+      default: true
+      sdk: ${GOOGLE_AI_SDK}         # "google_genai" (ChatGoogleGenerativeAI) or "vertexai" (ChatVertexAI)
+      # google_genai patcher falls back to vertexai gateway
+      # Per-gateway GCP ADC credentials (all optional, fall back to
+      # default google.auth.default() when omitted):
+      gcp_project: ${VERTEXAI_1_GCP_PROJECT}
+      gcp_location: ${VERTEXAI_1_GCP_LOCATION}
+      # -- OR explicit SA key file (uncomment): --
+      # gcp_service_account_key_file: ${VERTEXAI_1_SA_KEY_FILE}
+      # -- OR SA impersonation (uncomment): --
+      # gcp_target_service_account: my-sa@project.iam.gserviceaccount.com
+
+    bedrock-1:
+      gateway_url: ${BEDROCK_1_GATEWAY_URL}
+      auth_mode: aws_sigv4          # uses IAM credentials, no api_key needed
+      provider: bedrock
+      default: true
+      # Per-gateway AWS SigV4 credentials (all optional, fall back to
+      # default boto3 credential chain when omitted):
+      aws_region: ${BEDROCK_1_AWS_REGION}
+      aws_profile: ${BEDROCK_1_AWS_PROFILE}
+      # -- OR explicit keys (uncomment): --
+      # aws_access_key_id: ${BEDROCK_1_AWS_ACCESS_KEY_ID}
+      # aws_secret_access_key: ${BEDROCK_1_AWS_SECRET_ACCESS_KEY}
+      # aws_session_token: ${BEDROCK_1_AWS_SESSION_TOKEN}
+      # -- OR cross-account assume-role (uncomment): --
+      # aws_role_arn: arn:aws:iam::123456789012:role/bedrock-role
+
+    cohere-1:
+      gateway_url: ${COHERE_1_GATEWAY_URL}
+      gateway_api_key: ${COHERE_API_KEY}
+      auth_mode: api_key
+      provider: cohere
+      default: true
+
+    mistral-1:
+      gateway_url: ${MISTRAL_1_GATEWAY_URL}
+      gateway_api_key: ${MISTRAL_API_KEY}
+      auth_mode: api_key
+      provider: mistral
+      default: true
+
+    # -- Additional named gateways (selected via agentsec.gateway("name")) ----
+    bedrock-2:
+      gateway_url: ${BEDROCK_2_GATEWAY_URL}
+      auth_mode: aws_sigv4          # fully explicit, no inheritance
+      provider: bedrock
+      aws_region: ${BEDROCK_2_AWS_REGION}
+      aws_profile: ${BEDROCK_2_AWS_PROFILE}
+
+    # -- Auth variant examples (uncomment to test specific auth methods) -----
+
+    # Bedrock with explicit IAM keys (static or STS temporary credentials)
+    # bedrock-explicit-keys:
+    #   gateway_url: ${BEDROCK_1_GATEWAY_URL}
+    #   auth_mode: aws_sigv4
+    #   provider: bedrock
+    #   aws_region: ${BEDROCK_1_AWS_REGION}
+    #   aws_access_key_id: ${BEDROCK_1_AWS_ACCESS_KEY_ID}
+    #   aws_secret_access_key: ${BEDROCK_1_AWS_SECRET_ACCESS_KEY}
+    #   aws_session_token: ${BEDROCK_1_AWS_SESSION_TOKEN}
+
+    # Bedrock with cross-account assume role
+    # bedrock-assume-role:
+    #   gateway_url: ${BEDROCK_1_GATEWAY_URL}
+    #   auth_mode: aws_sigv4
+    #   provider: bedrock
+    #   aws_region: ${BEDROCK_1_AWS_REGION}
+    #   aws_role_arn: ${BEDROCK_1_AWS_ROLE_ARN}
+
+    # Bedrock with Bearer API key (non-SigV4 gateway)
+    # bedrock-api-key:
+    #   gateway_url: ${BEDROCK_1_GATEWAY_URL}
+    #   auth_mode: api_key
+    #   gateway_api_key: ${BEDROCK_GATEWAY_API_KEY}
+    #   provider: bedrock
+
+    # Vertex AI with explicit service account key file
+    # vertexai-sa-key:
+    #   gateway_url: ${VERTEXAI_1_GATEWAY_URL}
+    #   auth_mode: google_adc
+    #   provider: vertexai
+    #   sdk: ${GOOGLE_AI_SDK}
+    #   gcp_project: ${VERTEXAI_1_GCP_PROJECT}
+    #   gcp_location: ${VERTEXAI_1_GCP_LOCATION}
+    #   gcp_service_account_key_file: ${VERTEXAI_1_SA_KEY_FILE}
+
+    # Vertex AI with service account impersonation
+    # vertexai-impersonation:
+    #   gateway_url: ${VERTEXAI_1_GATEWAY_URL}
+    #   auth_mode: google_adc
+    #   provider: vertexai
+    #   sdk: ${GOOGLE_AI_SDK}
+    #   gcp_project: ${VERTEXAI_1_GCP_PROJECT}
+    #   gcp_location: ${VERTEXAI_1_GCP_LOCATION}
+    #   gcp_target_service_account: ${VERTEXAI_1_TARGET_SA}
+
+    # Vertex AI with Bearer API key (non-ADC gateway)
+    # vertexai-api-key:
+    #   gateway_url: ${VERTEXAI_1_GATEWAY_URL}
+    #   auth_mode: api_key
+    #   gateway_api_key: ${VERTEXAI_GATEWAY_API_KEY}
+    #   provider: vertexai
+    #   sdk: ${GOOGLE_AI_SDK}
+    #   gcp_project: ${VERTEXAI_1_GCP_PROJECT}
+    #   gcp_location: ${VERTEXAI_1_GCP_LOCATION}
+
+
+  # MCP Gateways (keyed by original MCP server URL)
+  # Each MCP server that should be routed through a gateway must be listed
+  # explicitly by its URL.
+  #
+  # Supported auth_mode values per MCP server:
+  #   none                       - No authentication (default)
+  #   api_key                    - API key sent in "api-key" header
+  #   oauth2_client_credentials  - OAuth 2.0 Client Credentials grant
+  #   client                     - Forward client's own auth headers to gateway
+  mcp_gateways:
+    https://remote.mcpservers.org/fetch/mcp:
+      gateway_url: ${MCP_FETCH_GATEWAY_URL}
+      auth_mode: none
+
+    https://mcp.time.mcpcentral.io:
+      gateway_url: ${MCP_TIME_GATEWAY_URL}
+      auth_mode: none
+
+    # -- Example: API Key auth --
+    # https://api-key-mcp.example.com/mcp:
+    #   gateway_url: https://gw.agent.aidefense.cisco.com/mcp/t1/apikey-server
+    #   auth_mode: api_key
+    #   api_key: ${MCP_SERVER_API_KEY}
+    #   api_key_header: X-API-Key   # optional, defaults to "api-key"
+
+    # -- Example: Client auth passthrough (recommended when client handles auth) --
+    # https://oauth-mcp.example.com/mcp:
+    #   gateway_url: https://gw.agent.aidefense.cisco.com/mcp/t1/oauth-server
+    #   auth_mode: client
+
+    # -- Example: OAuth 2.0 Client Credentials (agentsec fetches token) --
+    # https://oauth-mcp.example.com/mcp:
+    #   gateway_url: https://gw.agent.aidefense.cisco.com/mcp/t1/oauth-server
+    #   auth_mode: oauth2_client_credentials
+    #   oauth2_token_url: https://auth.example.com/oauth/token
+    #   oauth2_client_id: ${MCP_OAUTH_CLIENT_ID}
+    #   oauth2_client_secret: ${MCP_OAUTH_CLIENT_SECRET}
+    #   oauth2_scopes: "read write"
+
+    # Mock MCP server details (mcp-testing.aiteam.cisco.com)
+    # Health check:
+    #   https://mcp-testing.aiteam.cisco.com/mock_mcp/health
+    # OAuth metadata:
+    #   Resource metadata: https://mcp-testing.aiteam.cisco.com/mock_mcp/.well-known/oauth-protected-resource
+    #   Auth server metadata: https://mcp-testing.aiteam.cisco.com/mock_mcp/.well-known/oauth-authorization-server
+    # OAuth auth endpoint:
+    #   https://mcp-testing.aiteam.cisco.com/mock_mcp/oauth/authorize
+
+    # API Key server — forward the client's auth headers to the gateway.
+    https://mcp-testing.aiteam.cisco.com/mock_mcp/mcp/api-key:
+      gateway_url: ${AGENTSEC_MCP_API_KEY_GATEWAY_URL}
+      auth_mode: client
+
+    # -- Alternative: let agentsec inject the API key (no client auth needed) --
+    # https://mcp-testing.aiteam.cisco.com/mock_mcp/mcp/api-key:
+    #   gateway_url: ${AGENTSEC_MCP_API_KEY_GATEWAY_URL}
+    #   auth_mode: api_key
+    #   api_key: ${MCP_API_KEY}
+
+    # OAuth 2.0 server — forward the client's auth headers to the gateway.
+    # The client fetches the OAuth token and passes it in headers;
+    # agentsec forwards those headers to the gateway as-is.
+    https://mcp-testing.aiteam.cisco.com/mock_mcp/mcp/oauth:
+      gateway_url: ${AGENTSEC_MCP_OAUTH_GATEWAY_URL}
+      auth_mode: client
+
+    # -- Alternative: let agentsec fetch the OAuth token (no client auth needed) --
+    # https://mcp-testing.aiteam.cisco.com/mock_mcp/mcp/oauth:
+    #   gateway_url: ${AGENTSEC_MCP_OAUTH_GATEWAY_URL}
+    #   auth_mode: oauth2_client_credentials
+    #   oauth2_token_url: https://mcp-testing.aiteam.cisco.com/mock_mcp/oauth/token
+    #   oauth2_client_id: ${MCP_OAUTH_CLIENT_ID}
+    #   oauth2_client_secret: ${MCP_OAUTH_CLIENT_SECRET}
+    #   oauth2_scopes: ${MCP_OAUTH_SCOPES}
+
+# -- API mode configuration --------------------------------------------------
+# Used when llm_integration_mode or mcp_integration_mode is "api".
+api_mode:
+  llm_defaults:
+    # NOTE: The hardcoded SDK default for api_mode.llm_defaults.fail_open is
+    # false (fail-closed), which is the recommended setting for production.
+    # We override it to true here for ease of development and testing so that
+    # LLM calls still proceed even when the AI Defense inspection API is
+    # unreachable.  Set this to false in production / high-security deployments.
+    fail_open: true
+    timeout: 5                      # seconds for inspection API calls
+    retry:
+      total: 2
+      backoff_factor: 0.5
+      status_codes: [429, 500, 502, 503, 504]
+
+  mcp_defaults:
+    fail_open: true
+    timeout: 5
+    retry:
+      total: 2
+      backoff_factor: 0.5
+      status_codes: [429, 500, 502, 503, 504]
+
+  llm:
+    mode: enforce                   # off | monitor | enforce
+    endpoint: ${AI_DEFENSE_API_MODE_LLM_ENDPOINT}
+    api_key: ${AI_DEFENSE_API_MODE_LLM_API_KEY}
+    # -- Custom inspection rules (optional) ------------------------------------
+    # When omitted, ALL rules are evaluated (server default).
+    # When specified, ONLY these rules are evaluated -- unspecified rules are
+    # skipped entirely.  Use this to reduce false positives or focus inspection
+    # on the threats most relevant to your application.
+    #
+    # Supported rule names:
+    #   Prompt Injection, PII, PCI, PHI, Code Detection, Harassment,
+    #   Hate Speech, Profanity, Toxicity, Sexual Content & Exploitation,
+    #   Social Division & Polarization, Violence & Public Safety Threats
+    #
+    # rules:
+    #   - rule_name: "Prompt Injection"
+    #   - rule_name: "PII"
+    #     entity_types: ["Email Address", "Phone Number"]
+    #   - rule_name: "Code Detection"
+
+  mcp:
+    mode: enforce                   # off | monitor | enforce
+    endpoint: ${AI_DEFENSE_API_MODE_MCP_ENDPOINT}
+    api_key: ${AI_DEFENSE_API_MODE_MCP_API_KEY}
+
+# -- Logging ------------------------------------------------------------------
+logging:
+  level: DEBUG
+  format: text                      # text | json
