@@ -295,8 +295,8 @@ Configuration for MCP inspection via the API.
 | Key | Type | Allowed Values | Default | Description |
 | --- | --- | --- | --- | --- |
 | `mode` | string | `"off"`, `"monitor"`, `"enforce"` | *(none -- must be set if using API mode)* | Inspection mode (applies only when `mcp_integration_mode: api`). Same semantics as `api_mode.llm.mode`. For gateway mode, use `gateway_mode.mcp_mode` instead. |
-| `endpoint` | string | URL | *(none -- falls back to `api_mode.llm.endpoint` if not set)* | AI Defense inspection API URL for MCP. |
-| `api_key` | string | | *(none -- falls back to `api_mode.llm.api_key` if not set)* | API key for MCP inspection. |
+| `endpoint` | string | URL | *(none -- must be set if using MCP API mode)* | AI Defense inspection API URL for MCP. Must be configured independently; there is no fallback to `api_mode.llm.endpoint`. |
+| `api_key` | string | | *(none -- must be set if using MCP API mode)* | API key for MCP inspection. Must be configured independently; there is no fallback to `api_mode.llm.api_key`. |
 
 ---
 
