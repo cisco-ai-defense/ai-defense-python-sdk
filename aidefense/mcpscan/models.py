@@ -100,6 +100,17 @@ class ServerType(str, Enum):
     REMOTE = "REMOTE"  # Remote URL-based server (SSE or Streamable HTTP)
     STDIO = "STDIO"    # Stdio-based server spawned from a package/repo (placeholder)
 
+class ServersSortBy(str, Enum):
+    """Sort by criteria for MCP service list."""
+    SORT_UNSPECIFIED = "SORT_UNSPECIFIED"
+    THREATS_SEVERITY = "THREATS_SEVERITY"
+    SCAN_DATE = "SCAN_DATE"
+
+class ListServerType(str, Enum):
+    """Server type on MCP servers list"""
+    MCP_SERVER_NONE = "MCP_SERVER_NONE"
+    MCP_SERVER_CODE = "MCP_SERVER_CODE"
+    MCP_SERVER_REMOTE = "MCP_SERVER_REMOTE"
 
 def restore_enum_wrapper(cls, values):
     """Helper to restore enum values from string representations."""
@@ -406,10 +417,12 @@ class Paging(AIDefenseModel):
         total: Total number of items.
         limit: Maximum items per page.
         offset: Offset from start.
+        count: Number of the items in the list.
     """
     total: int = Field(default=0, description="Total number of items")
     limit: int = Field(default=0, description="Maximum items per page")
     offset: int = Field(default=0, description="Offset from start")
+    count: int = Field(default=0, description="Number of the items in the list")
 
 
 # --------------------
@@ -428,6 +441,8 @@ class RegisterMCPServerRequest(AIDefenseModel):
         auth_config: Optional authentication configuration for the server.
         repository_url: Optional absolute URL of the source code repository (e.g. GitHub URL).
             When provided, must be a valid absolute URI. Required by the API in some environments.
+        source_identifier: Source identifier.
+        subfolder: Subfolder for scan.
     """
     name: str = Field(
         ...,
@@ -457,6 +472,14 @@ class RegisterMCPServerRequest(AIDefenseModel):
         None,
         alias="repositoryUrl",
         description="Absolute URL of the source code repository (e.g. https://github.com/org/repo)"
+    )
+    source_identifier: Optional[str] = Field(
+        None,
+        description="Source identifier"
+    )
+    subfolder: Optional[str] = Field(
+        None,
+        description="Subfolder for scan"
     )
 
 
@@ -1209,6 +1232,14 @@ class MCPServer(AIDefenseModel):
         auth_type: Authentication type used by the server.
         status_info: Error information if the server has issues.
         auth_config: Authentication configuration for the server.
+        use_shared_auth: Is shared auth used.
+        shared_auth_config_id: Shared auth config id.
+        repository_url: Absolute URL of the source code repository.
+        source_identifier: Source identifier.
+        subfolder: Subfolder for scan.
+        type: Server type.
+        threat_summary: Summary of threats found during an MCP server scan.
+        last_scanned_at: Time of last scan.
     """
     id: str = Field(..., description="MCP server identifier (UUID)")
     name: str = Field(..., description="MCP server name")
@@ -1226,6 +1257,14 @@ class MCPServer(AIDefenseModel):
     auth_type: AuthType = Field(default=AuthType.NO_AUTH, alias="authType", description="Authentication type")
     status_info: Optional[ErrorInfo] = Field(None, alias="statusInfo", description="Error information if any")
     auth_config: Optional[AuthConfig] = Field(None, alias="authConfig", description="Authentication configuration")
+    use_shared_auth: Optional[bool] = Field(None, alias="useSharedAuth", description="Is shared auth used")
+    shared_auth_config_id: Optional[str] = Field(None, alias="sharedAuthConfigId", description="Shared auth config id")
+    repository_url: Optional[str] = Field(None, alias="repositoryUrl", description="Absolute URL of the source code repository")
+    source_identifier: Optional[str] = Field(None, alias="sourceIdentifier", description="Source identifier")
+    subfolder: Optional[str] = Field(None, alias="subfolder", description="Subfolder for scan")
+    type: Optional[List[ListServerType]] = Field(None, alias="type", description="Server type")
+    threat_summary: Optional[ScanThreatSummary] = Field(None, alias="threatSummary", description="Summary of threats found during an MCP server scan")
+    last_scanned_at: Optional[datetime] = Field(None, alias="lastScannedAt", description="Time of last scan")
 
     @model_validator(mode='before')
     @classmethod
@@ -1281,6 +1320,9 @@ class ListMCPServersRequest(AIDefenseModel):
         transport_type: Filter by transport type(s).
         severity: Filter by severity level(s).
         creation_date: Filter by creation date.
+    registry_id: Registry id.
+        sort_by: Sort by given parameter.
+        sort_order: Sort order.
     """
     limit: int = Field(default=25, description="Maximum results to return")
     offset: int = Field(default=0, description="Pagination offset")
@@ -1289,6 +1331,9 @@ class ListMCPServersRequest(AIDefenseModel):
     transport_type: Optional[List[TransportType]] = Field(None, description="Filter by transport type")
     severity: Optional[List[SeverityLevel]] = Field(None, description="Filter by severity level")
     creation_date: Optional[datetime] = Field(None, description="Filter by creation date")
+    registry_id: Optional[str] = Field(None, description="Registry id")
+    sort_by: Optional[ServersSortBy] = Field(None, description="Sort by given parameter")
+    sort_order: Optional[SortOrder] = Field(None, description="Sort order")
 
 
 class ListMCPServersResponse(AIDefenseModel):
