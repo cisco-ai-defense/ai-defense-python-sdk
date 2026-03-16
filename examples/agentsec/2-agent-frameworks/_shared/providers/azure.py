@@ -186,23 +186,22 @@ class AzureOpenAIProvider(BaseLLMProvider):
     
     def get_crewai_llm(self) -> Any:
         """Return CrewAI LLM instance for Azure OpenAI.
-        
-        Uses CrewAI's native Azure integration (requires crewai[azure-ai-inference]).
+
+        CrewAI delegates to litellm which constructs the full Azure path
+        (``/openai/deployments/<model>/...``) from the ``azure/`` model
+        prefix.  Passing a ``base_url`` that already contains the
+        deployment path causes a doubled URL that hangs on connection.
+        Use only the resource endpoint as ``api_base``.
         """
         from crewai import LLM
         
         auth_config = self.config.get('auth', {})
         api_key = self._resolve_env(auth_config.get('api_key'))
         
-        # Build the Azure endpoint URL with deployment
-        # Format: https://<resource>.openai.azure.com/openai/deployments/<deployment>
-        endpoint = f"{self.endpoint.rstrip('/')}/openai/deployments/{self.model_id}"
-        
-        # CrewAI native Azure integration
         return LLM(
             model=f"azure/{self.model_id}",
             api_key=api_key,
-            base_url=endpoint,
+            base_url=self.endpoint.rstrip('/'),
             api_version=self.api_version,
             temperature=self.temperature,
         )
