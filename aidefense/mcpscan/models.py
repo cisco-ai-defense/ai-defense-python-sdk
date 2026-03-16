@@ -938,6 +938,21 @@ class ValidateMCPServersRequest(AIDefenseModel):
     auth_config: Optional[AuthConfig] = Field(None, alias="authConfig", description="Authentication configuration (optional)")
 
 
+class ErrorInfo(AIDefenseModel):
+    """Error information for failed scans.
+
+    Args:
+        message: Human-readable summary of what went wrong.
+        error_message: Raw error message (may not be exposed to end users).
+        remediation_tips: List of remediation steps or tips to resolve the issue.
+        occurred_at: Timestamp when the error occurred.
+    """
+    message: str = Field(..., min_length=1, max_length=32768, description="Human-readable error summary")
+    error_message: Optional[str] = Field(None, max_length=32768, description="Raw error message")
+    remediation_tips: List[str] = Field(default_factory=list, description="Remediation steps or tips")
+    occurred_at: Optional[datetime] = Field(None, description="When the error occurred")
+
+
 class InvalidURLInfo(AIDefenseModel):
     """Information about an invalid URL that failed validation.
 
@@ -958,21 +973,6 @@ class ValidateMCPServersResponse(AIDefenseModel):
     """
     valid_urls: List[str] = Field(default_factory=list, alias="validUrls", description="List of successfully validated URLs")
     invalid_urls: List[InvalidURLInfo] = Field(default_factory=list, alias="invalidUrls", description="List of invalid URLs with error information")
-
-
-class ErrorInfo(AIDefenseModel):
-    """Error information for failed scans.
-
-    Args:
-        message: Human-readable summary of what went wrong.
-        error_message: Raw error message (may not be exposed to end users).
-        remediation_tips: List of remediation steps or tips to resolve the issue.
-        occurred_at: Timestamp when the error occurred.
-    """
-    message: str = Field(..., min_length=1, max_length=32768, description="Human-readable error summary")
-    error_message: Optional[str] = Field(None, max_length=32768, description="Raw error message")
-    remediation_tips: List[str] = Field(default_factory=list, description="Remediation steps or tips")
-    occurred_at: Optional[datetime] = Field(None, description="When the error occurred")
 
 
 class GetMCPScanStatusResponse(AIDefenseModel):
