@@ -20,6 +20,8 @@ from aidefense.mcpscan.routes import (
     # MCP Server routes
     mcp_scan_start,
     mcp_scan_status,
+    mcp_server_scan,
+    mcp_server_scan_report,
     mcp_servers_register,
     mcp_server_delete,
     mcp_server_get,
@@ -28,6 +30,7 @@ from aidefense.mcpscan.routes import (
     mcp_server_capabilities,
     mcp_server_threats,
     mcp_server_scan_summary,
+    mcp_servers_validate,
     # Resource Connection routes
     resource_connections,
     resource_connection_by_id,
@@ -77,10 +80,24 @@ class TestMCPServerRoutes:
         server_id = "server-cap"
         assert mcp_server_capabilities(server_id) == f"mcp/servers/{server_id}/capabilities"
 
+    def test_mcp_server_scan(self):
+        """Test the MCP server scan route."""
+        server_id = "server-scan"
+        assert mcp_server_scan(server_id) == f"mcp/servers/{server_id}/scan"
+
+    def test_mcp_server_scan_report(self):
+        """Test the MCP server scan report route."""
+        server_id = "server-report"
+        assert mcp_server_scan_report(server_id) == f"mcp/servers/{server_id}/scan/report"
+
     def test_mcp_server_threats(self):
         """Test the MCP server threats route."""
         server_id = "server-threat"
         assert mcp_server_threats(server_id) == f"mcp/servers/{server_id}/threats"
+
+    def test_mcp_servers_validate(self):
+        """Test the MCP servers validate route."""
+        assert mcp_servers_validate() == "mcp/servers:validate"
 
     def test_mcp_server_scan_summary(self):
         """Test the MCP server scan summary route."""

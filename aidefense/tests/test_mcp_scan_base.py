@@ -24,6 +24,7 @@ from aidefense.mcpscan.models import (
     GetMCPScanStatusResponse,
     GetMCPServerScanReportRequest,
     GetMCPServerScanReportResponse,
+    GetMCPServerScanResultsResponse,
     RegisterMCPServerRequest,
     RegisterMCPServerResponse,
     GetMCPServerCapabilitiesResponse,
@@ -1899,6 +1900,85 @@ class TestUpdateAuthConfig:
 class TestRegisteredServerScans:
     """Tests for registered MCP server scan methods."""
 
+    def test_get_server_scan_results(self, mcp_scan):
+        """Test retrieving detailed scan results for a registered server."""
+        server_id = "550e8400-e29b-41d4-a716-446655440000"
+        mock_response = {
+            "serverId": server_id,
+            "completedAt": "2026-01-01T00:00:00Z",
+            "isSafe": False,
+            "rawResult": "scan-output",
+            "capabilities": {
+                "toolResults": {
+                    "cap-123": {
+                        "items": [
+                            {
+                                "capabilityId": "cap-123",
+                                "capabilityName": "dangerous_tool",
+                                "capabilityDescription": "Tool capable of executing remote actions",
+                                "capabilityType": "TOOL",
+                                "status": "SCAN_COMPLETED",
+                                "isSafe": False,
+                                "analyzerType": "LLM",
+                                "severity": "HIGH",
+                                "threatNames": [
+                                    "Prompt Injection",
+                                    "Privilege Abuse",
+                                ],
+                                "threatSummary": "Multiple high-risk patterns detected",
+                                "totalFindings": 2,
+                                "techniqueId": "AITech-1",
+                                "techniqueName": "Prompt Injection",
+                                "threats": [
+                                    {
+                                        "subTechniqueId": "AISubtech-1.1",
+                                        "subTechniqueName": "Tool Manipulation",
+                                        "severity": "HIGH",
+                                        "description": "The tool can be redirected by crafted input",
+                                        "indicators": [
+                                            "shell_exec",
+                                            "external_call",
+                                        ],
+                                        "standard_mappings": ["OWASP LLM01"],
+                                    }
+                                ],
+                            }
+                        ]
+                    }
+                }
+            },
+        }
+        mcp_scan.make_request.return_value = mock_response
+
+        response = mcp_scan.get_server_scan_results(server_id)
+
+        mcp_scan.make_request.assert_called_once_with(
+            method=HttpMethod.GET,
+            path=f"mcp/servers/{server_id}/scan",
+        )
+        assert isinstance(response, GetMCPServerScanResultsResponse)
+        assert response.server_id == server_id
+        assert response.is_safe is False
+        assert response.raw_result == "scan-output"
+        assert response.capabilities is not None
+        assert "cap-123" in response.capabilities.tool_results
+        result_item = response.capabilities.tool_results["cap-123"].items[0]
+        assert result_item.capability_id == "cap-123"
+        assert result_item.capability_name == "dangerous_tool"
+        assert (
+            result_item.capability_description
+            == "Tool capable of executing remote actions"
+        )
+        assert result_item.threat_names == ["Prompt Injection", "Privilege Abuse"]
+        assert result_item.threat_summary == "Multiple high-risk patterns detected"
+        assert result_item.total_findings == 2
+        assert (
+            result_item.threats[0].description
+            == "The tool can be redirected by crafted input"
+        )
+        assert result_item.threats[0].indicators == ["shell_exec", "external_call"]
+        assert result_item.threats[0].standard_mappings == ["OWASP LLM01"]
+
     def test_trigger_server_scan(self, mcp_scan):
         """Test triggering an on-demand server scan."""
         server_id = "550e8400-e29b-41d4-a716-446655440001"
@@ -2166,6 +2246,12 @@ class TestRegisteredServerScans:
 
     def test_server_scan_methods_propagate_api_errors(self, mcp_scan):
         """Test new MCPScan methods propagate API errors unchanged."""
+        mcp_scan.make_request.side_effect = ApiError("API Error", 500)
+
+        with pytest.raises(ApiError, match="API Error"):
+            mcp_scan.get_server_scan_results("550e8400-e29b-41d4-a716-446655440003")
+
+        mcp_scan.make_request.reset_mock(side_effect=True)
         mcp_scan.make_request.side_effect = ApiError("API Error", 500)
 
         with pytest.raises(ApiError, match="API Error"):
