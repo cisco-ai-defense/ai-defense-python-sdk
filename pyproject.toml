@@ -23,8 +23,10 @@ tenacity = "^9.1.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2.0"
-pytest-asyncio = "^1.2.0"
+pytest-asyncio = ">=0.21.0"
 pytest-cov = "^4.1.0"
+pytest-mock = ">=3.10.0"
+pytest-httpx = ">=0.30.0"
 black = "^24.3.0"
 mypy = "^1.5.0"
 

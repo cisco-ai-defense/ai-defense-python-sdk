@@ -19,7 +19,7 @@ Supports both API mode (inspection via AI Defense API) and Gateway mode
 
 import logging
 import threading
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterator, List, Optional
 
 import wrapt
 
@@ -97,6 +97,181 @@ def _enforce_decision(decision: Decision) -> None:
                     callback(decision)
                 except Exception:
                     logger.debug("on_violation callback raised an exception", exc_info=True)
+
+
+# Maximum buffer size for streaming inspection (1MB)
+MAX_STREAMING_BUFFER_SIZE = 1_000_000
+
+
+class _LiteLLMStreamingInspectionWrapper:
+    """Wraps a LiteLLM streaming response for incremental + final inspection.
+
+    LiteLLM streaming chunks use OpenAI-compatible format:
+    ``chunk.choices[0].delta.content``
+    """
+
+    def __init__(
+        self,
+        stream: Iterator,
+        messages: List[Dict[str, Any]],
+        metadata: Dict[str, Any],
+    ):
+        self._stream = stream
+        self._messages = messages
+        self._metadata = metadata
+        self._buffer = ""
+        self._inspector = _get_inspector()
+        self._chunk_count = 0
+        self._inspect_interval = 10
+        self._final_inspection_done = False
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        try:
+            chunk = next(self._stream)
+        except StopIteration:
+            self._perform_final_inspection()
+            raise
+        except Exception as e:
+            logger.warning("LiteLLM stream error, performing final inspection: %s", e)
+            self._perform_final_inspection()
+            raise
+
+        try:
+            if hasattr(chunk, "choices") and chunk.choices:
+                delta = chunk.choices[0].delta
+                content = getattr(delta, "content", None)
+                if content:
+                    if len(self._buffer) < MAX_STREAMING_BUFFER_SIZE:
+                        remaining = MAX_STREAMING_BUFFER_SIZE - len(self._buffer)
+                        self._buffer += content[:remaining]
+                    self._chunk_count += 1
+                    if self._chunk_count % self._inspect_interval == 0:
+                        self._inspect_buffer()
+        except Exception as e:
+            logger.warning("Error processing LiteLLM streaming chunk: %s", e)
+
+        return chunk
+
+    def _perform_final_inspection(self) -> None:
+        if self._final_inspection_done:
+            return
+        self._final_inspection_done = True
+        if self._buffer:
+            self._inspect_buffer()
+        set_inspection_context(done=True)
+
+    def _inspect_buffer(self) -> None:
+        if not self._buffer or not _should_inspect():
+            return
+
+        buffer_to_inspect = self._buffer[:MAX_STREAMING_BUFFER_SIZE]
+        messages_with_response = self._messages + [
+            {"role": "assistant", "content": buffer_to_inspect}
+        ]
+        try:
+            decision = self._inspector.inspect_conversation(
+                messages_with_response, self._metadata,
+            )
+            set_inspection_context(decision=decision)
+            _enforce_decision(decision)
+        except SecurityPolicyError:
+            raise
+        except Exception as e:
+            _handle_patcher_error(e, "LiteLLM streaming inspection")
+
+
+class _AsyncLiteLLMStreamingInspectionWrapper:
+    """Async wrapper for LiteLLM streaming responses."""
+
+    def __init__(
+        self,
+        stream: Any,
+        messages: List[Dict[str, Any]],
+        metadata: Dict[str, Any],
+    ):
+        self._stream = stream
+        self._messages = messages
+        self._metadata = metadata
+        self._buffer = ""
+        self._inspector = _get_inspector()
+        self._chunk_count = 0
+        self._inspect_interval = 10
+        self._final_inspection_done = False
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        try:
+            chunk = await self._stream.__anext__()
+        except StopAsyncIteration:
+            await self._perform_final_inspection()
+            raise
+        except Exception as e:
+            logger.warning("LiteLLM async stream error, performing final inspection: %s", e)
+            await self._perform_final_inspection()
+            raise
+
+        try:
+            if hasattr(chunk, "choices") and chunk.choices:
+                delta = chunk.choices[0].delta
+                content = getattr(delta, "content", None)
+                if content:
+                    if len(self._buffer) < MAX_STREAMING_BUFFER_SIZE:
+                        remaining = MAX_STREAMING_BUFFER_SIZE - len(self._buffer)
+                        self._buffer += content[:remaining]
+                    self._chunk_count += 1
+                    if self._chunk_count % self._inspect_interval == 0:
+                        await self._inspect_buffer()
+        except Exception as e:
+            logger.warning("Error processing LiteLLM async streaming chunk: %s", e)
+
+        return chunk
+
+    async def _perform_final_inspection(self) -> None:
+        if self._final_inspection_done:
+            return
+        self._final_inspection_done = True
+        if self._buffer:
+            await self._inspect_buffer()
+        set_inspection_context(done=True)
+
+    async def _inspect_buffer(self) -> None:
+        if not self._buffer or not _should_inspect():
+            return
+
+        buffer_to_inspect = self._buffer[:MAX_STREAMING_BUFFER_SIZE]
+        messages_with_response = self._messages + [
+            {"role": "assistant", "content": buffer_to_inspect}
+        ]
+        try:
+            decision = await self._inspector.ainspect_conversation(
+                messages_with_response, self._metadata,
+            )
+            set_inspection_context(decision=decision)
+            _enforce_decision(decision)
+        except SecurityPolicyError:
+            raise
+        except Exception as e:
+            _handle_patcher_error(e, "LiteLLM async streaming inspection")
+
+
+def _handle_patcher_error(error: Exception, operation: str) -> Optional[Decision]:
+    """Handle errors in patcher inspection calls."""
+    fail_open = _state.get_api_llm_fail_open()
+    error_type = type(error).__name__
+    logger.warning(f"[{operation}] Inspection error: {error_type}: {error}")
+
+    if fail_open:
+        logger.warning("llm_fail_open=True, allowing request despite inspection error")
+        return Decision.allow(reasons=[f"Inspection error ({error_type}), llm_fail_open=True"])
+    else:
+        logger.error("fail_open=False, blocking request due to inspection error")
+        decision = Decision.block(reasons=[f"Inspection error: {error_type}: {error}"])
+        raise SecurityPolicyError(decision, f"Inspection failed and fail_open=False: {error}")
 
 
 def _detect_provider(model: str) -> str:
@@ -558,6 +733,8 @@ def _wrap_completion(wrapped, instance, args, kwargs):
                 f"LiteLLM gateway error: {e}",
             )
     
+    stream = kwargs.get("stream", False)
+
     # API mode: use LLMInspector for inspection
     # Pre-call inspection
     if normalized:
@@ -569,10 +746,15 @@ def _wrap_completion(wrapped, instance, args, kwargs):
         _enforce_decision(decision)
     
     # Call the original
-    logger.debug(f"[PATCHED CALL] litellm.completion - calling original method")
+    logger.debug(f"[PATCHED CALL] litellm.completion - calling original method (stream={stream})")
     response = wrapped(*args, **kwargs)
     
-    # Post-call inspection
+    # Streaming: wrap the response iterator for incremental inspection
+    if stream and normalized:
+        logger.debug("[PATCHED CALL] litellm.completion - wrapping streaming response for inspection")
+        return _LiteLLMStreamingInspectionWrapper(response, normalized, metadata)
+
+    # Non-streaming: post-call inspection
     assistant_content = _extract_response_text(response)
     if assistant_content and normalized:
         logger.debug(f"[PATCHED CALL] litellm.completion - Response inspection (response: {len(assistant_content)} chars)")
@@ -680,6 +862,8 @@ async def _wrap_acompletion(wrapped, instance, args, kwargs):
                 f"LiteLLM gateway error: {e}",
             )
     
+    stream = kwargs.get("stream", False)
+
     # API mode: Pre-call inspection
     if normalized:
         logger.debug(f"[PATCHED CALL] litellm.acompletion - Request inspection ({len(normalized)} messages)")
@@ -690,10 +874,15 @@ async def _wrap_acompletion(wrapped, instance, args, kwargs):
         _enforce_decision(decision)
     
     # Call the original
-    logger.debug(f"[PATCHED CALL] litellm.acompletion - calling original method")
+    logger.debug(f"[PATCHED CALL] litellm.acompletion - calling original method (stream={stream})")
     response = await wrapped(*args, **kwargs)
     
-    # Post-call inspection
+    # Streaming: wrap the async response iterator for incremental inspection
+    if stream and normalized:
+        logger.debug("[PATCHED CALL] litellm.acompletion - wrapping async streaming response for inspection")
+        return _AsyncLiteLLMStreamingInspectionWrapper(response, normalized, metadata)
+
+    # Non-streaming: post-call inspection
     assistant_content = _extract_response_text(response)
     if assistant_content and normalized:
         logger.debug(f"[PATCHED CALL] litellm.acompletion - Response inspection")

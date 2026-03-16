@@ -31,7 +31,7 @@ import io
 import json
 import logging
 import threading
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterator, List, Optional
 
 import wrapt
 
@@ -1178,6 +1178,264 @@ class _BedrockFakeStreamWrapper:
 
 
 
+# Maximum buffer size for streaming inspection (1MB)
+MAX_STREAMING_BUFFER_SIZE = 1_000_000
+
+
+class _ConverseStreamInspectionWrapper:
+    """Wraps a ConverseStream EventStream to accumulate and inspect response text.
+
+    Bedrock ConverseStream yields dict events:
+      - messageStart, contentBlockStart, contentBlockDelta, contentBlockStop,
+        messageStop, metadata.
+    Text arrives in contentBlockDelta events under ``delta.text``.
+    This wrapper transparently yields every event while buffering text for
+    incremental and final AI Defense inspection.
+    """
+
+    def __init__(
+        self,
+        stream: Iterator,
+        messages: List[Dict[str, Any]],
+        metadata: Dict[str, Any],
+    ):
+        self._stream = stream
+        self._messages = messages
+        self._metadata = metadata
+        self._buffer = ""
+        self._inspector = _get_inspector()
+        self._chunk_count = 0
+        self._inspect_interval = 10
+        self._final_inspection_done = False
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        try:
+            event = next(self._stream)
+        except StopIteration:
+            self._perform_final_inspection()
+            raise
+        except Exception as e:
+            logger.warning(
+                "ConverseStream error, performing final inspection on buffered content: %s", e
+            )
+            self._perform_final_inspection()
+            raise
+
+        try:
+            delta = (event.get("contentBlockDelta") or {}).get("delta") or {}
+            text = delta.get("text")
+            if text:
+                if len(self._buffer) < MAX_STREAMING_BUFFER_SIZE:
+                    remaining = MAX_STREAMING_BUFFER_SIZE - len(self._buffer)
+                    self._buffer += text[:remaining]
+                self._chunk_count += 1
+                if self._chunk_count % self._inspect_interval == 0:
+                    self._inspect_buffer()
+        except Exception as e:
+            logger.warning("Error processing ConverseStream event: %s", e)
+
+        return event
+
+    # Async iteration support (ConverseStream may be consumed asynchronously)
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        try:
+            event = next(self._stream)
+        except StopIteration:
+            self._perform_final_inspection()
+            raise StopAsyncIteration
+        except Exception as e:
+            logger.warning(
+                "ConverseStream async error, performing final inspection: %s", e
+            )
+            self._perform_final_inspection()
+            raise
+
+        try:
+            delta = (event.get("contentBlockDelta") or {}).get("delta") or {}
+            text = delta.get("text")
+            if text:
+                if len(self._buffer) < MAX_STREAMING_BUFFER_SIZE:
+                    remaining = MAX_STREAMING_BUFFER_SIZE - len(self._buffer)
+                    self._buffer += text[:remaining]
+                self._chunk_count += 1
+                if self._chunk_count % self._inspect_interval == 0:
+                    self._inspect_buffer()
+        except Exception as e:
+            logger.warning("Error processing ConverseStream async event: %s", e)
+
+        return event
+
+    def close(self):
+        """Close the underlying stream."""
+        if hasattr(self._stream, "close"):
+            self._stream.close()
+
+    def _perform_final_inspection(self) -> None:
+        if self._final_inspection_done:
+            return
+        self._final_inspection_done = True
+        if self._buffer:
+            self._inspect_buffer()
+        set_inspection_context(done=True)
+
+    def _inspect_buffer(self) -> None:
+        if not self._buffer or not _should_inspect():
+            return
+
+        buffer_to_inspect = self._buffer[:MAX_STREAMING_BUFFER_SIZE]
+        messages_with_response = self._messages + [
+            {"role": "assistant", "content": buffer_to_inspect}
+        ]
+        try:
+            decision = self._inspector.inspect_conversation(
+                messages_with_response, self._metadata,
+            )
+            set_inspection_context(decision=decision)
+            _enforce_decision(decision)
+        except SecurityPolicyError:
+            raise
+        except Exception as e:
+            _handle_patcher_error(e, "Bedrock ConverseStream inspection")
+
+
+class _InvokeModelStreamInspectionWrapper:
+    """Wraps an InvokeModelWithResponseStream body to inspect accumulated chunks.
+
+    The EventStream yields ``{"chunk": {"bytes": b'...'}}`` events.  The bytes
+    contain JSON-encoded partial responses whose format depends on the model
+    (e.g. Claude returns ``{"type": "content_block_delta", "delta": {"text": "..."}}``,
+    Titan returns ``{"outputText": "..."}``).
+
+    This wrapper accumulates text from the decoded chunks, inspects
+    periodically, and performs a final inspection when the stream ends.
+    """
+
+    def __init__(
+        self,
+        stream: Iterator,
+        messages: List[Dict[str, Any]],
+        metadata: Dict[str, Any],
+        model_id: str,
+    ):
+        self._stream = stream
+        self._messages = messages
+        self._metadata = metadata
+        self._model_id = model_id
+        self._buffer = ""
+        self._inspector = _get_inspector()
+        self._chunk_count = 0
+        self._inspect_interval = 10
+        self._final_inspection_done = False
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        try:
+            event = next(self._stream)
+        except StopIteration:
+            self._perform_final_inspection()
+            raise
+        except Exception as e:
+            logger.warning(
+                "InvokeModelStream error, performing final inspection: %s", e
+            )
+            self._perform_final_inspection()
+            raise
+
+        self._accumulate(event)
+        return event
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        try:
+            event = next(self._stream)
+        except StopIteration:
+            self._perform_final_inspection()
+            raise StopAsyncIteration
+        except Exception as e:
+            logger.warning(
+                "InvokeModelStream async error, performing final inspection: %s", e
+            )
+            self._perform_final_inspection()
+            raise
+
+        self._accumulate(event)
+        return event
+
+    def close(self):
+        if hasattr(self._stream, "close"):
+            self._stream.close()
+
+    def _accumulate(self, event) -> None:
+        try:
+            chunk_bytes = (event.get("chunk") or {}).get("bytes")
+            if not chunk_bytes:
+                return
+            data = json.loads(chunk_bytes)
+            text = self._extract_text(data)
+            if text:
+                if len(self._buffer) < MAX_STREAMING_BUFFER_SIZE:
+                    remaining = MAX_STREAMING_BUFFER_SIZE - len(self._buffer)
+                    self._buffer += text[:remaining]
+                self._chunk_count += 1
+                if self._chunk_count % self._inspect_interval == 0:
+                    self._inspect_buffer()
+        except Exception as e:
+            logger.warning("Error accumulating InvokeModelStream chunk: %s", e)
+
+    def _extract_text(self, data: dict) -> str:
+        """Extract text from a streaming chunk based on model format."""
+        # Claude content_block_delta
+        delta = data.get("delta", {})
+        if delta.get("type") == "text_delta":
+            return delta.get("text", "")
+        if "text" in delta:
+            return delta["text"]
+        # Titan
+        if "outputText" in data:
+            return data["outputText"]
+        # Claude completion_delta (older streaming format)
+        if "completion" in data:
+            return data["completion"]
+        return ""
+
+    def _perform_final_inspection(self) -> None:
+        if self._final_inspection_done:
+            return
+        self._final_inspection_done = True
+        if self._buffer:
+            self._inspect_buffer()
+        set_inspection_context(done=True)
+
+    def _inspect_buffer(self) -> None:
+        if not self._buffer or not _should_inspect():
+            return
+
+        buffer_to_inspect = self._buffer[:MAX_STREAMING_BUFFER_SIZE]
+        messages_with_response = self._messages + [
+            {"role": "assistant", "content": buffer_to_inspect}
+        ]
+        try:
+            decision = self._inspector.inspect_conversation(
+                messages_with_response, self._metadata,
+            )
+            set_inspection_context(decision=decision)
+            _enforce_decision(decision)
+        except SecurityPolicyError:
+            raise
+        except Exception as e:
+            _handle_patcher_error(e, "Bedrock InvokeModelStream inspection")
+
+
 def _handle_agentcore_call(wrapped, instance, args, kwargs, operation_name: str, api_params: Dict):
     """
     Handle AgentCore operations (InvokeAgentRuntime).
@@ -1349,7 +1607,25 @@ def _wrap_make_api_call(wrapped, instance, args, kwargs):
         except Exception as e:
             _handle_patcher_error(e, f"Bedrock.{operation_name} post-call")
     else:
-        logger.debug(f"[PATCHED CALL] Bedrock.{operation_name} - streaming response, Response inspection deferred")
+        # Wrap streaming responses for inspection
+        if operation_name == "ConverseStream":
+            stream = response.get("stream")
+            if stream is not None:
+                logger.debug(
+                    f"[PATCHED CALL] Bedrock.{operation_name} - wrapping stream for inspection"
+                )
+                response["stream"] = _ConverseStreamInspectionWrapper(
+                    stream, messages, metadata
+                )
+        elif operation_name == "InvokeModelWithResponseStream":
+            body = response.get("body")
+            if body is not None:
+                logger.debug(
+                    f"[PATCHED CALL] Bedrock.{operation_name} - wrapping stream for inspection"
+                )
+                response["body"] = _InvokeModelStreamInspectionWrapper(
+                    body, messages, metadata, model_id
+                )
     
     logger.debug(f"[PATCHED CALL] Bedrock.{operation_name} - complete")
     return response
