@@ -334,7 +334,12 @@ def _enforce_decision(decision: Decision) -> None:
 
 
 class StreamingInspectionWrapper:
-    """Wrapper for streaming responses with incremental inspection."""
+    """Wrapper for streaming responses with incremental inspection.
+
+    Supports the context-manager protocol (``with stream: ...``) required by
+    LangChain and other consumers that treat OpenAI ``Stream`` objects as
+    context managers.
+    """
     
     def __init__(self, stream: Iterator, messages: List[Dict[str, Any]], metadata: Dict[str, Any]):
         self._stream = stream
@@ -345,6 +350,18 @@ class StreamingInspectionWrapper:
         self._chunk_count = 0
         self._inspect_interval = 10  # Inspect every N chunks
         self._final_inspection_done = False
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+        return False
+
+    def close(self):
+        self._perform_final_inspection()
+        if hasattr(self._stream, "close"):
+            self._stream.close()
     
     def __iter__(self):
         return self
@@ -423,7 +440,11 @@ class StreamingInspectionWrapper:
 
 
 class AsyncStreamingInspectionWrapper:
-    """Async wrapper for streaming responses with incremental inspection."""
+    """Async wrapper for streaming responses with incremental inspection.
+
+    Supports both sync and async context-manager protocols so that callers
+    using ``async with stream:`` or ``with stream:`` work transparently.
+    """
     
     def __init__(self, stream: Any, messages: List[Dict[str, Any]], metadata: Dict[str, Any]):
         self._stream = stream
@@ -434,6 +455,34 @@ class AsyncStreamingInspectionWrapper:
         self._chunk_count = 0
         self._inspect_interval = 10
         self._final_inspection_done = False
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.aclose()
+        return False
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._perform_final_inspection_sync()
+        if hasattr(self._stream, "close"):
+            self._stream.close()
+        return False
+
+    async def aclose(self):
+        await self._perform_final_inspection()
+        if hasattr(self._stream, "aclose"):
+            await self._stream.aclose()
+        elif hasattr(self._stream, "close"):
+            self._stream.close()
+
+    def close(self):
+        self._perform_final_inspection_sync()
+        if hasattr(self._stream, "close"):
+            self._stream.close()
     
     def __aiter__(self):
         return self
@@ -477,6 +526,36 @@ class AsyncStreamingInspectionWrapper:
         if self._buffer:
             await self._inspect_buffer()
         set_inspection_context(done=True)
+
+    def _perform_final_inspection_sync(self) -> None:
+        """Sync fallback for context-manager __exit__ / close()."""
+        if self._final_inspection_done:
+            return
+        self._final_inspection_done = True
+        if self._buffer:
+            self._inspect_buffer_sync()
+        set_inspection_context(done=True)
+
+    def _inspect_buffer_sync(self) -> None:
+        """Sync fallback for buffer inspection."""
+        if not self._buffer or not _should_inspect():
+            return
+        buffer_to_inspect = self._buffer
+        if len(buffer_to_inspect) > MAX_STREAMING_BUFFER_SIZE:
+            buffer_to_inspect = buffer_to_inspect[:MAX_STREAMING_BUFFER_SIZE]
+        messages_with_response = self._messages + [
+            {"role": "assistant", "content": buffer_to_inspect}
+        ]
+        try:
+            decision = self._inspector.inspect_conversation(
+                messages_with_response, self._metadata,
+            )
+            set_inspection_context(decision=decision)
+            _enforce_decision(decision)
+        except SecurityPolicyError:
+            raise
+        except Exception as e:
+            _handle_patcher_error(e, "OpenAI async streaming inspection (sync fallback)")
     
     async def _inspect_buffer(self) -> None:
         """Inspect the buffered content asynchronously."""
