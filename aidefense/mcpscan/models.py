@@ -887,7 +887,7 @@ class GetMCPServerScanReportRequest(AIDefenseModel):
         None,
         description="Offset to fetch objects from"
     )
-    filter_options: Optional[FilterOptions] = Field(
+    filter_options: FilterOptions = Field(
         None,
         alias="filterOptions",
         description="Filter options applied to the report"
