@@ -19,7 +19,7 @@
 import logging
 import re
 from dataclasses import dataclass, field
-from typing import List, Pattern
+from typing import List, Optional, Pattern
 
 
 # Default patterns to redact sensitive data
@@ -92,7 +92,7 @@ def get_redactor() -> LogRedactor:
 
 def configure_redaction(
     enabled: bool = True,
-    patterns: List[str] | None = None,
+    patterns: Optional[List[str]] = None,
     replacement: str = "[REDACTED]",
 ) -> None:
     """

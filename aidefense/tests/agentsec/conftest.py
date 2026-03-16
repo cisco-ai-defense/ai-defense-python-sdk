@@ -1,8 +1,21 @@
-"""Shared pytest fixtures for agentsec tests."""
+"""Shared pytest fixtures for agentsec tests.
+
+The agentsec test suite requires optional dependencies (wrapt, PyYAML, httpx)
+that are not part of the base SDK install.  When any of them are missing the
+entire ``aidefense/tests/agentsec/`` tree is excluded from collection so that
+CI environments with only base deps are not affected.
+"""
+
+import importlib
 
 import pytest
 from typing import Generator
 from unittest.mock import MagicMock
+
+_REQUIRED_SPECS = ("wrapt", "yaml", "httpx")
+_missing = [m for m in _REQUIRED_SPECS if importlib.util.find_spec(m) is None]
+if _missing:
+    collect_ignore_glob = ["unit/**/*.py", "**/*.py"]
 
 
 @pytest.fixture

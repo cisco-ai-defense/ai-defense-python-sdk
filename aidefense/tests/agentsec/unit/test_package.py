@@ -24,8 +24,8 @@ class TestPackageStructure:
         assert callable(no_inspection)
 
     def test_python_version(self):
-        """Test that Python version is 3.10+."""
-        assert sys.version_info >= (3, 10), "Python 3.10+ required"
+        """Test that Python version is 3.9+."""
+        assert sys.version_info >= (3, 9), "Python 3.9+ required"
 
 
 
