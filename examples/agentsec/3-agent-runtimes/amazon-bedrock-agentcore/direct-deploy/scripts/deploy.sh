@@ -52,6 +52,13 @@ echo ""
 # Agent name (override with AGENTCORE_DIRECT_AGENT_NAME for new resource names)
 AGENT_NAME="${AGENTCORE_DIRECT_AGENT_NAME:-agentcore_sre_direct}"
 
+# Bundle _shared/ into direct-deploy/ so agentcore deploy includes it
+echo "Bundling _shared/ into deploy directory..."
+cp -r "$ROOT_DIR/_shared" "$DEPLOY_DIR/_shared"
+
+cleanup() { rm -rf "$DEPLOY_DIR/_shared"; }
+trap cleanup EXIT
+
 # Configure the agent for direct_code_deploy (without -c to avoid container mode)
 echo "Configuring agent: $AGENT_NAME"
 poetry run agentcore configure \

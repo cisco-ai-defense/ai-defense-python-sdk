@@ -2,3 +2,4 @@
 strands-agents>=0.1.0
 bedrock-agentcore>=1.0.0
 python-dotenv>=1.0.0
+cisco-aidefense-sdk>=2.0.0
