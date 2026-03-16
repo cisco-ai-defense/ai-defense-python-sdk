@@ -41,7 +41,10 @@ def main() -> None:
     print(f"Patched clients: {patched}")
 
     # Import Mistral AFTER calling protect()
-    from mistralai import Mistral
+    try:
+        from mistralai.client import Mistral
+    except ImportError:
+        from mistralai import Mistral
 
     api_key = os.environ.get("MISTRAL_API_KEY")
     if not api_key:
