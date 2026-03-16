@@ -1199,7 +1199,7 @@ class _ConverseStreamInspectionWrapper:
         messages: List[Dict[str, Any]],
         metadata: Dict[str, Any],
     ):
-        self._stream = stream
+        self._stream = iter(stream)
         self._messages = messages
         self._metadata = metadata
         self._buffer = ""
@@ -1323,7 +1323,7 @@ class _InvokeModelStreamInspectionWrapper:
         metadata: Dict[str, Any],
         model_id: str,
     ):
-        self._stream = stream
+        self._stream = iter(stream)
         self._messages = messages
         self._metadata = metadata
         self._model_id = model_id
