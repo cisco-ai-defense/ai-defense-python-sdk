@@ -231,7 +231,7 @@ def create_llm_config_from_provider():
         config_entry['api_key'] = config.get('api_key', '')
         logger.debug(f"OpenAI config: model={model}")
     
-    return LLMConfig(config_list=[config_entry])
+    return LLMConfig(config_entry)
 
 
 def create_agents(llm_config):
