@@ -62,7 +62,6 @@ from .models import (
     MCPCapabilityScanResults,
     CapabilityScanResults,
     CapabilityScanResult,
-    GetMCPServerScanResultsResponse,
     FilterOptions,
     GetMCPServerScanReportRequest,
     GetMCPServerScanReportResponse,

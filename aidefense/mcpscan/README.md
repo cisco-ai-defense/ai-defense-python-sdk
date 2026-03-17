@@ -148,10 +148,6 @@ server_id = "550e8400-e29b-41d4-a716-446655440001"
 
 client.trigger_server_scan(server_id)
 print("Server scan triggered")
-
-# Query the latest results after the scan completes.
-results = client.get_server_scan_results(server_id)
-print(f"Is Safe: {results.is_safe}")
 ```
 
 ### Get a Filtered Server Scan Report

@@ -36,6 +36,10 @@ from aidefense.mcpscan.models import (
     OAuthConfig,
 )
 
+from utils import (
+    print_server_scan_summary,
+)
+
 
 def main():
     # Get API key from environment variable
@@ -194,23 +198,7 @@ def main():
     try:
         summary = client.get_server_scan_summary(server_id=server_id)
 
-        if summary.capability_summary:
-            cap_sum = summary.capability_summary
-            print("Capability Summary:")
-            print(f"  Tools:     {cap_sum.tool_count}")
-            print(f"  Prompts:   {cap_sum.prompt_count}")
-            print(f"  Resources: {cap_sum.resource_count}")
-
-        if summary.scan_threat_summary:
-            threat_sum = summary.scan_threat_summary
-            print("\nThreat Summary:")
-            print(f"  Critical: {threat_sum.critical_count}")
-            print(f"  High:     {threat_sum.high_count}")
-            print(f"  Medium:   {threat_sum.medium_count}")
-            print(f"  Low:      {threat_sum.low_count}")
-
-        if summary.completed_at:
-            print(f"\nLast scan completed: {summary.completed_at}")
+        print_server_scan_summary(summary)
 
     except Exception as e:
         print(f"❌ Failed to get scan summary: {e}")

@@ -22,6 +22,7 @@ from typing import Optional
 
 from aidefense.mcpscan.models import (
     GetMCPScanStatusResponse,
+    GetMCPServerScanSummaryResponse,
     MCPScanStatus,
     MCPScanResult,
     CapabilityScanResult,
@@ -191,17 +192,17 @@ def print_scan_result(result) -> None:
                     icon = "✅" if item_is_safe else "⚠️"
                     print(f"  {icon} {name}")
                     print(f"      Severity: {format_severity(severity)}")
-                    
+
                     if description:
                         desc = description[:80] + "..." if len(description) > 80 else description
                         print(f"      Description: {desc}")
-                    
+
                     # Get detailed threats from the new 'threats' field
                     if isinstance(item, dict):
                         detailed_threats = item.get("threats", [])
                     else:
                         detailed_threats = getattr(item, "threats", []) or []
-                    
+
                     if detailed_threats:
                         print(f"      Threats:")
                         for threat in detailed_threats:
@@ -213,7 +214,7 @@ def print_scan_result(result) -> None:
                                 sub_name = getattr(threat, "sub_technique_name", "Unknown")
                                 threat_severity = getattr(threat, "severity", "")
                                 threat_desc = getattr(threat, "description", "")
-                            
+
                             print(f"        • {sub_name}")
                             if threat_severity:
                                 print(f"          Severity: {format_severity(threat_severity)}")
@@ -266,3 +267,22 @@ def print_scan_status(response: GetMCPScanStatusResponse, debug: bool = False) -
     if response.result:
         print_scan_result(response.result)
 
+
+def print_server_scan_summary(summary: GetMCPServerScanSummaryResponse) -> None:
+    if summary.capability_summary:
+        cap_sum = summary.capability_summary
+        print("Capability Summary:")
+        print(f"  Tools:     {cap_sum.tool_count}")
+        print(f"  Prompts:   {cap_sum.prompt_count}")
+        print(f"  Resources: {cap_sum.resource_count}")
+
+    if summary.scan_threat_summary:
+        threat_sum = summary.scan_threat_summary
+        print("\nThreat Summary:")
+        print(f"  Critical: {threat_sum.critical_count}")
+        print(f"  High:     {threat_sum.high_count}")
+        print(f"  Medium:   {threat_sum.medium_count}")
+        print(f"  Low:      {threat_sum.low_count}")
+
+    if summary.completed_at:
+        print(f"\nLast scan completed: {summary.completed_at}")

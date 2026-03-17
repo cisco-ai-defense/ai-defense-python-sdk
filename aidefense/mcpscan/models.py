@@ -815,42 +815,6 @@ class GetMCPScanStatusRequest(AIDefenseModel):
     scan_id: str = Field(..., description="Scan identifier (UUID)")
 
 
-class GetMCPServerScanResultsResponse(AIDefenseModel):
-    """Response message for getting MCP server scan results.
-
-    Args:
-        server_id: The unique identifier of the MCP server.
-        capabilities: Detailed scan results for the server's capabilities.
-        completed_at: The timestamp when the scan was completed.
-        is_safe: Whether the server is considered safe based on scan results.
-        raw_result: The raw output or data from the scan process.
-    """
-    server_id: Optional[str] = Field(
-        None,
-        alias="serverId",
-        description="The unique identifier of the MCP server"
-    )
-    capabilities: Optional[MCPCapabilityScanResults] = Field(
-        None,
-        description="Detailed scan results for the server's capabilities"
-    )
-    completed_at: Optional[datetime] = Field(
-        None,
-        alias="completedAt",
-        description="The timestamp when the scan was completed"
-    )
-    is_safe: Optional[bool] = Field(
-        None,
-        alias="isSafe",
-        description="Whether the server is considered safe based on scan results"
-    )
-    raw_result: Optional[str] = Field(
-        None,
-        alias="rawResult",
-        description="The raw output or data from the scan process"
-    )
-
-
 class FilterOptions(AIDefenseModel):
     """Filter options for retrieving MCP server scan reports.
 

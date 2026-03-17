@@ -32,6 +32,9 @@ from aidefense.mcpscan.models import (
     GetMCPServerScanReportRequest,
 )
 
+from utils import (
+    print_server_scan_summary,
+)
 
 def main():
     # Get API key from environment variable
@@ -76,10 +79,10 @@ def main():
         time.sleep(5)  # Wait for 5 seconds before polling
 
         try:
-            scan_result = client.get_server_scan_results(server_id=server_id)
-            if scan_result.completed_at:
+            scan_summary = client.get_server_scan_summary(server_id=server_id)
+            if scan_summary.completed_at:
                 print("✅ Scan completed!")
-                print(f"Is server safe: {scan_result.is_safe}")
+                print_server_scan_summary(scan_summary)
                 break
         except Exception as e:
             print(f"❌ Failed to get scan status: {e}")
@@ -88,7 +91,7 @@ def main():
         print("⏳ Scan still in progress... waiting before next check.")
 
     # Optionally, you can also retrieve filtered report
-    print("📄 Retrieving filtered scan report...")
+    print("📄 Retrieving Tools scan report...")
     try:
         scan_report = client.server_scan_report(
             request=GetMCPServerScanReportRequest(

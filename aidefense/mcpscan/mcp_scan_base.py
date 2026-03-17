@@ -41,7 +41,6 @@ from aidefense.mcpscan.models import (
     TransportType,
     ServersSortBy,
     SortOrder,
-    GetMCPServerScanResultsResponse,
     GetMCPServerScanReportResponse,
     ValidateMCPServersRequest,
     ValidateMCPServersResponse,
@@ -419,37 +418,6 @@ class MCPScan(BaseClient):
         )
         result = GetMCPServerCapabilitiesResponse.parse_obj(res)
         self.config.logger.debug(f"Retrieved capabilities for server {server_id}: {result}")
-        return result
-
-
-    def get_server_scan_results(self, server_id: str) -> GetMCPServerScanResultsResponse:
-        """
-        Get detailed scan results for a registered MCP server.
-
-        This method retrieves the full results of the most recent scan for a registered
-        MCP server, including detailed threat analysis for each discovered capability.
-
-        Args:
-            server_id (str): The unique identifier of the MCP server (UUID string).
-        Returns:
-            GetMCPServerScanResultsResponse: Response object containing:
-                - scan_id: The scan identifier
-                - capabilities: Detailed results for each capability including threats and severity
-                - completed_at: When the scan completed
-                - is_safe: Overall safety status of the server based on scan results
-                - raw_result: The raw scan result data from the server (if available)
-
-        Raises:
-            ValidationError: If the server_id is invalid.
-            ApiError: If the API returns an error response.
-            SDKError: For other SDK-related errors.
-        """
-        res = self.make_request(
-            method=HttpMethod.GET,
-            path=mcp_server_scan(server_id),
-        )
-        result = GetMCPServerScanResultsResponse.model_validate(res)
-        self.config.logger.debug(f"Retrieved scan results for server {server_id}: {result}")
         return result
 
 
