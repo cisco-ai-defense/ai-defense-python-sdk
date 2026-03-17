@@ -22,7 +22,8 @@ pip install cisco-aidefense-sdk
 ```python
 from aidefense.mcpscan import MCPScanClient
 from aidefense.mcpscan.models import (
-    StartMCPServerScanRequest, TransportType, MCPScanStatus
+    StartMCPServerScanRequest, TransportType, MCPScanStatus,
+    ServerType, RemoteServerInput
 )
 from aidefense import Config
 
@@ -35,9 +36,11 @@ client = MCPScanClient(
 # Create scan request
 request = StartMCPServerScanRequest(
     name="My MCP Server",
-    url="https://mcp-server.example.com/sse",
-    description="Production MCP server for AI assistant",
-    connection_type=TransportType.SSE
+    server_type=ServerType.REMOTE,
+    remote=RemoteServerInput(
+        url="https://mcp-server.example.com/sse",
+        connection_type=TransportType.SSE
+    )
 )
 
 # Run the scan (waits for completion by default)
@@ -52,13 +55,16 @@ if result.status == MCPScanStatus.COMPLETED:
         else:
             print("⚠️ Security issues detected")
 elif result.status == MCPScanStatus.FAILED:
-    print(f"❌ Scan failed: {result.error_message}")
+    print(f"❌ Scan failed: {result.error_info}")
 ```
 
 ### Scanning with API Key Authentication
 
 ```python
-from aidefense.mcpscan.models import AuthConfig, AuthType, ApiKeyConfig
+from aidefense.mcpscan.models import (
+    AuthConfig, AuthType, ApiKeyConfig,
+    ServerType, RemoteServerInput, StartMCPServerScanRequest, TransportType
+)
 
 # Configure authentication for the MCP server
 auth_config = AuthConfig(
@@ -72,8 +78,11 @@ auth_config = AuthConfig(
 # Create scan request with authentication
 request = StartMCPServerScanRequest(
     name="Authenticated MCP Server",
-    url="https://secure-mcp-server.example.com/sse",
-    connection_type=TransportType.SSE,
+    server_type=ServerType.REMOTE,
+    remote=RemoteServerInput(
+        url="https://secure-mcp-server.example.com/sse",
+        connection_type=TransportType.SSE
+    ),
     auth_config=auth_config
 )
 
@@ -96,7 +105,7 @@ while True:
         print("✅ Scan completed!")
         break
     elif status.status == MCPScanStatus.FAILED:
-        print(f"❌ Scan failed: {status.error_message}")
+        print(f"❌ Scan failed: {status.error_info}")
         break
     time.sleep(5)
 ```
@@ -109,6 +118,105 @@ status = client.get_scan_status("your-scan-id")
 print(f"Status: {status.status}")
 if status.result:
     print(f"Is Safe: {status.result.is_safe}")
+```
+
+## Registered Server Operations
+
+The methods below operate on MCP servers that are already registered in AI Defense and use the registered server ID.
+
+### Get Detailed Scan Results
+
+```python
+server_id = "550e8400-e29b-41d4-a716-446655440000"
+
+results = client.get_server_scan_results(server_id)
+print(f"Server ID: {results.server_id}")
+print(f"Completed At: {results.completed_at}")
+print(f"Is Safe: {results.is_safe}")
+
+if results.capabilities and results.capabilities.tool_results:
+    for capability_id, capability_results in results.capabilities.tool_results.items():
+        for item in capability_results.items:
+            print(f"{capability_id}: {item.capability_name} -> severity={item.severity}")
+            print(f"Threats: {', '.join(item.threat_names)}")
+```
+
+### Trigger an On-Demand Scan
+
+```python
+server_id = "550e8400-e29b-41d4-a716-446655440001"
+
+client.trigger_server_scan(server_id)
+print("Server scan triggered")
+
+# Query the latest results after the scan completes.
+results = client.get_server_scan_results(server_id)
+print(f"Is Safe: {results.is_safe}")
+```
+
+### Get a Filtered Server Scan Report
+
+```python
+from aidefense.mcpscan.models import (
+    CapabilityType,
+    FilterOptions,
+    GetMCPServerScanReportRequest,
+    ThreatSeverityLevel,
+)
+
+request = GetMCPServerScanReportRequest(
+    server_id="550e8400-e29b-41d4-a716-446655440002",
+    offset=0,
+    filter_options=FilterOptions(
+        capability_type=CapabilityType.TOOL,
+        threat_severity=[
+            ThreatSeverityLevel.HIGH,
+            ThreatSeverityLevel.CRITICAL,
+        ],
+    ),
+)
+
+report = client.server_scan_report(request)
+
+if report.reports and report.reports.items:
+    for item in report.reports.items:
+        if item.capability and item.capability.tool:
+            print(f"Tool: {item.capability.tool.name}")
+        for threat in item.threats or []:
+            print(f"Technique: {threat.technique_name}")
+            print(f"Description: {threat.description}")
+
+if report.paging:
+    print(f"Total: {report.paging.total}, Offset: {report.paging.offset}")
+```
+
+### Validate MCP Server URLs Before Registration
+
+```python
+from aidefense.mcpscan.models import (
+    AuthConfig,
+    AuthType,
+    TransportType,
+    ValidateMCPServersRequest,
+)
+
+request = ValidateMCPServersRequest(
+    urls=[
+        "https://valid.example.com/sse",
+        "https://invalid.example.com/sse",
+    ],
+    transport_type=TransportType.SSE,
+    auth_config=AuthConfig(auth_type=AuthType.NO_AUTH),
+)
+
+validation = client.validate_servers(request)
+print("Valid URLs:", validation.valid_urls)
+
+for invalid in validation.invalid_urls:
+    print(f"Invalid URL: {invalid.url}")
+    print(f"Reason: {invalid.error_info.message}")
+    if invalid.error_info.remediation_tips:
+        print(f"Tip: {invalid.error_info.remediation_tips[0]}")
 ```
 
 ## Transport Types
