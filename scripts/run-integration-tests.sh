@@ -119,6 +119,17 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# Default resource names (no timestamp).  These are used when running without
+# --new-resources and without environment overrides, so that invoke scripts
+# always have a valid target.
+export AGENTCORE_DIRECT_AGENT_NAME="${AGENTCORE_DIRECT_AGENT_NAME:-agentcore_sre_direct}"
+export AGENTCORE_CONTAINER_AGENT_NAME="${AGENTCORE_CONTAINER_AGENT_NAME:-agentcore_sre_container}"
+export FUNCTION_NAME="${FUNCTION_NAME:-agentcore-sre-lambda}"
+export AGENT_ENGINE_NAME="${AGENT_ENGINE_NAME:-sre-agent-engine}"
+export AGENT_ENDPOINT_NAME="${AGENT_ENDPOINT_NAME:-foundry-sre-agent}"
+export CONTAINER_ENDPOINT_NAME="${CONTAINER_ENDPOINT_NAME:-foundry-sre-container}"
+export AZURE_FUNCTION_APP_NAME="${AZURE_FUNCTION_APP_NAME:-aid-sre-agent-func}"
+
 # When --new-resources: use timestamped names only for runtimes we're actually running;
 # merge with existing .last_new_resources_run so single-CSP runs don't overwrite other CSPs' names.
 if [ "$NEW_RESOURCES" = true ] && [ "$RUN_RUNTIMES" = true ]; then
@@ -147,22 +158,23 @@ if [ "$NEW_RESOURCES" = true ] && [ "$RUN_RUNTIMES" = true ]; then
         source "$LAST_RESOURCES_FILE"
         set +a
     fi
-    # Set and export only for runtimes we're running (timestamps only for those CSPs)
+    # Generate timestamped names for the CSPs we're running (unconditional so
+    # they always override the static defaults set above).
     if [ "$RUNNING_AWS" = true ]; then
         RESOURCE_SUFFIX="$(date '+%Y%m%d-%H%M%S')"
         RESOURCE_SUFFIX_AWS="$(date '+%Y%m%d_%H%M%S')"
-        export AGENTCORE_DIRECT_AGENT_NAME="${AGENTCORE_DIRECT_AGENT_NAME:-agentcore_sre_direct_${RESOURCE_SUFFIX_AWS}}"
-        export AGENTCORE_CONTAINER_AGENT_NAME="${AGENTCORE_CONTAINER_AGENT_NAME:-agentcore_sre_container_${RESOURCE_SUFFIX_AWS}}"
-        export FUNCTION_NAME="${FUNCTION_NAME:-agentcore-sre-lambda-${RESOURCE_SUFFIX}}"
+        export AGENTCORE_DIRECT_AGENT_NAME="agentcore_sre_direct_${RESOURCE_SUFFIX_AWS}"
+        export AGENTCORE_CONTAINER_AGENT_NAME="agentcore_sre_container_${RESOURCE_SUFFIX_AWS}"
+        export FUNCTION_NAME="agentcore-sre-lambda-${RESOURCE_SUFFIX}"
     fi
     if [ "$RUNNING_GCP" = true ]; then
         RESOURCE_SUFFIX="${RESOURCE_SUFFIX:-$(date '+%Y%m%d-%H%M%S')}"
-        export AGENT_ENGINE_NAME="${AGENT_ENGINE_NAME:-sre-agent-engine-${RESOURCE_SUFFIX}}"
+        export AGENT_ENGINE_NAME="sre-agent-engine-${RESOURCE_SUFFIX}"
     fi
     if [ "$RUNNING_AZURE" = true ]; then
         RESOURCE_SUFFIX_AZURE="$(date '+%y%m%d%H%M')"
-        export AGENT_ENDPOINT_NAME="${AGENT_ENDPOINT_NAME:-foundry-sre-agent-${RESOURCE_SUFFIX_AZURE}}"
-        export CONTAINER_ENDPOINT_NAME="${CONTAINER_ENDPOINT_NAME:-foundry-sre-container-${RESOURCE_SUFFIX_AZURE}}"
+        export AGENT_ENDPOINT_NAME="foundry-sre-agent-${RESOURCE_SUFFIX_AZURE}"
+        export CONTAINER_ENDPOINT_NAME="foundry-sre-container-${RESOURCE_SUFFIX_AZURE}"
         export AZURE_FUNCTION_APP_NAME="aid-sre-agent-func-${RESOURCE_SUFFIX_AZURE}"
     fi
     # For file write: use current values (set above or preserved from existing file)

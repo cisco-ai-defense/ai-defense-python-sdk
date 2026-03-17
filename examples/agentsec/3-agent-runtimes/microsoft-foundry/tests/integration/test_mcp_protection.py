@@ -41,8 +41,8 @@ load_dotenv(os.path.join(ROOT_DIR, "..", "..", ".env"))
 
 def test_mcp_tool_call_direct():
     """Test that MCP tool calls are intercepted by agentsec (direct invocation)."""
-    from aidefense import get_patched_clients
-    
+    from aidefense.runtime import agentsec
+
     # Import after protect() is called (via agent_factory)
     from _shared.mcp_tools import fetch_url, get_mcp_tools
     
@@ -53,7 +53,7 @@ def test_mcp_tool_call_direct():
         return
     
     # Verify agentsec has patched MCP
-    patched = get_patched_clients()
+    patched = agentsec.get_patched_clients()
     print(f"[agentsec] Patched clients: {patched}")
     
     assert "mcp" in patched, "MCP client not patched by agentsec"
@@ -103,8 +103,8 @@ def test_mcp_tool_call_via_agent():
     
     This is similar to how the GCP Vertex AI example tests MCP through the agent.
     """
-    from aidefense import get_patched_clients
-    
+    from aidefense.runtime import agentsec
+
     # Verify MCP is configured
     mcp_url = os.getenv("MCP_SERVER_URL")
     if not mcp_url:
@@ -120,7 +120,7 @@ def test_mcp_tool_call_via_agent():
     from _shared import invoke_agent
     
     # Verify both MCP and OpenAI are patched
-    patched = get_patched_clients()
+    patched = agentsec.get_patched_clients()
     print(f"[agentsec] Patched clients: {patched}")
     
     assert "mcp" in patched, "MCP client not patched by agentsec"
