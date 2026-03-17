@@ -22,7 +22,7 @@ This example demonstrates how to:
 """
 
 import os
-from time import time
+import time
 
 from aidefense import Config
 from aidefense.mcpscan import MCPScan
@@ -73,6 +73,8 @@ def main():
     # Poll for Scan Status
     # ===========================================
     while True:
+        time.sleep(5)  # Wait for 5 seconds before polling
+
         try:
             scan_result = client.get_server_scan_results(server_id=server_id)
             if scan_result.completed_at:
@@ -84,7 +86,6 @@ def main():
             return
 
         print("⏳ Scan still in progress... waiting before next check.")
-        time.sleep(5)  # Wait for 5 seconds before polling again
 
     # Optionally, you can also retrieve filtered report
     print("📄 Retrieving filtered scan report...")
