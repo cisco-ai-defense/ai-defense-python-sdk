@@ -12,7 +12,7 @@ The examples are organized into the following structure:
 
     examples/
     ├── README.md
-    ├── agentsec/                # Runtime protection examples
+    ├── agentsec/                # Agent Runtime SDK examples
     │   ├── agentsec.yaml        # Configuration (modes, gateways, timeouts)
     │   ├── .env.example         # Template for environment variables
     │   ├── 1-simple/            # Simple standalone examples
@@ -74,10 +74,10 @@ The examples are organized into the following structure:
         ├── advanced_usage.py
         └── custom_configuration.py
 
-Runtime Protection Examples
+Agent Runtime SDK Examples
 --------------------------
 
-Runtime protection automatically patches LLM and MCP clients to inspect all interactions.
+The Agent Runtime SDK automatically patches LLM and MCP clients to inspect all interactions.
 See the `agentsec examples README <https://github.com/cisco/ai-defense-python-sdk/tree/main/examples/agentsec>`_ for end-to-end walkthroughs.
 
 YAML Configuration (Recommended)

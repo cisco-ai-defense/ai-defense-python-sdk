@@ -1,4 +1,4 @@
-Runtime Protection (agentsec)
+Agent Runtime SDK (agentsec)
 =============================
 
 .. automodule:: aidefense.runtime.agentsec
@@ -9,7 +9,7 @@ Runtime Protection (agentsec)
 Overview
 --------
 
-The ``agentsec`` module is the primary entry point for runtime protection of LLM and MCP interactions. It automatically monkey-patches supported client libraries so that every request and response is inspected by Cisco AI Defense -- with just two lines of code.
+The ``agentsec`` module is the primary entry point for the Agent Runtime SDK, providing protection of LLM and MCP interactions. It automatically monkey-patches supported client libraries so that every request and response is inspected by Cisco AI Defense -- with just two lines of code.
 
 Call ``protect()`` once, **before** importing any LLM clients, and the SDK handles the rest: configuration loading, client patching, inspection, and enforcement.
 

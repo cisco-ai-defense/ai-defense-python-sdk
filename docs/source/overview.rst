@@ -3,7 +3,7 @@ Overview
 
 The AI Defense Python SDK is designed to provide developers with tools to detect security, privacy, and safety risks in real-time. It offers multiple integration approaches:
 
-* **Runtime Protection (agentsec)**: Auto-patch LLM and MCP clients with 2 lines of code — supports API mode and Gateway mode
+* **Agent Runtime SDK (agentsec)**: Auto-patch LLM and MCP clients with 2 lines of code — supports API mode and Gateway mode
 * **Chat Inspection**: Analyze chat prompts and responses
 * **HTTP Inspection**: Inspect HTTP requests and responses
 * **MCP Inspection**: Inspect Model Context Protocol messages
@@ -24,7 +24,7 @@ Installation
 Basic Usage
 ~~~~~~~~~~~
 
-Runtime Protection (Recommended)
+Agent Runtime SDK (Recommended)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The easiest way to protect your AI applications is with ``agentsec.protect()``.
@@ -115,7 +115,7 @@ SDK Architecture
 
 The SDK is structured around several layers:
 
-* **Runtime Protection (agentsec)**: Automatic monkey-patching of LLM and MCP client libraries
+* **Agent Runtime SDK (agentsec)**: Automatic monkey-patching of LLM and MCP client libraries
 * **Inspection Clients**: Low-level clients for chat, HTTP, and MCP message inspection
 * **MCP Server Scanning**: Scan and manage MCP servers for security threats
 * **Common**: Shared configuration, authentication, retry, and error-handling primitives
@@ -123,7 +123,7 @@ The SDK is structured around several layers:
 Key Components
 -------------
 
-Runtime Protection (agentsec)
+Agent Runtime SDK (agentsec)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - ``runtime/agentsec/__init__.py`` — Main entry point (``protect()``, ``skip_inspection()``, ``no_inspection()``)
