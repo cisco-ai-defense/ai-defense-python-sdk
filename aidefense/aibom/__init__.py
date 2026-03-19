@@ -28,6 +28,6 @@ from .models import (
 )
 
 __all__ = [
-    "AIBOMClient",
+    "AiBomClient",
     "AiBom",
 ]
