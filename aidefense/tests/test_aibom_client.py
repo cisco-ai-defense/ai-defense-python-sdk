@@ -1,8 +1,7 @@
-from __future__ import annotations
-
 import json
 import os
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Generator, Mapping, Sequence, TypedDict, Union
 from unittest.mock import MagicMock, patch
@@ -196,7 +195,7 @@ class TestAiBomClientSubmitReport:
 		assert result == expected_response
 		assert request.run_id == "run-123"
 		assert request.analyzer_version == "1.2.3"
-		assert request.submitted_at == "2026-03-19T12:00:00Z"
+		assert request.submitted_at == datetime(2026, 3, 19, 12, 0, tzinfo=timezone.utc)
 		assert request.source_kind == SourceKind.SOURCE_KIND_LOCAL_PATH
 		assert [(source.name, source.path) for source in request.sources] == [
 			("src/app.py", "src/app.py")

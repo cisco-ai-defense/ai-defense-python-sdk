@@ -133,10 +133,6 @@ class AiBomClient:
         normalized = [str(Path(s).expanduser().resolve()) for s in sources]
         return normalized
 
-    def _norm(self, value: Optional[os.PathLike]) -> Optional[Path]:
-        if value is None:
-            return None
-        return Path(value).expanduser().resolve()
 
     @contextmanager
     def _resolve_output_path(self, output_file: Optional[os.PathLike]):
