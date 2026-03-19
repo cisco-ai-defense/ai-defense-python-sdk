@@ -27,7 +27,11 @@ from aidefense.aibom.models import CreateAnalysisResponse, CreateAnalysisRequest
 from aidefense.config import Config
 import json
 
-from aibom.cli import analyze
+try:
+    # cisco-aibom is an optional dependency; keep module importable without it.
+    from aibom.cli import analyze
+except ModuleNotFoundError:
+    analyze = None
 
 DEFAULT_REPORT_FORMAT = "json"
 DEFAULT_LOG_LEVEL = "WARNING"
@@ -50,6 +54,12 @@ class AiBomClient:
         Returns:
             dict: The analysis results as a dictionary.
         """
+        if analyze is None:
+            raise ModuleNotFoundError(
+                "Optional dependency 'cisco-aibom' is required for AiBomClient.analyze(). "
+                "Install it with: poetry install --extras aibom"
+            )
+
         source_list = self._validate_and_normalize_sources(sources)
 
         with self._resolve_output_path(output_file) as out_path:
