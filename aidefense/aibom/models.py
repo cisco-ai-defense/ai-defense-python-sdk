@@ -99,7 +99,7 @@ class CreateAnalysisRequest(AIDefenseModel):
     """
     run_id: str = Field(..., description="Unique run identifier")
     analyzer_version: str = Field(..., description="Version of the analyzer")
-    submitted_at: Optional[str] = Field(..., description="RFC3339 timestamp of submission")
+    submitted_at: Optional[datetime] = Field(..., description="RFC3339 timestamp of submission")
     source_kind: SourceKind = Field(..., description="Type of source being analyzed")
     sources: List[SourceInput] = Field(default_factory=list, description="List of sources")
     env: Optional[Dict[str, Any]] = Field(None, description="Environment context")
@@ -152,7 +152,7 @@ class BomDetailSummary(AIDefenseModel):
         asset_types: Breakdown of asset types.
     """
     total_assets: int = Field(default=0, description="Total assets discovered")
-    last_generated_at: Optional[str] = Field(None, description="Last generation timestamp")
+    last_generated_at: Optional[datetime] = Field(None, description="Last generation timestamp")
     asset_types: Optional[AssetTypeCounts] = Field(None, description="Asset type breakdown")
 
 
@@ -170,7 +170,7 @@ class BomDetail(AIDefenseModel):
     analysis_id: str = Field(..., description="Analysis identifier")
     source_name: str = Field(..., description="Source name")
     source_kind: SourceKind = Field(..., description="Type of source")
-    generated_at: Optional[str] = Field(None, description="Generation timestamp")
+    generated_at: Optional[datetime] = Field(None, description="Generation timestamp")
     summary: Optional[BomDetailSummary] = Field(None, description="BOM summary")
     status: BomStatus = Field(..., description="BOM status")
 
@@ -193,7 +193,7 @@ class ComponentRow(AIDefenseModel):
     file_path: str = Field(default="", description="File path location")
     line_number: int = Field(default=0, description="Line number in file")
     framework: str = Field(default="", description="Framework/library name")
-    last_generated_at: Optional[str] = Field(None, description="Last generation timestamp")
+    last_generated_at: Optional[datetime] = Field(None, description="Last generation timestamp")
 
 
 class BomSummaryItem(AIDefenseModel):
@@ -211,7 +211,7 @@ class BomSummaryItem(AIDefenseModel):
     source_name: str = Field(..., description="Source name")
     source_kind: SourceKind = Field(..., description="Type of source")
     assets_discovered: int = Field(default=0, description="Number of assets discovered")
-    last_generated_at: Optional[str] = Field(None, description="Last generation timestamp")
+    last_generated_at: Optional[datetime] = Field(None, description="Last generation timestamp")
     status: BomStatus = Field(..., description="BOM status")
 
 
