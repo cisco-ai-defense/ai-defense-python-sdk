@@ -47,6 +47,7 @@ https://developer.cisco.com/docs/ai-defense/overview/
 """
 
 import copy
+from importlib import metadata
 import logging
 import os
 import sys
@@ -98,7 +99,14 @@ __all__ = [
     "use_gateway",
 ]
 
-__version__ = "0.1.0"
+def _load_runtime_version() -> str:
+    try:
+        return metadata.version("cisco-aidefense-sdk")
+    except metadata.PackageNotFoundError:
+        return "0+unknown"
+
+
+__version__ = _load_runtime_version()
 
 # Logger - use the centralized logging module
 logger = logging.getLogger("aidefense.runtime.agentsec")
