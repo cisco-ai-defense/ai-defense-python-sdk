@@ -40,148 +40,166 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+import time
 from typing import Any, Dict, List, Optional, Set
 
 from aidefense import Config
 from aidefense.aibom.aibom_base import AiBom
 from aidefense.aibom.models import (
-	BomsSummaryRequest,
-	CreateAnalysisRequest,
-	ListBomComponentsRequest,
-	ListBomsRequest,
-	SourceInput,
-	SourceKind,
+    BomStatus,
+    BomsSummaryRequest,
+    CreateAnalysisRequest,
+    ListBomComponentsRequest,
+    ListBomsRequest,
+    SourceInput,
+    SourceKind,
 )
+from aidefense.exceptions import ApiError
 
 
 def _load_report_from_file(file_path: Path) -> Dict[str, Any]:
-	raw_text = file_path.read_text(encoding="utf-8")
-	return json.loads(raw_text)
+    raw_text = file_path.read_text(encoding="utf-8")
+    return json.loads(raw_text)
 
 
 def _extract_source_kind_and_inputs(report: Dict[str, Any]) -> tuple[SourceKind, List[SourceInput]]:
-	sources_section = report.get("aibom_analysis", {}).get("sources", {})
+    sources_section = report.get("aibom_analysis", {}).get("sources", {})
 
-	source_kinds: Set[str] = set()
-	source_inputs: List[SourceInput] = []
+    source_kinds: Set[str] = set()
+    source_inputs: List[SourceInput] = []
 
-	for source_name, source_data in sources_section.items():
-		source_kind = source_data.get("summary", {}).get("source_kind")
-		if source_kind in {"local-path", "container"}:
-			source_kinds.add(source_kind)
+    for source_name, source_data in sources_section.items():
+        source_kind = source_data.get("summary", {}).get("source_kind")
+        if source_kind in {"local-path", "container"}:
+            source_kinds.add(source_kind)
 
-		source_inputs.append(SourceInput(name=source_name, path=source_name))
+        source_inputs.append(SourceInput(name=source_name, path=source_name))
 
-	if source_kinds == {"local-path"}:
-		kind = SourceKind.SOURCE_KIND_LOCAL_PATH
-	elif source_kinds == {"container"}:
-		kind = SourceKind.SOURCE_KIND_CONTAINER
-	else:
-		kind = SourceKind.SOURCE_KIND_OTHER
+    if source_kinds == {"local-path"}:
+        kind = SourceKind.SOURCE_KIND_LOCAL_PATH
+    elif source_kinds == {"container"}:
+        kind = SourceKind.SOURCE_KIND_CONTAINER
+    else:
+        kind = SourceKind.SOURCE_KIND_OTHER
 
-	return kind, source_inputs
+    return kind, source_inputs
 
 
 def _build_create_analysis_request(report: Dict[str, Any]) -> CreateAnalysisRequest:
-	metadata = report.get("aibom_analysis", {}).get("metadata", {})
-	source_kind, source_inputs = _extract_source_kind_and_inputs(report)
+    metadata = report.get("aibom_analysis", {}).get("metadata", {})
+    source_kind, source_inputs = _extract_source_kind_and_inputs(report)
 
-	return CreateAnalysisRequest(
-		run_id=metadata.get("run_id", "sample-run-id"),
-		analyzer_version=metadata.get("analyzer_version", "unknown"),
-		submitted_at=metadata.get("submitted_at"),
-		source_kind=source_kind,
-		sources=source_inputs,
-		report=report,
-	)
+    return CreateAnalysisRequest(
+        run_id=metadata.get("run_id", "sample-run-id"),
+        analyzer_version=metadata.get("analyzer_version", "unknown"),
+        submitted_at=metadata.get("submitted_at"),
+        source_kind=source_kind,
+        sources=source_inputs,
+        report=report,
+    )
 
 
 def main() -> None:
-	management_api_key = os.environ.get("AIDEFENSE_MANAGEMENT_API_KEY")
-	management_base_url = os.environ.get(
-		"AIDEFENSE_MANAGEMENT_BASE_URL", "https://api.security.cisco.com"
-	)
+    management_api_key = os.environ.get("AIDEFENSE_MANAGEMENT_API_KEY")
+    management_base_url = os.environ.get(
+        "AIDEFENSE_MANAGEMENT_BASE_URL", "https://api.security.cisco.com"
+    )
 
-	if not management_api_key:
-		print("❌ Error: AIDEFENSE_MANAGEMENT_API_KEY environment variable is not set")
-		return
+    if not management_api_key:
+        print("❌ Error: AIDEFENSE_MANAGEMENT_API_KEY environment variable is not set")
+        return
 
-	client = AiBom(
-		api_key=management_api_key,
-		config=Config(management_base_url=management_base_url),
-	)
+    client = AiBom(
+        api_key=management_api_key,
+        config=Config(management_base_url=management_base_url),
+    )
 
-	created_analysis_id: Optional[str] = None
+    created_analysis_id: Optional[str] = None
 
-	try:
-		# 1) create_analysis (optional, requires AIBOM_REPORT_PATH)
-		report_path = os.environ.get("AIBOM_REPORT_PATH")
-		if report_path:
-			report_file = Path(report_path).expanduser().resolve()
-			if not report_file.exists():
-				print(f"❌ AIBOM_REPORT_PATH does not exist: {report_file}")
-				return
+    try:
+        # 1) create_analysis (optional, requires AIBOM_REPORT_PATH)
+        report_path = os.environ.get("AIBOM_REPORT_PATH")
+        if report_path:
+            report_file = Path(report_path).expanduser().resolve()
+            if not report_file.exists():
+                print(f"❌ AIBOM_REPORT_PATH does not exist: {report_file}")
+                return
 
-			print(f"🚀 Creating analysis from report file: {report_file}")
-			report_data = _load_report_from_file(report_file)
-			create_req = _build_create_analysis_request(report_data)
-			create_resp = client.create_analysis(create_req)
-			created_analysis_id = create_resp.analysis_id
-			print("✅ Analysis created")
-			print(create_resp.model_dump_json(indent=2))
-		else:
-			print("ℹ️ Skipping create_analysis (set AIBOM_REPORT_PATH to enable it)")
+            print(f"🚀 Creating analysis from report file: {report_file}")
+            report_data = _load_report_from_file(report_file)
+            create_req = _build_create_analysis_request(report_data)
+            create_resp = client.create_analysis(create_req)
+            created_analysis_id = create_resp.analysis_id
+            print("✅ Analysis created")
+            print(create_resp.model_dump_json(indent=2))
+        else:
+            print("ℹ️ Skipping create_analysis (set AIBOM_REPORT_PATH to enable it)")
 
-		# 2) list_boms
-		print("\n🚀 Listing BOMs")
-		list_resp = client.list_boms(ListBomsRequest(limit=10, offset=0))
-		print(f"✅ Retrieved {len(list_resp.items)} BOM(s)")
-		print(list_resp.model_dump_json(indent=2))
+        # 2) list_boms
+        print("\n🚀 Listing BOMs")
+        list_resp = client.list_boms(ListBomsRequest(limit=10, offset=0))
+        print(f"✅ Retrieved {len(list_resp.items)} BOM(s)")
+        print(list_resp.model_dump_json(indent=2))
 
-		# Use the created analysis_id when available; otherwise use the first listed BOM.
-		analysis_id = created_analysis_id
-		if not analysis_id and list_resp.items:
-			analysis_id = list_resp.items[0].analysis_id
+        # Use the created analysis_id when available; otherwise use the first listed BOM.
+        analysis_id = created_analysis_id
+        if not analysis_id and list_resp.items:
+            analysis_id = list_resp.items[0].analysis_id
 
-		if not analysis_id:
-			print("\nℹ️ No BOM found for get_bom/list_bom_components/delete_bom examples")
-		else:
-			# 3) get_bom
-			print(f"\n🚀 Getting BOM details for analysis_id={analysis_id}")
-			bom_resp = client.get_bom(analysis_id)
-			print("✅ BOM details")
-			print(bom_resp.model_dump_json(indent=2))
+        if not analysis_id:
+            print("\nℹ️ No BOM found for get_bom/list_bom_components/delete_bom examples")
+        else:
+            # poll until BOM analysis is complete (status is not "pending" or "in_progress")
+            print(f"\n⏳ Polling BOM status for analysis_id={analysis_id} until completion...")
+            while True:
+                try:
+                    bom_detail = client.get_bom(analysis_id)
+                    status = bom_detail.status
+                    print(f"   Current status: {status}")
+                    if status not in {BomStatus.BOM_STATUS_PENDING, BomStatus.BOM_STATUS_IN_PROGRESS}:
+                        print("   BOM analysis completed")
+                        break
+                    time.sleep(5)  # wait before polling again
+                except ApiError as e:
+                    print(f"   Error fetching BOM status: {e}")
+                    time.sleep(5)  # wait before retrying
 
-			# 4) list_bom_components
-			print(f"\n🚀 Listing BOM components for analysis_id={analysis_id}")
-			components_resp = client.list_bom_components(
-				analysis_id,
-				ListBomComponentsRequest(limit=20, offset=0),
-			)
-			print(f"✅ Retrieved {len(components_resp.items)} component(s)")
-			print(components_resp.model_dump_json(indent=2))
+            # 3) get_bom
+            print(f"\n🚀 Getting BOM details for analysis_id={analysis_id}")
+            bom_resp = client.get_bom(analysis_id)
+            print("✅ BOM details")
+            print(bom_resp.model_dump_json(indent=2))
 
-		# 5) get_bom_summary
-		print("\n🚀 Getting BOM summary")
-		summary_resp = client.get_bom_summary(BomsSummaryRequest())
-		print("✅ BOM summary")
-		print(summary_resp.model_dump_json(indent=2))
+            # 4) list_bom_components
+            print(f"\n🚀 Listing BOM components for analysis_id={analysis_id}")
+            components_resp = client.list_bom_components(
+                analysis_id,
+                ListBomComponentsRequest(limit=20, offset=0),
+            )
+            print(f"✅ Retrieved {len(components_resp.items)} component(s)")
+            print(components_resp.model_dump_json(indent=2))
 
-		# 6) delete_bom (optional)
-		should_delete = os.environ.get("AIBOM_DELETE_CREATED", "false").lower() == "true"
-		if should_delete and created_analysis_id:
-			print(f"\n🚀 Deleting created BOM: {created_analysis_id}")
-			client.delete_bom(created_analysis_id)
-			print("✅ Created BOM deleted")
-		elif should_delete and not created_analysis_id:
-			print("\nℹ️ AIBOM_DELETE_CREATED=true but no BOM was created in this run")
-		else:
-			print("\nℹ️ Skipping delete_bom (set AIBOM_DELETE_CREATED=true to enable)")
+        # 5) get_bom_summary
+        print("\n🚀 Getting BOM summary")
+        summary_resp = client.get_bom_summary(BomsSummaryRequest())
+        print("✅ BOM summary")
+        print(summary_resp.model_dump_json(indent=2))
 
-	except Exception as exc:
-		print("\n❌ AIBOM base example failed")
-		print(f"   {exc}")
+        # 6) delete_bom (optional)
+        should_delete = os.environ.get("AIBOM_DELETE_CREATED", "false").lower() == "true"
+        if should_delete and created_analysis_id:
+            print(f"\n🚀 Deleting created BOM: {created_analysis_id}")
+            client.delete_bom(created_analysis_id)
+            print("✅ Created BOM deleted")
+        elif should_delete and not created_analysis_id:
+            print("\nℹ️ AIBOM_DELETE_CREATED=true but no BOM was created in this run")
+        else:
+            print("\nℹ️ Skipping delete_bom (set AIBOM_DELETE_CREATED=true to enable)")
+
+    except Exception as exc:
+        print("\n❌ AIBOM base example failed")
+        print(f"   {exc}")
 
 
 if __name__ == "__main__":
-	main()
+    main()
