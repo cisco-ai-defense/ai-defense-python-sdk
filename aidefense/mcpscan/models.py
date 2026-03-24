@@ -70,6 +70,14 @@ class SeverityLevel(str, Enum):
     MEDIUM = "MEDIUM"
     HIGH = "HIGH"
 
+class ThreatSeverityLevel(str, Enum):
+    """Severity levels for threats."""
+    THREAT_SEVERITY_UNKNOWN = "THREAT_SEVERITY_UNKNOWN"
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+    CRITICAL = "CRITICAL"
+
 
 class CapabilityScanStatus(str, Enum):
     """Scan status for a capability."""
@@ -356,6 +364,8 @@ class ThreatDetails(AIDefenseModel):
     analyzer_type: AnalyzerType = Field(default=AnalyzerType.UNSPECIFIED, alias="analyzerType", description="Analyzer type")
     completed_at: Optional[datetime] = Field(None, alias="completedAt", description="Completion timestamp")
     sub_techniques: List[ThreatSubTechnique] = Field(default_factory=list, alias="subTechniques", description="Sub-techniques")
+    source_file: Optional[str] = Field(None, alias="sourceFile", description="Source file where the threat was found")
+    description: Optional[str] = Field(None, description="Detailed description of the threat")
 
     @model_validator(mode='before')
     @classmethod
@@ -803,6 +813,151 @@ class GetMCPScanStatusRequest(AIDefenseModel):
         scan_id: Unique identifier for the scan to query.
     """
     scan_id: str = Field(..., description="Scan identifier (UUID)")
+
+
+class GetMCPServerScanResultsResponse(AIDefenseModel):
+    """Response message for getting MCP server scan results.
+
+    Args:
+        server_id: The unique identifier of the MCP server.
+        capabilities: Detailed scan results for the server's capabilities.
+        completed_at: The timestamp when the scan was completed.
+        is_safe: Whether the server is considered safe based on scan results.
+        raw_result: The raw output or data from the scan process.
+    """
+    server_id: Optional[str] = Field(
+        None,
+        alias="serverId",
+        description="The unique identifier of the MCP server"
+    )
+    capabilities: Optional[MCPCapabilityScanResults] = Field(
+        None,
+        description="Detailed scan results for the server's capabilities"
+    )
+    completed_at: Optional[datetime] = Field(
+        None,
+        alias="completedAt",
+        description="The timestamp when the scan was completed"
+    )
+    is_safe: Optional[bool] = Field(
+        None,
+        alias="isSafe",
+        description="Whether the server is considered safe based on scan results"
+    )
+    raw_result: Optional[str] = Field(
+        None,
+        alias="rawResult",
+        description="The raw output or data from the scan process"
+    )
+
+
+class FilterOptions(AIDefenseModel):
+    """Filter options for retrieving MCP server scan reports.
+
+    Args:
+        capability_type: List of capability types to filter (e.g., TOOL, PROMPT, RESOURCE).
+        threat_severity: List of severity levels to filter threats (e.g., CRITICAL, HIGH, MEDIUM, LOW).
+    """
+    capability_type: Optional[CapabilityType] = Field(
+        None,
+        alias="capabilityType",
+        description="Filter by capability type (TOOL, PROMPT, RESOURCE)"
+    )
+    threat_severity: List[ThreatSeverityLevel] = Field(
+        default_factory=list,
+        alias="threatSeverity",
+        description="Severity levels to filter threats (e.g., CRITICAL, HIGH, MEDIUM, LOW)"
+    )
+
+
+class GetMCPServerScanReportRequest(AIDefenseModel):
+    """Request message for getting MCP server scan report.
+
+    Args:
+        server_id: The unique identifier of the MCP server.
+        offset: Offset to fetch objects from.
+        filter_options: Filter options applied to the report.
+    """
+    server_id: Optional[str] = Field(
+        None,
+        alias="serverId",
+        description="The unique identifier of the MCP server"
+    )
+    offset: Optional[int] = Field(
+        None,
+        description="Offset to fetch objects from"
+    )
+    filter_options: Optional[FilterOptions] = Field(
+        None,
+        alias="filterOptions",
+        description="Filter options applied to the report"
+    )
+
+
+class CapabilityScanReport(AIDefenseModel):
+    """Report for a single capability scan result.
+
+    Args:
+        capability: The capability that was scanned.
+        threats: List of threats associated with this capability.
+    """
+    capability: Optional[Capability] = None
+    threats: Optional[List[ThreatDetails]] = Field(None, description="List of threats for the capability")
+
+
+class CapabilityScanReports(AIDefenseModel):
+    """Container for a list of capability scan reports.
+
+    Args:
+        items: List of capability scan reports.
+
+    """
+    items: Optional[List[CapabilityScanReport]] = Field(None, description="List of capability scan reports")
+
+
+class GetMCPServerScanReportResponse(AIDefenseModel):
+    """Response message for getting MCP server scan report.
+    Args:
+         reports: List of capability scan reports.
+         paging: Pagination information for the reports.
+    """
+    reports: Optional[CapabilityScanReports] = Field(None, description="List of capability scan reports")
+    paging: Optional[Paging] = Field(None, description="Pagination info")
+
+
+class ValidateMCPServersRequest(AIDefenseModel):
+    """Request message for validating MCP servers details.
+
+    Args:
+        urls: List of MCP server URLs to validate with the same transport_type and auth_config.
+        transport_type: Optional transport type to validate server connectivity.
+        auth_config: Optional authentication configuration to validate server connectivity.
+    """
+    urls: List[str] = Field(None, description="List of MCP server URLs to validate")
+    transport_type: TransportType = Field(None, alias="transportType", description="Transport type for server connection (optional)")
+    auth_config: Optional[AuthConfig] = Field(None, alias="authConfig", description="Authentication configuration (optional)")
+
+
+class InvalidURLInfo(AIDefenseModel):
+    """Information about an invalid URL that failed validation.
+
+    Args:
+        url: The URL that was validated.
+        error_info: The error information describing why the URL is invalid.
+    """
+    url: str = Field(None, description="The URL that was validated")
+    error_info: ErrorInfo = Field(None, alias="errorInfo", description="Error information describing why the URL is invalid")
+
+
+class ValidateMCPServersResponse(AIDefenseModel):
+    """Response message for validating MCP servers details.
+
+    Args:
+        valid_urls: List of URLs that were successfully validated.
+        invalid_urls: List of URLs that failed validation along with error messages.
+    """
+    valid_urls: List[str] = Field(default_factory=list, alias="validUrls", description="List of successfully validated URLs")
+    invalid_urls: List[InvalidURLInfo] = Field(default_factory=list, alias="invalidUrls", description="List of invalid URLs with error information")
 
 
 class ErrorInfo(AIDefenseModel):

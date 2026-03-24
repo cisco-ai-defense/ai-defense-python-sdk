@@ -22,6 +22,8 @@ from aidefense.mcpscan.models import (
     StartMCPServerScanRequest,
     StartMCPServerScanResponse,
     GetMCPScanStatusResponse,
+    GetMCPServerScanReportRequest,
+    GetMCPServerScanReportResponse,
     RegisterMCPServerRequest,
     RegisterMCPServerResponse,
     GetMCPServerCapabilitiesResponse,
@@ -45,6 +47,10 @@ from aidefense.mcpscan.models import (
     OAuthConfig,
     ServerType,
     RemoteServerInput,
+    FilterOptions,
+    ThreatSeverityLevel,
+    ValidateMCPServersRequest,
+    ValidateMCPServersResponse,
 )
 from aidefense.config import Config
 from aidefense.request_handler import HttpMethod
@@ -1885,3 +1891,282 @@ class TestUpdateAuthConfig:
             mcp_scan.update_auth_config(request)
 
         assert "Forbidden" in str(excinfo.value)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TestRegisteredServerScans
+# ─────────────────────────────────────────────────────────────────────────────
+class TestRegisteredServerScans:
+    """Tests for registered MCP server scan methods."""
+
+    def test_trigger_server_scan(self, mcp_scan):
+        """Test triggering an on-demand server scan."""
+        server_id = "550e8400-e29b-41d4-a716-446655440001"
+        mcp_scan.make_request.return_value = {}
+
+        result = mcp_scan.trigger_server_scan(server_id)
+
+        mcp_scan.make_request.assert_called_once_with(
+            method=HttpMethod.POST,
+            path=f"mcp/servers/{server_id}/scan",
+            data={},
+        )
+        assert result is None
+
+    def test_server_scan_report(self, mcp_scan):
+        """Test retrieving a filtered scan report for a registered server."""
+        request = GetMCPServerScanReportRequest(
+            server_id="550e8400-e29b-41d4-a716-446655440002",
+            offset=10,
+            filter_options=FilterOptions(
+                capability_type=CapabilityType.TOOL,
+                threat_severity=[
+                    ThreatSeverityLevel.HIGH,
+                    ThreatSeverityLevel.CRITICAL,
+                ],
+            ),
+        )
+        mock_response = {
+            "reports": {
+                "items": [
+                    {
+                        "capability": {
+                            "capabilityType": "TOOL",
+                            "tool": {
+                                "id": "tool-123",
+                                "name": "run_shell",
+                                "description": "Execute shell commands",
+                                "title": "Run Shell",
+                                "input_schema": {
+                                    "arguments": [
+                                        {
+                                            "name": "command",
+                                            "description": "Command to execute",
+                                            "type": "string",
+                                            "required": True,
+                                        }
+                                    ]
+                                },
+                                "output_schema": {
+                                    "arguments": [
+                                        {
+                                            "name": "stdout",
+                                            "description": "Command output",
+                                            "type": "string",
+                                        }
+                                    ]
+                                },
+                                "annotations": {"risk": "critical"},
+                            },
+                        },
+                        "threats": [
+                            {
+                                "techniqueId": "AITech-2",
+                                "techniqueName": "Command Execution",
+                                "analyzerType": "YARA",
+                                "completedAt": "2026-01-01T00:03:00Z",
+                                "sourceFile": "tools/run_shell.py",
+                                "description": "The tool exposes unrestricted shell access",
+                                "subTechniques": [
+                                    {
+                                        "subTechniqueId": "AISubtech-2.4",
+                                        "subTechniqueName": "Arbitrary Command Execution",
+                                        "severity": "CRITICAL",
+                                    }
+                                ],
+                            }
+                        ],
+                    }
+                ]
+            },
+            "paging": {"total": 1, "limit": 25, "offset": 10},
+        }
+        mcp_scan.make_request.return_value = mock_response
+
+        response = mcp_scan.server_scan_report(request)
+
+        mcp_scan.make_request.assert_called_once_with(
+            method=HttpMethod.POST,
+            path="mcp/servers/550e8400-e29b-41d4-a716-446655440002/scan/report",
+            data=request.to_body_dict(),
+        )
+        assert isinstance(response, GetMCPServerScanReportResponse)
+        assert response.reports is not None
+        assert response.reports.items is not None
+        assert len(response.reports.items) == 1
+        assert response.reports.items[0].capability is not None
+        assert response.reports.items[0].capability.tool is not None
+        tool = response.reports.items[0].capability.tool
+        assert tool.name == "run_shell"
+        assert tool.title == "Run Shell"
+        assert tool.annotations == {"risk": "critical"}
+        assert tool.input_schema is not None
+        assert tool.input_schema.arguments[0].name == "command"
+        assert tool.output_schema is not None
+        assert tool.output_schema.arguments[0].name == "stdout"
+        assert response.reports.items[0].threats is not None
+        assert response.reports.items[0].threats[0].source_file == "tools/run_shell.py"
+        assert response.reports.items[0].threats[0].description == "The tool exposes unrestricted shell access"
+        assert (
+            response.reports.items[0].threats[0].sub_techniques[0].sub_technique_name
+            == "Arbitrary Command Execution"
+        )
+        assert response.paging is not None
+        assert response.paging.total == 1
+        assert response.paging.offset == 10
+
+    @pytest.mark.parametrize(
+        ("capability_type", "capability_payload", "expected_field", "expected_value"),
+        [
+            (
+                CapabilityType.PROMPT,
+                {
+                    "capabilityType": "PROMPT",
+                    "prompt": {
+                        "id": "prompt-123",
+                        "name": "summarize_email",
+                        "description": "Summarizes inbound email content",
+                        "title": "Summarize Email",
+                        "input_schema": [
+                            {
+                                "name": "email_body",
+                                "description": "Raw email body",
+                                "required": True,
+                            }
+                        ],
+                    },
+                },
+                "prompt",
+                "summarize_email",
+            ),
+            (
+                CapabilityType.RESOURCE,
+                {
+                    "capabilityType": "RESOURCE",
+                    "resource": {
+                        "id": "resource-123",
+                        "name": "server_config",
+                        "description": "Server configuration document",
+                        "title": "Server Config",
+                        "uri": "file:///configs/server.yaml",
+                        "mime_type": "application/yaml",
+                    },
+                },
+                "resource",
+                "server_config",
+            ),
+        ],
+    )
+    def test_server_scan_report_non_tool_capabilities(
+        self,
+        mcp_scan,
+        capability_type,
+        capability_payload,
+        expected_field,
+        expected_value,
+    ):
+        """Test scan report parsing for prompt and resource capability variants."""
+        request = GetMCPServerScanReportRequest(
+            server_id="550e8400-e29b-41d4-a716-446655440004",
+            offset=0,
+            filter_options=FilterOptions(
+                capability_type=capability_type,
+                threat_severity=[ThreatSeverityLevel.MEDIUM],
+            ),
+        )
+        mock_response = {
+            "reports": {
+                "items": [
+                    {
+                        "capability": capability_payload,
+                        "threats": [
+                            {
+                                "techniqueId": "AITech-3",
+                                "techniqueName": "Data Exposure",
+                                "analyzerType": "API",
+                                "subTechniques": [
+                                    {
+                                        "subTechniqueId": "AISubtech-3.1",
+                                        "subTechniqueName": "Sensitive Data Disclosure",
+                                        "severity": "MEDIUM",
+                                    }
+                                ],
+                            }
+                        ],
+                    }
+                ]
+            },
+            "paging": {"total": 1, "limit": 25, "offset": 0},
+        }
+        mcp_scan.make_request.return_value = mock_response
+
+        response = mcp_scan.server_scan_report(request)
+
+        mcp_scan.make_request.assert_called_once_with(
+            method=HttpMethod.POST,
+            path="mcp/servers/550e8400-e29b-41d4-a716-446655440004/scan/report",
+            data=request.to_body_dict(),
+        )
+        assert response.reports is not None
+        assert response.reports.items is not None
+        capability = response.reports.items[0].capability
+        assert capability is not None
+        selected_capability = getattr(capability, expected_field)
+        assert selected_capability is not None
+        assert selected_capability.name == expected_value
+        assert response.reports.items[0].threats is not None
+        assert (
+            response.reports.items[0].threats[0].sub_techniques[0].sub_technique_name
+            == "Sensitive Data Disclosure"
+        )
+
+    def test_validate_servers(self, mcp_scan):
+        """Test validating a batch of MCP server URLs."""
+        request = ValidateMCPServersRequest(
+            urls=[
+                "https://valid.example.com/sse",
+                "https://invalid.example.com/sse",
+            ],
+            transport_type=TransportType.SSE,
+            auth_config=AuthConfig(auth_type=AuthType.NO_AUTH),
+        )
+        mock_response = {
+            "validUrls": ["https://valid.example.com/sse"],
+            "invalidUrls": [
+                {
+                    "url": "https://invalid.example.com/sse",
+                    "errorInfo": {
+                        "message": "Connection failed",
+                        "error_message": "dial tcp timeout",
+                        "remediation_tips": ["Verify the endpoint is reachable"],
+                        "occurred_at": "2026-01-01T00:05:00Z",
+                    },
+                }
+            ],
+        }
+        mcp_scan.make_request.return_value = mock_response
+
+        response = mcp_scan.validate_servers(request)
+
+        mcp_scan.make_request.assert_called_once_with(
+            method=HttpMethod.POST,
+            path="mcp/servers:validate",
+            data=request.to_body_dict(),
+        )
+        assert isinstance(response, ValidateMCPServersResponse)
+        assert response.valid_urls == ["https://valid.example.com/sse"]
+        assert len(response.invalid_urls) == 1
+        assert response.invalid_urls[0].url == "https://invalid.example.com/sse"
+        assert response.invalid_urls[0].error_info.message == "Connection failed"
+        assert response.invalid_urls[0].error_info.error_message == "dial tcp timeout"
+        assert response.invalid_urls[0].error_info.remediation_tips == [
+            "Verify the endpoint is reachable"
+        ]
+        assert response.invalid_urls[0].error_info.occurred_at is not None
+
+    def test_server_scan_methods_propagate_api_errors(self, mcp_scan):
+        """Test new MCPScan methods propagate API errors unchanged."""
+        mcp_scan.make_request.side_effect = ApiError("API Error", 500)
+
+        with pytest.raises(ApiError, match="API Error"):
+            mcp_scan.trigger_server_scan("550e8400-e29b-41d4-a716-446655440003")

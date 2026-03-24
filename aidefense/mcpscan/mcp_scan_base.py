@@ -21,6 +21,7 @@ from aidefense.management.auth import ManagementAuth
 from aidefense.management.base_client import BaseClient
 from aidefense.request_handler import HttpMethod
 from aidefense.mcpscan.models import (
+    GetMCPServerScanReportRequest,
     StartMCPServerScanRequest,
     StartMCPServerScanResponse,
     GetMCPScanStatusResponse,
@@ -40,6 +41,10 @@ from aidefense.mcpscan.models import (
     TransportType,
     ServersSortBy,
     SortOrder,
+    GetMCPServerScanResultsResponse,
+    GetMCPServerScanReportResponse,
+    ValidateMCPServersRequest,
+    ValidateMCPServersResponse,
 )
 from aidefense.mcpscan.routes import (
     mcp_scan_start,
@@ -52,6 +57,9 @@ from aidefense.mcpscan.routes import (
     mcp_server_get,
     mcp_servers_list,
     mcp_server_update_auth_config,
+    mcp_server_scan,
+    mcp_server_scan_report,
+    mcp_servers_validate,
 )
 
 
@@ -412,6 +420,112 @@ class MCPScan(BaseClient):
         result = GetMCPServerCapabilitiesResponse.parse_obj(res)
         self.config.logger.debug(f"Retrieved capabilities for server {server_id}: {result}")
         return result
+
+
+    def get_server_scan_results(self, server_id: str) -> GetMCPServerScanResultsResponse:
+        """
+        Get detailed scan results for a registered MCP server.
+
+        This method retrieves the full results of the most recent scan for a registered
+        MCP server, including detailed threat analysis for each discovered capability.
+
+        Args:
+            server_id (str): The unique identifier of the MCP server (UUID string).
+        Returns:
+            GetMCPServerScanResultsResponse: Response object containing:
+                - scan_id: The scan identifier
+                - capabilities: Detailed results for each capability including threats and severity
+                - completed_at: When the scan completed
+                - is_safe: Overall safety status of the server based on scan results
+                - raw_result: The raw scan result data from the server (if available)
+
+        Raises:
+            ValidationError: If the server_id is invalid.
+            ApiError: If the API returns an error response.
+            SDKError: For other SDK-related errors.
+        """
+        res = self.make_request(
+            method=HttpMethod.GET,
+            path=mcp_server_scan(server_id),
+        )
+        result = GetMCPServerScanResultsResponse.model_validate(res)
+        self.config.logger.debug(f"Retrieved scan results for server {server_id}: {result}")
+        return result
+
+
+    def trigger_server_scan(
+            self,
+            server_id: str
+    ) -> None:
+        """
+        Trigger an on-demand scan for an MCP server.
+
+        Args:
+            server_id (str): The unique identifier of the MCP server (UUID string).
+        Returns:
+            None
+        """
+        res = self.make_request(
+            method=HttpMethod.POST,
+            path=mcp_server_scan(server_id),
+            data={},
+        )
+        self.config.logger.debug(f"Triggered scan for MCP server: {server_id}")
+
+
+    def server_scan_report(
+            self,
+            request: GetMCPServerScanReportRequest
+    ) -> GetMCPServerScanReportResponse:
+        """
+        Get the scan report for the most recent scan of an MCP server.
+
+        Args:
+            request (GetMCPServerScanReportRequest): The request object containing the server ID and optional filters.
+
+        Returns:
+            GetMCPServerScanReportResponse: Response object containing the scan report.
+
+        Raises:
+            ValidationError: If the server_id is invalid.
+            ApiError: If the API returns an error response.
+            SDKError: For other SDK-related errors.
+        """
+        res = self.make_request(
+            method=HttpMethod.POST,
+            path=mcp_server_scan_report(request.server_id),
+            data=request.to_body_dict(),
+        )
+        result = GetMCPServerScanReportResponse.model_validate(res)
+        self.config.logger.debug(f"Retrieved scan report for server {request.server_id}: {result}")
+        return result
+
+
+    def validate_servers(self, request: ValidateMCPServersRequest) -> ValidateMCPServersResponse:
+        """
+        Validate connectivity and authentication for one or more MCP servers.
+
+        This method checks if the specified MCP servers are reachable and if the provided
+        authentication credentials are valid. It returns a validation result for each server.
+
+        Args:
+            request (ValidateMCPServersRequest): Request object containing a list of servers to validate. Each server includes its URL and optional authentication config.
+        Returns:
+            ValidateMCPServersResponse: Response object containing validation results for each server.
+        Raises:
+            ValidationError: If the request parameters are invalid.
+            ApiError: If the API returns an error response.
+            SDKError: For other SDK-related errors.
+        """
+        res = self.make_request(
+            method=HttpMethod.POST,
+            path=mcp_servers_validate(),
+            data=request.to_body_dict(),
+        )
+        result = ValidateMCPServersResponse.model_validate(res)
+        self.config.logger.debug(f"Validation results for MCP servers: {result}")
+        return result
+
 
     def get_server_threats(
             self,

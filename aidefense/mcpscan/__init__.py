@@ -29,6 +29,7 @@ from .models import (
     CapabilityType,
     OnboardingStatus,
     ServerType,
+    ThreatSeverityLevel,
     # Auth Config Models
     OAuthConfig,
     ApiKeyConfig,
@@ -61,6 +62,14 @@ from .models import (
     MCPCapabilityScanResults,
     CapabilityScanResults,
     CapabilityScanResult,
+    GetMCPServerScanResultsResponse,
+    FilterOptions,
+    GetMCPServerScanReportRequest,
+    GetMCPServerScanReportResponse,
+    CapabilityScanReport,
+    CapabilityScanReports,
+    ValidateMCPServersRequest,
+    ValidateMCPServersResponse,
     # Register Server Request/Response Models
     RegisterMCPServerRequest,
     RegisterMCPServerResponse,

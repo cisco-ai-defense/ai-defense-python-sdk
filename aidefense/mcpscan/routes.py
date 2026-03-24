@@ -58,10 +58,23 @@ def mcp_server_capabilities(server_id: str) -> str:
     return f"{MCP_SERVERS}/{server_id}/capabilities"
 
 
+def mcp_server_scan(server_id: str) -> str:
+    """Scan MCP server."""
+    return f"{MCP_SERVERS}/{server_id}/{MCP_SCAN}"
+
+
+def mcp_server_scan_report(server_id: str) -> str:
+    """Scan summary for most recent mcp server scan."""
+    return f"{MCP_SERVERS}/{server_id}/{MCP_SCAN}/report"
+
+
 def mcp_server_threats(server_id: str) -> str:
     """Route for getting MCP server threats."""
     return f"{MCP_SERVERS}/{server_id}/threats"
 
+def mcp_servers_validate() -> str:
+    """Validate MCP servers details."""
+    return f"{MCP_SERVERS}:validate"
 
 def mcp_server_scan_summary(server_id: str) -> str:
     """Route for getting MCP server scan summary."""
