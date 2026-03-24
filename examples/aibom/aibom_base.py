@@ -156,7 +156,7 @@ def main() -> None:
                     bom_detail = client.get_bom(analysis_id)
                     status = bom_detail.status
                     print(f"   Current status: {status}")
-                    if status not in {BomStatus.BOM_STATUS_PENDING, BomStatus.BOM_STATUS_IN_PROGRESS}:
+                    if status not in {BomStatus.BOM_STATUS_UNSPECIFIED}:
                         print("   BOM analysis completed")
                         break
                     time.sleep(5)  # wait before polling again
