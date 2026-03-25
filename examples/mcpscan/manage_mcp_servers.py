@@ -23,7 +23,6 @@ This example demonstrates how to:
 3. Get details of a specific MCP server by ID
 4. Update authentication configuration for an MCP server
 """
-from enum import Enum
 import os
 
 from aidefense import Config
@@ -77,25 +76,6 @@ def print_server_details(server, verbose: bool = True) -> None:
     print(f"     Scan Enabled: {'✅' if server.scan_enabled else '❌'}")
     print(f"     Scan Periodically: {'✅' if server.scan_periodically else '❌'}")
     print(f"     Auth Type: {format_auth_type(server.auth_type)}")
-    print(f"     Use Shared Auth: {'✅' if server.use_shared_auth else '❌'}")
-    if server.shared_auth_config_id:
-        print(f"     Shared Auth Config: {server.shared_auth_config_id}")
-    if server.repository_url:
-        print(f"     Repository URL: {server.repository_url}")
-    if server.source_identifier:
-        print(f"     Source Identifier: {server.source_identifier}")
-    if server.subfolder:
-        print(f"     Subfolder: {server.subfolder}")
-    if server.type:
-        print(f"     Server Types: {", ".join([t.value if isinstance(t, Enum) else t for t in server.type])}")
-    if server.last_scanned_at:
-        print(f"     Last Scanned At: {server.last_scanned_at.strftime('%Y-%m-%d %H:%M:%S')}")
-    if server.threat_summary:
-        print("     Threat Summary:")
-        print(f"       Critical: {server.threat_summary.critical_count}")
-        print(f"       High:     {server.threat_summary.high_count}")
-        print(f"       Medium:   {server.threat_summary.medium_count}")
-        print(f"       Low:      {server.threat_summary.low_count}")
 
     if verbose:
         if server.status_info:
