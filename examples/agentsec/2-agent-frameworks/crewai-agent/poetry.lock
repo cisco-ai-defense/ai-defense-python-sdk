@@ -706,7 +706,7 @@ dev = ["chroma-hnswlib (==0.7.6)", "fastapi (>=0.115.9)", "opentelemetry-instrum
 
 [[package]]
 name = "cisco-aidefense-sdk"
-version = "2.1.0"
+version = "2.1.1"
 description = "Cisco AI Defense Python SDK"
 optional = false
 python-versions = "^3.9"
