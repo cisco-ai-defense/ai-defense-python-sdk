@@ -9,7 +9,7 @@ The examples are organized into the following categories:
 ```
 examples/
 ├── README.md                    # This file
-├── agentsec/                    # Runtime protection examples (RECOMMENDED)
+├── agentsec/                    # Agent Runtime SDK examples (RECOMMENDED)
 │   ├── 1-simple/                # Simple standalone examples
 │   │   ├── basic_protection.py
 │   │   ├── openai_example.py
@@ -57,9 +57,9 @@ examples/
     └── custom_configuration.py
 ```
 
-## Runtime Protection Examples (Recommended)
+## Agent Runtime SDK Examples (Recommended)
 
-Runtime protection automatically patches LLM and MCP clients with just 2 lines of code. This is the **recommended** approach for most applications.
+The Agent Runtime SDK automatically patches LLM and MCP clients with just 2 lines of code. This is the **recommended** approach for most applications.
 
 ### Quick Start
 
@@ -192,7 +192,7 @@ These examples use `HttpInspectionClient` to inspect HTTP requests and responses
 
 ## Running the Examples
 
-### Runtime Protection Examples
+### Agent Runtime SDK Examples
 
 ```bash
 # Install the SDK

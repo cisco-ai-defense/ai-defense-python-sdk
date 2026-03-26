@@ -1,8 +1,17 @@
 [tool.poetry]
 name = "cisco-aidefense-sdk"
-version = "2.0.0"
+version = "2.1.0"
 description = "Cisco AI Defense Python SDK"
-authors = ["Shiva Guntoju <shguntoj@cisco.com>"]
+authors = [
+    "Shiva Guntoju <shguntoj@cisco.com>",
+    "Jayant Upadhyaya <ujayant@cisco.com>",
+    "Prashant Gupta <psg07@cisco.com>",
+    "Akhil Bhavanam <akbhavan@cisco.com>",
+    "Rajat Upadhyaya <urajat@cisco.com>",
+    "Ethan Zhou <ethanz@cisco.com>",
+    "Prachi Srivastava <prachisr@cisco.com>",
+    "Bharat Gupta <bgupta2@cisco.com>"
+]
 readme = "README.md"
 classifiers = [
     "Programming Language :: Python :: 3.9",

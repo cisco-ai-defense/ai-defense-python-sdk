@@ -22,7 +22,7 @@ It enables you to detect security, privacy, and safety risks in real time, with 
 Features
 --------
 
-- **Runtime Protection (agentsec)**: Auto-patch LLM and MCP clients with 2 lines of code -- supports API mode and Gateway mode with 10+ LLM providers.
+- **Agent Runtime SDK (agentsec)**: Auto-patch LLM and MCP clients with 2 lines of code -- supports API mode and Gateway mode with 10+ LLM providers.
 - **Chat Inspection**: Analyze chat prompts, responses, or full conversations for risks.
 - **HTTP Inspection**: Inspect HTTP requests and responses, including support for ``requests.Request``, ``requests.PreparedRequest``, and ``requests.Response`` objects as well as dictionary body types.
 - **MCP Inspection**: Inspect MCP (Model Context Protocol) JSON-RPC 2.0 messages for security, privacy, and safety violations.

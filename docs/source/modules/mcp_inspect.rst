@@ -17,7 +17,7 @@ MCP is a standard protocol for communication between AI agents and tool servers.
 - **Resource read requests** -- validate resource access (e.g., file URIs, network resources).
 - **Tool responses** -- scan tool output for data leakage (PII, credentials, secrets).
 
-This is the low-level inspection client for MCP messages. For automatic, transparent MCP protection integrated into your agent's workflow, use the :doc:`agentsec` runtime protection module instead.
+This is the low-level inspection client for MCP messages. For automatic, transparent MCP protection integrated into your agent's workflow, use the :doc:`agentsec` Agent Runtime SDK module instead.
 
 Class Hierarchy
 ---------------

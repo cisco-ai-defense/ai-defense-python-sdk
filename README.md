@@ -11,13 +11,13 @@ Integrate AI-powered security, privacy, and safety inspections into your Python 
 - [Features](#features)
 - [Installation](#installation)
 - [Quickstart](#quickstart)
-  - [Runtime Protection (Recommended)](#runtime-protection-recommended)
+  - [Agent Runtime SDK (Recommended)](#agent-runtime-sdk-recommended)
   - [Inspection API](#inspection-api)
   - [Model Scanning API](#model-scanning-api)
   - [Management API](#management-api)
 - [SDK Structure](#sdk-structure)
 - [Usage Examples](#usage-examples)
-  - [Runtime Protection](#runtime-protection)
+  - [Agent Runtime SDK](#agent-runtime-sdk)
   - [Chat Inspection](#chat-inspection)
   - [HTTP Inspection](#http-inspection)
   - [MCP Inspection](#mcp-inspection)
@@ -45,7 +45,7 @@ The SDK enables you to detect security, privacy, and safety risks in real time, 
 
 ## Features
 
-- **Runtime Protection**: Auto-patch LLM clients (OpenAI, Azure OpenAI, Bedrock, Vertex AI, Cohere, Mistral, Google GenAI, LiteLLM) and MCP clients with just 2 lines of code. Supports API mode (inspection) and Gateway mode (proxy).
+- **Agent Runtime SDK**: Auto-patch LLM clients (OpenAI, Azure OpenAI, Bedrock, Vertex AI, Cohere, Mistral, Google GenAI, LiteLLM) and MCP clients with just 2 lines of code. Supports API mode (inspection) and Gateway mode (proxy).
 - **Chat Inspection**: Analyze chat prompts, responses, or full conversations for risks.
 - **HTTP Inspection**: Inspect HTTP requests and responses, including support for `requests.Request`, `requests.PreparedRequest`, and `requests.Response` objects.
 - **MCP Inspection**: Inspect Model Context Protocol (MCP) JSON-RPC 2.0 messages for security, privacy, and safety violations in AI agent tool calls, resource access, and responses.
@@ -116,9 +116,9 @@ See [pyproject.toml](./pyproject.toml) for the full list of dependencies and Pyt
 
 ## Quickstart
 
-### Runtime Protection (Recommended)
+### Agent Runtime SDK (Recommended)
 
-The easiest way to protect your AI applications is with automatic runtime protection. Just 2 lines of code to secure all LLM and MCP interactions:
+The easiest way to protect your AI applications is with the Agent Runtime SDK. Just 2 lines of code to secure all LLM and MCP interactions:
 
 ```python
 from aidefense.runtime import agentsec
@@ -152,7 +152,7 @@ agentsec.protect(
 )
 ```
 
-See [Runtime Protection](#runtime-protection) for detailed configuration options and the [agentsec examples](examples/agentsec/README.md) for end-to-end walkthroughs.
+See [Agent Runtime SDK](#agent-runtime-sdk) for detailed configuration options and the [agentsec examples](examples/agentsec/README.md) for end-to-end walkthroughs.
 
 ### Inspection API
 
@@ -238,7 +238,7 @@ print(resp.task_id)
 
 ## SDK Structure
 
-### Runtime Protection (agentsec)
+### Agent Runtime SDK (agentsec)
 
 - `runtime/agentsec/__init__.py` — Main entry point with `protect()` function
 - `runtime/agentsec/config_file.py` — Configuration loading from `agentsec.yaml` with `${VAR}` substitution
@@ -288,9 +288,9 @@ print(resp.task_id)
 
 ## Usage Examples
 
-### Runtime Protection
+### Agent Runtime SDK
 
-Runtime protection automatically patches LLM and MCP clients to inspect all interactions with Cisco AI Defense.
+The Agent Runtime SDK automatically patches LLM and MCP clients to inspect all interactions with Cisco AI Defense.
 
 #### YAML Configuration (Recommended)
 
