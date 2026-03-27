@@ -23,6 +23,7 @@ from typing import Any, Generator, Mapping, Sequence, TypedDict, Union
 from unittest.mock import MagicMock, patch
 
 import pytest
+from pydantic import ValidationError
 
 pytest.importorskip("aibom.cli")
 
@@ -274,6 +275,17 @@ class TestAiBomClientSubmitReport:
 
 		with pytest.raises(ValueError, match="Either raw_data or file_path must be provided"):
 			client.submit_report_file()
+
+	def test_submit_report_file_rejects_empty_raw_data_missing_mandatory_fields(
+		self,
+		client_and_service: tuple[AiBomClient, MagicMock],
+	):
+		client, service = client_and_service
+
+		with pytest.raises(ValidationError, match="run_id|analyzer_version"):
+			client.submit_report_file(raw_data={})
+
+		service.create_analysis.assert_not_called()
 
 	def test_submit_report_file_rejects_unsupported_source_kind(
 		self,

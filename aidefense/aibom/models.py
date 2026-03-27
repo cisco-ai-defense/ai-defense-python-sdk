@@ -95,7 +95,6 @@ class CreateAnalysisRequest(AIDefenseModel):
         sources: List of source inputs for analysis.
         env: Environment variables or context (optional).
         report: Raw report JSON data (optional).
-        report_sha256: SHA256 hash of the report for integrity verification (optional).
     """
     run_id: str = Field(..., description="Unique run identifier")
     analyzer_version: str = Field(..., description="Version of the analyzer")
@@ -104,7 +103,6 @@ class CreateAnalysisRequest(AIDefenseModel):
     sources: List[SourceInput] = Field(default_factory=list, description="List of sources")
     env: Optional[Dict[str, Any]] = Field(None, description="Environment context")
     report: Optional[Dict[str, Any]] = Field(None, description="Raw report JSON data")
-    report_sha256: Optional[str] = Field(None, description="SHA256 hash for integrity")
 
 
 # --------------------

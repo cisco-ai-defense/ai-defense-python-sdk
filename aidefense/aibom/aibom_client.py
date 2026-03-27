@@ -84,12 +84,11 @@ class AiBomClient:
             CreateAnalysisResponse: The response from the AIBOM service after submitting the report.
         """
 
-        if not raw_data and file_path:
+        if raw_data is None and file_path:
             raw_bytes = Path(file_path).read_bytes()
             raw_data = json.loads(raw_bytes)
-        elif not raw_data and not file_path:
+        elif raw_data is None and not file_path:
             raise ValueError("Either raw_data or file_path must be provided")
-        # report_sha256 = hashlib.sha256(raw_bytes).hexdigest()
 
         report_metadata = raw_data.get("aibom_analysis", {}).get("metadata", {})
 
