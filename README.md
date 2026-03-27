@@ -14,6 +14,7 @@ Integrate AI-powered security, privacy, and safety inspections into your Python 
   - [Agent Runtime SDK (Recommended)](#agent-runtime-sdk-recommended)
   - [Inspection API](#inspection-api)
   - [Model Scanning API](#model-scanning-api)
+    - [AIBOM API](#aibom-api)
   - [Management API](#management-api)
 - [SDK Structure](#sdk-structure)
 - [Usage Examples](#usage-examples)
@@ -23,6 +24,7 @@ Integrate AI-powered security, privacy, and safety inspections into your Python 
   - [MCP Inspection](#mcp-inspection)
   - [MCP Server Scanning](#mcp-server-scanning)
   - [Model Scanning](#model-scanning)
+    - [AIBOM](#aibom)
   - [Management API Examples](#management-api-examples)
   - [Validation API](#validation-api)
 - [Configuration](#configuration)
@@ -186,6 +188,26 @@ if result.status == ScanStatus.COMPLETED:
             print(f"✅ {file_info.name} is clean")
 ```
 
+### AIBOM API
+
+```python
+from aidefense import Config
+from aidefense.aibom.aibom_client import AiBomClient
+
+# Initialize client
+client = AiBomClient(
+    api_key="YOUR_MANAGEMENT_API_KEY",
+    config=Config(management_base_url="https://api.security.cisco.com"),
+)
+
+# Analyze and submit
+report = client.analyze(sources=["/path/to/project"])
+response = client.submit_report_file(raw_data=report)
+print(response.analysis_id, response.status)
+```
+
+See [AIBOM module docs](aidefense/aibom/README.md) for full API reference and additional examples.
+
 ### Management API
 
 ```python
@@ -267,6 +289,13 @@ print(resp.task_id)
 - `modelscan/model_scan.py` — ModelScanClient for high-level file and repository scanning
 - `modelscan/model_scan_base.py` — ModelScan base class for granular scan operations
 - `modelscan/models.py` — Data models for scan requests, responses, and status information
+
+### AIBOM API
+
+- `aibom/aibom_client.py` — AiBomClient for analyze-and-submit workflows
+- `aibom/aibom_base.py` — AiBom base client for direct AIBOM API operations
+- `aibom/models.py` — Data models for AIBOM requests, responses, and filters
+- `aibom/README.md` — AIBOM usage guide and method examples
 
 ### Management API
 
@@ -656,6 +685,25 @@ scan_info = detail_response.scan_status_info
 print(f"Scan status: {scan_info.status}")
 print(f"Files analyzed: {len(scan_info.analysis_results.items)}")
 ```
+
+### AIBOM
+
+```python
+from aidefense import Config
+from aidefense.aibom.aibom_client import AiBomClient
+
+client = AiBomClient(
+    api_key="YOUR_MANAGEMENT_API_KEY",
+    config=Config(management_base_url="https://api.security.cisco.com"),
+)
+
+# Run local AIBOM analysis, then submit it
+report = client.analyze(sources=["/path/to/project"])
+submission = client.submit_report_file(raw_data=report)
+print(f"Created analysis: {submission.analysis_id}")
+```
+
+For direct endpoint-style operations (create/list/get/components/summary/delete), use the base client and examples in [aidefense/aibom/README.md](aidefense/aibom/README.md).
 
 ### Management API
 

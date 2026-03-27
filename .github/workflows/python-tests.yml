@@ -33,7 +33,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
 
     - name: Install dependencies
-      run: poetry install
+      run: poetry install --extras aibom
 
     - name: Install extra test dependencies
       run: poetry run pip install boto3 google-auth
