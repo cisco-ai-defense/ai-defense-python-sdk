@@ -894,11 +894,11 @@ class ValidateMCPServersRequest(AIDefenseModel):
 
     Args:
         urls: List of MCP server URLs to validate with the same transport_type and auth_config.
-        transport_type: Optional transport type to validate server connectivity.
+        transport_type: Transport type to validate server connectivity.
         auth_config: Optional authentication configuration to validate server connectivity.
     """
-    urls: List[str] = Field(None, description="List of MCP server URLs to validate")
-    transport_type: TransportType = Field(None, alias="transportType", description="Transport type for server connection (optional)")
+    urls: List[str] = Field(..., description="List of MCP server URLs to validate")
+    transport_type: TransportType = Field(..., alias="transportType", description="Transport type for server connection")
     auth_config: Optional[AuthConfig] = Field(None, alias="authConfig", description="Authentication configuration (optional)")
 
 
