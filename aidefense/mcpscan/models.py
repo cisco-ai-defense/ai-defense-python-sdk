@@ -60,6 +60,7 @@ class AnalyzerType(str, Enum):
     YARA = "YARA"
     LLM = "LLM"
     AIGRPC = "AIGRPC"
+    BEHAVIORAL = "BEHAVIORAL"
 
 
 class SeverityLevel(str, Enum):
@@ -69,6 +70,7 @@ class SeverityLevel(str, Enum):
     LOW = "LOW"
     MEDIUM = "MEDIUM"
     HIGH = "HIGH"
+    CRITICAL = "CRITICAL"
 
 class ThreatSeverityLevel(str, Enum):
     """Severity levels for threats."""
@@ -119,6 +121,12 @@ class ListServerType(str, Enum):
     MCP_SERVER_NONE = "MCP_SERVER_NONE"
     MCP_SERVER_CODE = "MCP_SERVER_CODE"
     MCP_SERVER_REMOTE = "MCP_SERVER_REMOTE"
+
+class RegistrationMethod(str, Enum):
+    """Method used to register the MCP server."""
+    MCP_SERVER_REGISTRATION_METHOD_UNSPECIFIED = "MCP_SERVER_REGISTRATION_METHOD_UNSPECIFIED"
+    MCP_SERVER_REGISTRATION_METHOD_MANUAL = "MCP_SERVER_REGISTRATION_METHOD_MANUAL"
+    MCP_SERVER_REGISTRATION_METHOD_REGISTRY = "MCP_SERVER_REGISTRATION_METHOD_REGISTRY"
 
 def restore_enum_wrapper(cls, values):
     """Helper to restore enum values from string representations."""
@@ -247,6 +255,7 @@ class Tool(AIDefenseModel):
         input_schema: Input schema of the tool.
         output_schema: Optional output schema of the tool.
         annotations: Optional annotations map.
+        rawResponse: Optional raw response from the capability call (for debugging/advanced use).
     """
     id: str = Field(..., description="Tool identifier (UUID)")
     name: str = Field(..., description="Tool name")
@@ -255,6 +264,7 @@ class Tool(AIDefenseModel):
     input_schema: Optional[ToolInputSchema] = Field(None, description="Input schema")
     output_schema: Optional[ToolOutputSchema] = Field(None, description="Output schema")
     annotations: Dict[str, str] = Field(default_factory=dict, description="Annotations")
+    rawResponse: Optional[dict] = Field(None, description="Raw response from capability call")
 
 
 class PromptInputSchema(AIDefenseModel):
@@ -264,10 +274,12 @@ class PromptInputSchema(AIDefenseModel):
         name: Name of the prompt template.
         description: Description of what the prompt does.
         required: Whether this argument is mandatory.
+        rawResponse: Optional raw response from the capability call (for debugging/advanced use).
     """
     name: str = Field(..., description="Prompt template name")
     description: str = Field(default="", description="Prompt description")
     required: bool = Field(default=False, description="Whether required")
+    rawResponse: Optional[dict] = Field(None, alias="rawResponse", description="Raw response from capability call for debugging/advanced use")
 
 
 class Prompt(AIDefenseModel):
@@ -297,6 +309,7 @@ class Resource(AIDefenseModel):
         title: Optional title of the resource.
         uri: URI to access the resource.
         mime_type: MIME type of the resource content.
+        rawResponse: Optional raw response from the capability call (for debugging/advanced use).
     """
     id: str = Field(..., description="Resource identifier (UUID)")
     name: str = Field(..., description="Resource name")
@@ -304,6 +317,7 @@ class Resource(AIDefenseModel):
     title: Optional[str] = Field(None, description="Resource title")
     uri: str = Field(default="", description="Resource URI")
     mime_type: str = Field(default="", description="MIME type")
+    rawResponse: Optional[dict] = Field(None, description="Raw response from capability call for debugging/advanced use")
 
 
 class Capability(AIDefenseModel):
@@ -840,6 +854,7 @@ class GetMCPServerScanReportRequest(AIDefenseModel):
     Args:
         server_id: The unique identifier of the MCP server.
         offset: Offset to fetch objects from.
+        limit: Maximum number of objects to fetch.
         filter_options: Filter options applied to the report.
     """
     server_id: Optional[str] = Field(
@@ -850,6 +865,10 @@ class GetMCPServerScanReportRequest(AIDefenseModel):
     offset: Optional[int] = Field(
         None,
         description="Offset to fetch objects from"
+    )
+    limit: Optional[int] = Field(
+        None,
+        description="Maximum number of objects to fetch",
     )
     filter_options: FilterOptions = Field(
         None,
@@ -901,6 +920,19 @@ class ValidateMCPServersRequest(AIDefenseModel):
     transport_type: TransportType = Field(None, alias="transportType", description="Transport type for server connection (optional)")
     auth_config: Optional[AuthConfig] = Field(None, alias="authConfig", description="Authentication configuration (optional)")
 
+class ContextObjectType(str, Enum):
+    """Type of context object for MCP server scan results."""
+    CONTEXT_OBJECT_TYPE_UNSPECIFIED = "CONTEXT_OBJECT_TYPE_UNSPECIFIED"
+    MCP_SERVER = "MCP_SERVER"
+    MCP_REGISTRY = "MCP_REGISTRY"
+    MCP_SCAN_WORKFLOW = "MCP_SCAN_WORKFLOW"
+
+class ContextObject(AIDefenseModel):
+    """ContextObject represents an object in our stack, such as a capability, technique, or threat."""
+    id: str = Field(..., description="Unique identifier for the object")
+    name: Optional[str] = Field(None, description="Name of the object if applicable")
+    object_type: Optional[ContextObjectType] = Field(None, alias="objectType", description="Type of the object (e.g., capability, technique, threat)")
+
 
 class ErrorInfo(AIDefenseModel):
     """Error information for failed scans.
@@ -910,11 +942,16 @@ class ErrorInfo(AIDefenseModel):
         error_message: Raw error message (may not be exposed to end users).
         remediation_tips: List of remediation steps or tips to resolve the issue.
         occurred_at: Timestamp when the error occurred.
+        context_object: Optional object related to the error (e.g., capability or technique that caused the error).
+        metadata: Additional arbitrary metadata (e.g., internal trace ids, error context).
     """
     message: str = Field(..., min_length=1, max_length=32768, description="Human-readable error summary")
     error_message: Optional[str] = Field(None, max_length=32768, description="Raw error message")
     remediation_tips: List[str] = Field(default_factory=list, description="Remediation steps or tips")
     occurred_at: Optional[datetime] = Field(None, description="When the error occurred")
+    context_object: Optional[ContextObject] = Field(None, alias="contextObject", description="Context object related to the error")
+    metadata: Optional[Dict[str, str]] = Field(default_factory=dict, description="Additional arbitrary metadata (e.g., internal trace ids, error context)")
+
 
 
 class InvalidURLInfo(AIDefenseModel):
@@ -1384,6 +1421,8 @@ class MCPServer(AIDefenseModel):
     type: Optional[List[ListServerType]] = Field(None, alias="type", description="Server type")
     threat_summary: Optional[ScanThreatSummary] = Field(None, alias="threatSummary", description="Summary of threats found during an MCP server scan")
     last_scanned_at: Optional[datetime] = Field(None, alias="lastScannedAt", description="Time of last scan")
+    technique_names: Optional[List[str]] = Field(None, alias="techniqueNames", description="List of technique names found during an MCP server scan")
+    registration_method: Optional[RegistrationMethod] = Field(None, alias="registrationMethod", description="Method used to register the MCP server")
 
     @model_validator(mode='before')
     @classmethod
@@ -1439,9 +1478,11 @@ class ListMCPServersRequest(AIDefenseModel):
         transport_type: Filter by transport type(s).
         severity: Filter by severity level(s).
         creation_date: Filter by creation date.
-    registry_id: Registry id.
+        registry_id: Registry id.
         sort_by: Sort by given parameter.
         sort_order: Sort order.
+        scan_date: Filter by last scan date.
+        server_types: Filter by server type (Remote/Code).
     """
     limit: int = Field(default=25, description="Maximum results to return")
     offset: int = Field(default=0, description="Pagination offset")
@@ -1453,6 +1494,8 @@ class ListMCPServersRequest(AIDefenseModel):
     registry_id: Optional[str] = Field(None, description="Registry id")
     sort_by: Optional[ServersSortBy] = Field(None, description="Sort by given parameter")
     sort_order: Optional[SortOrder] = Field(None, description="Sort order")
+    scan_date: Optional[datetime] = Field(None, alias="scanDate", description="Filter by last scan date")
+    server_types: Optional[List[ListServerType]] = Field(None, alias="serverTypes", description="Filter by server type (Remote/Code)")
 
 
 class ListMCPServersResponse(AIDefenseModel):
@@ -1462,6 +1505,60 @@ class ListMCPServersResponse(AIDefenseModel):
         mcp_servers: List of MCP servers with pagination information.
     """
     mcp_servers: Optional[MCPServers] = Field(None, alias="mcpServers", description="MCP servers list")
+
+
+# --------------------
+# MCP Server Stats Request/Response Models
+# --------------------
+
+class AttackTechnique(AIDefenseModel):
+    """Attack technique with occurrence count.
+
+    Args:
+        name: Name of the attack technique.
+        count: Number of occurrences of this attack technique.
+    """
+    name: str = Field(default="", description="Attack technique name")
+    count: int = Field(default=0, description="Attack technique count")
+
+
+class ScanCoverage(AIDefenseModel):
+    """Scan coverage statistics for MCP servers.
+
+    Args:
+        completed_count: Number of completed scans.
+        in_progress_count: Number of scans in progress.
+        failed_count: Number of failed scans.
+    """
+    completed_count: int = Field(default=0, alias="completedCount", description="Completed scans count")
+    in_progress_count: int = Field(default=0, alias="inProgressCount", description="In-progress scans count")
+    failed_count: int = Field(default=0, alias="failedCount", description="Failed scans count")
+
+
+class MCPServerStats(AIDefenseModel):
+    """Aggregated MCP server statistics.
+
+    Args:
+        risk_distribution: Threat severity distribution.
+        top_attack_techniques: Top attack techniques by count.
+        scan_coverage: Scan coverage details.
+    """
+    risk_distribution: Optional[ScanThreatSummary] = Field(None, alias="riskDistribution", description="Risk distribution")
+    top_attack_techniques: List[AttackTechnique] = Field(
+        default_factory=list,
+        alias="topAttackTechniques",
+        description="Top attack techniques"
+    )
+    scan_coverage: Optional[ScanCoverage] = Field(None, alias="scanCoverage", description="Scan coverage")
+
+
+class GetMCPServerStatsResponse(AIDefenseModel):
+    """Response message for MCP server statistics.
+
+    Args:
+        stats: Aggregated MCP server statistics.
+    """
+    stats: Optional[MCPServerStats] = Field(None, description="MCP server statistics")
 
 
 # --------------------
