@@ -30,6 +30,7 @@ from aidefense.mcpscan.models import (
     CapabilityType,
     FilterOptions,
     GetMCPServerScanReportRequest,
+    ThreatSeverityLevel,
 )
 
 from utils import (
@@ -97,8 +98,10 @@ def main():
             request=GetMCPServerScanReportRequest(
                 server_id=server_id,
                 offset=1,
+                limit=20,
                 filter_options=FilterOptions(
-                    capability_type=CapabilityType.TOOL
+                    capability_type=CapabilityType.TOOL,
+                    threat_severity=[ThreatSeverityLevel.HIGH, ThreatSeverityLevel.CRITICAL]
                 ),
             )
         )
@@ -106,6 +109,40 @@ def main():
     except Exception as e:
         print(f"❌ Failed to get scan report: {e}")
 
+    # get aggregate stats for all servers
+    print("\n📊 Retrieving aggregate MCP server stats...")
+    try:
+        stats_response = client.server_stats()
+
+        if stats_response.stats:
+            # Analyze risk distribution
+            risk = stats_response.stats.risk_distribution
+            if risk:
+                print(f"\n  Risk Distribution:")
+                print(f"    Critical: {risk.critical_count}")
+                print(f"    High:     {risk.high_count}")
+                print(f"    Medium:   {risk.medium_count}")
+                print(f"    Low:      {risk.low_count}")
+
+            # Show top attack techniques
+            if stats_response.stats.top_attack_techniques:
+                print(f"\n  Top Attack Techniques:")
+                for technique in stats_response.stats.top_attack_techniques[:5]:
+                    print(f"    - {technique.name}: {technique.count} occurrences")
+
+            # Analyze scan coverage
+            coverage = stats_response.stats.scan_coverage
+            if coverage:
+                total = coverage.completed_count + coverage.in_progress_count + coverage.failed_count
+                success_rate = (coverage.completed_count / total * 100) if total > 0 else 0
+                print(f"\n  Scan Coverage:")
+                print(f"    Completed:    {coverage.completed_count}")
+                print(f"    In Progress:  {coverage.in_progress_count}")
+                print(f"    Failed:       {coverage.failed_count}")
+                print(f"    Success Rate: {success_rate:.1f}%")
+
+    except Exception as e:
+        print(f"❌ Failed to get server stats: {e}")
 
 if __name__ == "__main__":
     main()

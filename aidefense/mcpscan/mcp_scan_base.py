@@ -14,6 +14,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from datetime import datetime
 from typing import List, Optional
 
 from aidefense.config import Config
@@ -22,6 +23,7 @@ from aidefense.management.base_client import BaseClient
 from aidefense.request_handler import HttpMethod
 from aidefense.mcpscan.models import (
     GetMCPServerScanReportRequest,
+    ListServerType,
     StartMCPServerScanRequest,
     StartMCPServerScanResponse,
     GetMCPScanStatusResponse,
@@ -44,6 +46,7 @@ from aidefense.mcpscan.models import (
     GetMCPServerScanReportResponse,
     ValidateMCPServersRequest,
     ValidateMCPServersResponse,
+    GetMCPServerStatsResponse,
 )
 from aidefense.mcpscan.routes import (
     mcp_scan_start,
@@ -59,6 +62,7 @@ from aidefense.mcpscan.routes import (
     mcp_server_scan,
     mcp_server_scan_report,
     mcp_servers_validate,
+    mcp_servers_stats,
 )
 
 
@@ -691,6 +695,8 @@ class MCPScan(BaseClient):
             registry_id: Optional[str] = None,
             sort_by: Optional[ServersSortBy] = None,
             sort_order: Optional[SortOrder] = None,
+            scan_date: Optional[datetime] = None,
+            server_types: Optional[List[ListServerType]] = None,
     ) -> ListMCPServersResponse:
         """
         List registered MCP servers with optional filtering.
@@ -708,7 +714,8 @@ class MCPScan(BaseClient):
                 Use TransportType enum values.
             severity (List[SeverityLevel], optional): Filter by severity level(s).
                 Use SeverityLevel enum values.
-
+            scan_date (datetime, optional): Filter by last scan date.
+            server_types (List[ListServerType], optional): Filter by server type(s). Use ListServerType enum values.
         Returns:
             ListMCPServersResponse: Response object containing:
                 - mcp_servers: MCPServers object with:
@@ -769,14 +776,41 @@ class MCPScan(BaseClient):
             request.sort_by = sort_by
         if sort_order:
             request.sort_order = sort_order
+        if scan_date:
+            request.scan_date = scan_date
+        if server_types:
+            request.server_types = server_types
 
         res = self.make_request(
             method=HttpMethod.GET,
             path=mcp_servers_list(),
             params=request.to_params(),
         )
-        result = ListMCPServersResponse.parse_obj(res)
+        result = ListMCPServersResponse.model_validate(res)
         self.config.logger.debug(f"Listed MCP servers: {result}")
+        return result
+
+    def server_stats(
+            self,
+        ) -> GetMCPServerStatsResponse:
+        """Get aggregated stats for MCP servers.
+
+        This method retrieves aggregate server statistics from the MCP registry.
+
+        Returns:
+            GetMCPServerStatsResponse: Response object containing aggregated stats.
+
+        Raises:
+            ApiError: If the API returns an error response.
+            SDKError: For other SDK-related errors.
+        """
+
+        res = self.make_request(
+            method=HttpMethod.GET,
+            path=mcp_servers_stats(),
+        )
+        result = GetMCPServerStatsResponse.model_validate(res)
+        self.config.logger.debug(f"Retrieved MCP server stats: {result}")
         return result
 
     def update_auth_config(

@@ -15,6 +15,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import pytest
+from datetime import datetime, timedelta
 from unittest.mock import MagicMock, call
 
 from aidefense.mcpscan.mcp_scan_base import MCPScan
@@ -32,6 +33,7 @@ from aidefense.mcpscan.models import (
     GetMCPServerResponse,
     ListMCPServersRequest,
     ListMCPServersResponse,
+    GetMCPServerStatsResponse,
     UpdateAuthConfigRequest,
     UpdateAuthConfigResponse,
     CapabilityType,
@@ -51,6 +53,21 @@ from aidefense.mcpscan.models import (
     ThreatSeverityLevel,
     ValidateMCPServersRequest,
     ValidateMCPServersResponse,
+    AnalyzerType,
+    RegistrationMethod,
+    ContextObjectType,
+    ListServerType,
+    ContextObject,
+    ErrorInfo,
+    AttackTechnique,
+    ScanCoverage,
+    MCPServerStats,
+    Tool,
+    PromptInputSchema,
+    Resource,
+    MCPServer,
+    ThreatDetails,
+    ScanThreatSummary,
 )
 from aidefense.config import Config
 from aidefense.request_handler import HttpMethod
@@ -475,6 +492,41 @@ class TestGetScanStatus:
 
         assert "Scan not found" in str(excinfo.value)
 
+    def test_get_scan_status_failed_with_error_context(self, mcp_scan):
+        """Test FAILED scan status parses error_info with context_object and metadata."""
+        mock_response = {
+            "scan_id": "scan-200",
+            "name": "Failed With Context",
+            "status": "FAILED",
+            "created_at": "2026-01-15T10:00:00Z",
+            "error_info": {
+                "message": "Capability scan failed",
+                "errorMessage": "Internal server error",
+                "remediation_tips": ["Retry the scan", "Contact support"],
+                "contextObject": {
+                    "id": "cap-456",
+                    "name": "Query Tool",
+                    "objectType": "MCP_SERVER",
+                },
+                "metadata": {
+                    "error_code": "E500",
+                    "service": "scan-engine",
+                },
+            },
+        }
+        mcp_scan.make_request.return_value = mock_response
+
+        result = mcp_scan.get_scan_status("scan-200")
+
+        assert result.status == MCPScanStatus.FAILED
+        assert result.error_info is not None
+        assert result.error_info.context_object is not None
+        assert result.error_info.context_object.id == "cap-456"
+        assert result.error_info.context_object.name == "Query Tool"
+        assert result.error_info.metadata["error_code"] == "E500"
+        assert result.error_info.metadata["service"] == "scan-engine"
+        assert len(result.error_info.remediation_tips) == 2
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # TestRegisterServer
@@ -857,6 +909,66 @@ class TestGetServerCapabilities:
                 capability_type=CapabilityType.TOOL,
             )
 
+    def test_get_capabilities_tool_with_raw_response(self, mcp_scan):
+        """Test get_server_capabilities returns rawResponse on tool capability."""
+        mock_response = {
+            "capabilities": [
+                {
+                    "capability_type": "TOOL",
+                    "tool": {
+                        "id": "tool-raw-001",
+                        "name": "execute_query",
+                        "description": "Execute a SQL query",
+                        "rawResponse": {
+                            "_original_id": "ext-99",
+                            "metadata": {"api_version": "v2"},
+                        },
+                    },
+                },
+            ],
+            "paging": {"total": 1, "limit": 25, "offset": 0},
+        }
+        mcp_scan.make_request.return_value = mock_response
+
+        result = mcp_scan.get_server_capabilities(
+            server_id="srv-raw-001",
+            capability_type=CapabilityType.TOOL,
+        )
+
+        tool = result.capabilities[0].tool
+        assert tool.rawResponse is not None
+        assert tool.rawResponse["_original_id"] == "ext-99"
+        assert tool.rawResponse["metadata"]["api_version"] == "v2"
+
+    def test_get_capabilities_resource_with_raw_response(self, mcp_scan):
+        """Test get_server_capabilities returns rawResponse on resource capability."""
+        mock_response = {
+            "capabilities": [
+                {
+                    "capability_type": "RESOURCE",
+                    "resource": {
+                        "id": "res-raw-001",
+                        "name": "config_file",
+                        "description": "Server configuration",
+                        "uri": "file:///etc/config.yaml",
+                        "mime_type": "application/yaml",
+                        "rawResponse": {"cached": True, "ttl": 3600},
+                    },
+                },
+            ],
+            "paging": {"total": 1, "limit": 25, "offset": 0},
+        }
+        mcp_scan.make_request.return_value = mock_response
+
+        result = mcp_scan.get_server_capabilities(
+            server_id="srv-raw-002",
+            capability_type=CapabilityType.RESOURCE,
+        )
+
+        resource = result.capabilities[0].resource
+        assert resource.rawResponse is not None
+        assert resource.rawResponse["cached"] is True
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # TestGetServerThreats
@@ -1125,6 +1237,65 @@ class TestGetServerThreats:
         with pytest.raises(ApiError):
             mcp_scan.get_server_threats(server_id="srv-error")
 
+    def test_get_threats_response_includes_source_file_and_description(self, mcp_scan):
+        """Test get_server_threats returns source_file and description in ThreatDetails."""
+        mock_response = {
+            "threats": [
+                {
+                    "capabilityId": "cap-src-001",
+                    "threat": {
+                        "techniqueId": "AITech-9.1",
+                        "techniqueName": "Code Execution",
+                        "analyzerType": "YARA",
+                        "sourceFile": "src/handlers/query_handler.py",
+                        "description": "Unsafe eval() call allows arbitrary code execution",
+                        "subTechniques": [
+                            {
+                                "subTechniqueId": "AISubtech-9.1.1",
+                                "subTechniqueName": "eval Injection",
+                                "severity": "CRITICAL",
+                            }
+                        ],
+                    },
+                },
+            ],
+            "paging": {"total": 1, "limit": 25, "offset": 0},
+        }
+        mcp_scan.make_request.return_value = mock_response
+
+        result = mcp_scan.get_server_threats(server_id="srv-src-001")
+
+        assert len(result.threats) == 1
+        threat = result.threats[0].threat
+        assert threat.source_file == "src/handlers/query_handler.py"
+        assert threat.description == "Unsafe eval() call allows arbitrary code execution"
+
+    def test_get_threats_response_with_behavioral_analyzer(self, mcp_scan):
+        """Test get_server_threats parses BEHAVIORAL analyzer type."""
+        mock_response = {
+            "threats": [
+                {
+                    "capabilityId": "cap-beh-001",
+                    "threat": {
+                        "techniqueId": "AITech-5.2",
+                        "techniqueName": "Lateral Movement",
+                        "analyzerType": "BEHAVIORAL",
+                        "sourceFile": "utils/data_processor.py",
+                        "description": "Suspicious inter-process communication patterns detected",
+                        "subTechniques": [],
+                    },
+                },
+            ],
+            "paging": {"total": 1, "limit": 25, "offset": 0},
+        }
+        mcp_scan.make_request.return_value = mock_response
+
+        result = mcp_scan.get_server_threats(server_id="srv-beh-001")
+
+        threat = result.threats[0].threat
+        assert threat.analyzer_type == AnalyzerType.BEHAVIORAL
+        assert threat.source_file == "utils/data_processor.py"
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # TestGetServerScanSummary
@@ -1250,6 +1421,60 @@ class TestGetServerScanSummary:
 
         with pytest.raises(ApiError):
             mcp_scan.get_server_scan_summary("srv-not-found")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TestServerStats
+# ─────────────────────────────────────────────────────────────────────────────
+class TestServerStats:
+    """Tests for the MCPScan.server_stats method."""
+
+    def test_server_stats_success(self, mcp_scan):
+        """Test retrieving MCP server stats with expected response fields."""
+        mock_response = {
+            "stats": {
+                "riskDistribution": {
+                    "criticalCount": 2,
+                    "highCount": 5,
+                    "mediumCount": 8,
+                    "lowCount": 13,
+                },
+                "topAttackTechniques": [
+                    {"name": "Direct Prompt Injection", "count": 85},
+                    {"name": "Tool Exploitation", "count": 28},
+                ],
+                "scanCoverage": {
+                    "completedCount": 152,
+                    "inProgressCount": 42,
+                    "failedCount": 23,
+                },
+            }
+        }
+        mcp_scan.make_request.return_value = mock_response
+
+        result = mcp_scan.server_stats()
+
+        mcp_scan.make_request.assert_called_once()
+        call_kwargs = mcp_scan.make_request.call_args
+        assert call_kwargs.kwargs["method"] == HttpMethod.GET
+        assert call_kwargs.kwargs["path"] == "mcp/servers:stats"
+        assert isinstance(result, GetMCPServerStatsResponse)
+        assert result.stats is not None
+        assert result.stats.risk_distribution is not None
+        assert result.stats.risk_distribution.critical_count == 2
+        assert len(result.stats.top_attack_techniques) == 2
+        assert result.stats.top_attack_techniques[0].name == "Direct Prompt Injection"
+        assert result.stats.scan_coverage is not None
+        assert result.stats.scan_coverage.completed_count == 152
+        assert result.stats.scan_coverage.in_progress_count == 42
+        assert result.stats.scan_coverage.failed_count == 23
+
+    def test_server_stats_api_error(self, mcp_scan):
+        """Test server_stats propagates ApiError."""
+        mcp_scan.make_request.side_effect = ApiError("Internal error", 500)
+
+        with pytest.raises(ApiError):
+            mcp_scan.server_stats()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1739,6 +1964,87 @@ class TestListServers:
         with pytest.raises(ApiError):
             mcp_scan.list_servers()
 
+    def test_list_servers_filter_by_scan_date(self, mcp_scan):
+        """Test list_servers passes scan_date filter in request params."""
+        from datetime import datetime, timezone
+        scan_date = datetime(2026, 3, 1, 0, 0, 0, tzinfo=timezone.utc)
+        mock_response = {
+            "mcp_servers": {
+                "items": [
+                    _make_mock_server_item(
+                        server_id="srv-recent-001",
+                        name="Recently Scanned",
+                        url="https://recent.example.com/sse",
+                    ),
+                ],
+                "paging": {"total": 1, "limit": 25, "offset": 0},
+            },
+        }
+        mcp_scan.make_request.return_value = mock_response
+
+        result = mcp_scan.list_servers(scan_date=scan_date)
+
+        call_kwargs = mcp_scan.make_request.call_args
+        assert "scanDate" in call_kwargs.kwargs["params"]
+        assert len(result.mcp_servers.items) == 1
+        assert result.mcp_servers.items[0].id == "srv-recent-001"
+
+    def test_list_servers_filter_by_server_types(self, mcp_scan):
+        """Test list_servers passes server_types filter in request params."""
+        mock_response = {
+            "mcp_servers": {
+                "items": [
+                    _make_mock_server_item(
+                        server_id="srv-remote-001",
+                        name="Remote MCP",
+                        url="https://remote.example.com/sse",
+                    ),
+                ],
+                "paging": {"total": 1, "limit": 25, "offset": 0},
+            },
+        }
+        mcp_scan.make_request.return_value = mock_response
+
+        result = mcp_scan.list_servers(
+            server_types=[ListServerType.MCP_SERVER_REMOTE],
+        )
+
+        call_kwargs = mcp_scan.make_request.call_args
+        assert "serverTypes" in call_kwargs.kwargs["params"]
+        assert len(result.mcp_servers.items) == 1
+
+    def test_list_servers_response_includes_technique_names_and_registration_method(self, mcp_scan):
+        """Test list_servers response parses technique_names and registration_method."""
+        mock_response = {
+            "mcp_servers": {
+                "items": [
+                    {
+                        "id": "srv-fields-001",
+                        "name": "Feature-rich Server",
+                        "url": "https://featured.example.com/sse",
+                        "connectionType": "SSE",
+                        "onboarding_status": "COMPLETED",
+                        "scan_enabled": True,
+                        "auth_type": "NO_AUTH",
+                        "created_at": "2026-01-10T08:00:00Z",
+                        "techniqueNames": [
+                            "Direct Prompt Injection",
+                            "Tool Exploitation",
+                        ],
+                        "registrationMethod": "MCP_SERVER_REGISTRATION_METHOD_REGISTRY",
+                    },
+                ],
+                "paging": {"total": 1, "limit": 25, "offset": 0},
+            },
+        }
+        mcp_scan.make_request.return_value = mock_response
+
+        result = mcp_scan.list_servers()
+
+        server = result.mcp_servers.items[0]
+        assert server.technique_names == ["Direct Prompt Injection", "Tool Exploitation"]
+        assert server.registration_method == RegistrationMethod.MCP_SERVER_REGISTRATION_METHOD_REGISTRY
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # TestUpdateAuthConfig
@@ -2170,3 +2476,101 @@ class TestRegisteredServerScans:
 
         with pytest.raises(ApiError, match="API Error"):
             mcp_scan.trigger_server_scan("550e8400-e29b-41d4-a716-446655440003")
+
+    def test_server_scan_report_with_limit_param(self, mcp_scan):
+        """Test server_scan_report passes limit in request body."""
+        request = GetMCPServerScanReportRequest(
+            server_id="550e8400-e29b-41d4-a716-446655440010",
+            offset=0,
+            limit=10,
+            filter_options=FilterOptions(capability_type=CapabilityType.TOOL),
+        )
+        mock_response = {
+            "reports": {"items": []},
+            "paging": {"total": 0, "limit": 10, "offset": 0},
+        }
+        mcp_scan.make_request.return_value = mock_response
+
+        mcp_scan.server_scan_report(request)
+
+        call_kwargs = mcp_scan.make_request.call_args
+        assert call_kwargs.kwargs["data"]["limit"] == 10
+
+    def test_validate_servers_error_info_context_object_and_metadata(self, mcp_scan):
+        """Test validate_servers parses error_info context_object and metadata."""
+        request = ValidateMCPServersRequest(
+            urls=["https://invalid.example.com/sse"],
+            transport_type=TransportType.SSE,
+            auth_config=AuthConfig(auth_type=AuthType.NO_AUTH),
+        )
+        mock_response = {
+            "validUrls": [],
+            "invalidUrls": [
+                {
+                    "url": "https://invalid.example.com/sse",
+                    "errorInfo": {
+                        "message": "Connection failed",
+                        "errorMessage": "dial tcp timeout",
+                        "remediationTips": ["Check the URL"],
+                        "occurred_at": "2026-01-01T00:05:00Z",
+                        "contextObject": {
+                            "id": "srv-ctx-001",
+                            "name": "Invalid Server",
+                            "objectType": "MCP_SERVER",
+                        },
+                        "metadata": {
+                            "trace_id": "req-abc123",
+                            "endpoint": "/validate",
+                        },
+                    },
+                }
+            ],
+        }
+        mcp_scan.make_request.return_value = mock_response
+
+        response = mcp_scan.validate_servers(request)
+
+        error_info = response.invalid_urls[0].error_info
+        assert error_info.context_object is not None
+        assert error_info.context_object.id == "srv-ctx-001"
+        assert error_info.context_object.object_type == ContextObjectType.MCP_SERVER
+        assert error_info.metadata["trace_id"] == "req-abc123"
+
+    def test_server_scan_report_threat_source_file_and_description(self, mcp_scan):
+        """Test server_scan_report parses source_file and description from ThreatDetails."""
+        request = GetMCPServerScanReportRequest(
+            server_id="550e8400-e29b-41d4-a716-446655440011",
+            offset=0,
+            filter_options=FilterOptions(capability_type=CapabilityType.TOOL),
+        )
+        mock_response = {
+            "reports": {
+                "items": [
+                    {
+                        "capability": {
+                            "capabilityType": "TOOL",
+                            "tool": {"id": "tool-t1", "name": "run_cmd"},
+                        },
+                        "threats": [
+                            {
+                                "techniqueId": "AITech-9.1",
+                                "techniqueName": "Code Execution",
+                                "analyzerType": "BEHAVIORAL",
+                                "sourceFile": "tools/run_cmd.py",
+                                "description": "Executes arbitrary OS commands",
+                                "subTechniques": [],
+                            }
+                        ],
+                    }
+                ]
+            },
+            "paging": {"total": 1, "limit": 25, "offset": 0},
+        }
+        mcp_scan.make_request.return_value = mock_response
+
+        response = mcp_scan.server_scan_report(request)
+
+        threat = response.reports.items[0].threats[0]
+        assert threat.source_file == "tools/run_cmd.py"
+        assert threat.description == "Executes arbitrary OS commands"
+        assert threat.analyzer_type == AnalyzerType.BEHAVIORAL
