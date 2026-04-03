@@ -822,8 +822,8 @@ class FilterOptions(AIDefenseModel):
         capability_type: List of capability types to filter (e.g., TOOL, PROMPT, RESOURCE).
         threat_severity: List of severity levels to filter threats (e.g., CRITICAL, HIGH, MEDIUM, LOW).
     """
-    capability_type: Optional[CapabilityType] = Field(
-        None,
+    capability_type: CapabilityType = Field(
+        ...,
         alias="capabilityType",
         description="Filter by capability type (TOOL, PROMPT, RESOURCE)"
     )
@@ -852,7 +852,7 @@ class GetMCPServerScanReportRequest(AIDefenseModel):
         description="Offset to fetch objects from"
     )
     filter_options: FilterOptions = Field(
-        None,
+        ...,
         alias="filterOptions",
         description="Filter options applied to the report"
     )

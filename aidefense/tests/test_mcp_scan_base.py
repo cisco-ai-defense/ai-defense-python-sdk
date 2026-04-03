@@ -14,6 +14,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from pydantic import ValidationError
 import pytest
 from unittest.mock import MagicMock, call
 
@@ -1912,6 +1913,31 @@ class TestRegisteredServerScans:
             data={},
         )
         assert result is None
+
+    def test_filter_options_missing_capability_type_raises_validation_error(self):
+        """FilterOptions should fail when required capability_type is omitted."""
+        with pytest.raises(ValidationError):
+            FilterOptions()
+
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            {"server_id": "550e8400-e29b-41d4-a716-446655440002"},
+            {},
+        ],
+    )
+    def test_scan_report_request_missing_filter_options_raises_validation_error(self, payload):
+        """GetMCPServerScanReportRequest should fail when required filter_options is omitted."""
+        with pytest.raises(ValidationError):
+            GetMCPServerScanReportRequest(**payload)
+
+    def test_scan_report_request_filter_options_missing_capability_type_raises_validation_error(self):
+        """GetMCPServerScanReportRequest should fail when filter_options omits required capability_type."""
+        with pytest.raises(ValidationError):
+            GetMCPServerScanReportRequest(
+                server_id="550e8400-e29b-41d4-a716-446655440002",
+                filter_options=FilterOptions(),
+            )
 
     def test_server_scan_report(self, mcp_scan):
         """Test retrieving a filtered scan report for a registered server."""
