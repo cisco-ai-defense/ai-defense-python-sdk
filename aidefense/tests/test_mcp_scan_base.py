@@ -16,6 +16,7 @@
 
 import pytest
 from unittest.mock import MagicMock, call
+from pydantic import ValidationError
 
 from aidefense.mcpscan.mcp_scan_base import MCPScan
 from aidefense.mcpscan.models import (
@@ -2163,6 +2164,19 @@ class TestRegisteredServerScans:
             "Verify the endpoint is reachable"
         ]
         assert response.invalid_urls[0].error_info.occurred_at is not None
+
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            {"transport_type": TransportType.SSE},
+            {"urls": ["https://valid.example.com/sse"]},
+            {},
+        ],
+    )
+    def test_validate_servers_request_missing_required_fields_raises_validation_error(self, payload):
+        """ValidateMCPServersRequest should fail when required fields are omitted."""
+        with pytest.raises(ValidationError):
+            ValidateMCPServersRequest(**payload)
 
     def test_server_scan_methods_propagate_api_errors(self, mcp_scan):
         """Test new MCPScan methods propagate API errors unchanged."""
