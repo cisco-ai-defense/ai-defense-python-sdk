@@ -83,6 +83,8 @@ class BaseConfig(ABC):
 
         return cls._instances[cls]
 
+    _logger = logging.getLogger("aidefense_sdk.config")
+
     def __init__(self, *args, **kwargs):
         # Double-checked locking: fast path avoids the lock for already-init'd
         # singletons; the lock prevents concurrent first-time callers from both
@@ -96,6 +98,8 @@ class BaseConfig(ABC):
                     except Exception:
                         self._instances.pop(type(self), None)
                         raise
+        elif kwargs:
+            self._warn_if_params_differ(**kwargs)
 
     def _set_region(self, region: str):
         if not isinstance(region, str):
@@ -177,6 +181,41 @@ class BaseConfig(ABC):
             "pool_connections": pool_config.get("pool_connections", self.DEFAULT_POOL_CONNECTIONS),
             "pool_maxsize": pool_config.get("pool_maxsize", self.DEFAULT_POOL_MAXSIZE),
         }
+
+    def _warn_if_params_differ(self, **kwargs):
+        """Log a warning when the singleton is re-requested with different parameters."""
+        _FIELDS = {
+            "region": "_normalize_requested_region",
+            "timeout": None,
+            "runtime_base_url": None,
+            "management_base_url": None,
+        }
+        diffs = []
+        for key, normalizer in _FIELDS.items():
+            if key not in kwargs or kwargs[key] is None:
+                continue
+            requested = kwargs[key]
+            if normalizer and hasattr(self, normalizer):
+                requested = getattr(self, normalizer)(requested)
+            current = getattr(self, key, None)
+            if current is not None and requested != current:
+                diffs.append(f"{key}={current!r} (requested {requested!r})")
+        if diffs:
+            self._logger.warning(
+                "%s singleton already initialized. Ignoring different "
+                "parameters: %s. Construct %s once and share it, or clear "
+                "%s._instances to re-initialize.",
+                type(self).__name__,
+                ", ".join(diffs),
+                type(self).__name__,
+                type(self).__name__,
+            )
+
+    @staticmethod
+    def _normalize_requested_region(region):
+        """Map short-code regions to canonical names for comparison."""
+        _SHORT = {"us": "us-west-2", "eu": "eu-central-1", "apj": "ap-northeast-1"}
+        return _SHORT.get(region, region) if isinstance(region, str) else region
 
     @abstractmethod
     def _initialize(self, *args, **kwargs):
