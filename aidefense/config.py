@@ -98,8 +98,8 @@ class BaseConfig(ABC):
                     except Exception:
                         self._instances.pop(type(self), None)
                         raise
-        elif kwargs:
-            self._warn_if_params_differ(**kwargs)
+        elif args or kwargs:
+            self._warn_if_params_differ(*args, **kwargs)
 
     def _set_region(self, region: str):
         if not isinstance(region, str):
@@ -182,24 +182,31 @@ class BaseConfig(ABC):
             "pool_maxsize": pool_config.get("pool_maxsize", self.DEFAULT_POOL_MAXSIZE),
         }
 
-    def _warn_if_params_differ(self, **kwargs):
+    _INIT_PARAM_NAMES = (
+        "region", "runtime_base_url", "management_base_url", "timeout",
+    )
+
+    def _warn_if_params_differ(self, *args, **kwargs):
         """Log a warning when the singleton is re-requested with different parameters."""
-        _FIELDS = {
-            "region": "_normalize_requested_region",
-            "timeout": None,
-            "runtime_base_url": None,
-            "management_base_url": None,
+        merged = dict(zip(self._INIT_PARAM_NAMES, args))
+        merged.update(kwargs)
+
+        _NORMALIZERS = {
+            "region": self._normalize_requested_region,
+            "runtime_base_url": self._normalize_url,
+            "management_base_url": self._normalize_url,
         }
         diffs = []
-        for key, normalizer in _FIELDS.items():
-            if key not in kwargs or kwargs[key] is None:
+        for key in self._INIT_PARAM_NAMES:
+            if key not in merged or merged[key] is None:
                 continue
-            requested = kwargs[key]
-            if normalizer and hasattr(self, normalizer):
-                requested = getattr(self, normalizer)(requested)
+            requested = merged[key]
+            normalizer = _NORMALIZERS.get(key)
+            if normalizer:
+                requested = normalizer(requested)
             current = getattr(self, key, None)
             if current is not None and requested != current:
-                diffs.append(f"{key}={current!r} (requested {requested!r})")
+                diffs.append(f"{key}={current!r} (requested {merged[key]!r})")
         if diffs:
             self._logger.warning(
                 "%s singleton already initialized. Ignoring different "
@@ -216,6 +223,11 @@ class BaseConfig(ABC):
         """Map short-code regions to canonical names for comparison."""
         _SHORT = {"us": "us-west-2", "eu": "eu-central-1", "apj": "ap-northeast-1"}
         return _SHORT.get(region, region) if isinstance(region, str) else region
+
+    @staticmethod
+    def _normalize_url(url):
+        """Strip trailing slash to match stored value normalization."""
+        return url.rstrip("/") if isinstance(url, str) else url
 
     @abstractmethod
     def _initialize(self, *args, **kwargs):

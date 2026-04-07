@@ -114,3 +114,20 @@ def test_config_no_warning_when_no_kwargs(caplog):
     with caplog.at_level(logging.WARNING, logger="aidefense_sdk.config"):
         Config()
     assert "already initialized" not in caplog.text
+
+
+def test_config_warns_on_positional_region_mismatch(caplog):
+    """Positional args (not just kwargs) must trigger the warning."""
+    Config("us-west-2")
+    with caplog.at_level(logging.WARNING, logger="aidefense_sdk.config"):
+        Config("eu-central-1")
+    assert "already initialized" in caplog.text
+    assert "region" in caplog.text
+
+
+def test_config_no_false_positive_on_trailing_slash_url(caplog):
+    """URLs with trailing slashes should be normalized before comparison."""
+    Config(runtime_base_url="https://custom.endpoint.com/")
+    with caplog.at_level(logging.WARNING, logger="aidefense_sdk.config"):
+        Config(runtime_base_url="https://custom.endpoint.com/")
+    assert "already initialized" not in caplog.text
