@@ -822,8 +822,8 @@ class FilterOptions(AIDefenseModel):
         capability_type: List of capability types to filter (e.g., TOOL, PROMPT, RESOURCE).
         threat_severity: List of severity levels to filter threats (e.g., CRITICAL, HIGH, MEDIUM, LOW).
     """
-    capability_type: Optional[CapabilityType] = Field(
-        None,
+    capability_type: CapabilityType = Field(
+        ...,
         alias="capabilityType",
         description="Filter by capability type (TOOL, PROMPT, RESOURCE)"
     )
@@ -852,7 +852,7 @@ class GetMCPServerScanReportRequest(AIDefenseModel):
         description="Offset to fetch objects from"
     )
     filter_options: FilterOptions = Field(
-        None,
+        ...,
         alias="filterOptions",
         description="Filter options applied to the report"
     )
@@ -894,11 +894,11 @@ class ValidateMCPServersRequest(AIDefenseModel):
 
     Args:
         urls: List of MCP server URLs to validate with the same transport_type and auth_config.
-        transport_type: Optional transport type to validate server connectivity.
+        transport_type: Transport type to validate server connectivity.
         auth_config: Optional authentication configuration to validate server connectivity.
     """
-    urls: List[str] = Field(None, description="List of MCP server URLs to validate")
-    transport_type: TransportType = Field(None, alias="transportType", description="Transport type for server connection (optional)")
+    urls: List[str] = Field(..., description="List of MCP server URLs to validate")
+    transport_type: TransportType = Field(..., alias="transportType", description="Transport type for server connection")
     auth_config: Optional[AuthConfig] = Field(None, alias="authConfig", description="Authentication configuration (optional)")
 
 

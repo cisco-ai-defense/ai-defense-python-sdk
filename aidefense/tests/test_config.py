@@ -75,3 +75,59 @@ def test_config_with_pool_config():
     config = Config(pool_config=pool_conf)
     assert config.connection_pool._pool_connections == 3
     assert config.connection_pool._pool_maxsize == 7
+
+
+def test_config_warns_on_different_region(caplog):
+    Config(region="us-west-2")
+    with caplog.at_level(logging.WARNING, logger="aidefense_sdk.config"):
+        Config(region="eu-central-1")
+    assert "already initialized" in caplog.text
+    assert "region" in caplog.text
+    assert "eu-central-1" in caplog.text
+
+
+def test_config_warns_on_different_timeout(caplog):
+    Config(timeout=30)
+    with caplog.at_level(logging.WARNING, logger="aidefense_sdk.config"):
+        Config(timeout=60)
+    assert "already initialized" in caplog.text
+    assert "timeout" in caplog.text
+
+
+def test_config_no_warning_on_same_params(caplog):
+    Config(region="us-west-2", timeout=30)
+    with caplog.at_level(logging.WARNING, logger="aidefense_sdk.config"):
+        Config(region="us-west-2", timeout=30)
+    assert "already initialized" not in caplog.text
+
+
+def test_config_no_warning_on_short_region_alias(caplog):
+    """'us' normalizes to 'us-west-2', so no mismatch warning."""
+    Config(region="us-west-2")
+    with caplog.at_level(logging.WARNING, logger="aidefense_sdk.config"):
+        Config(region="us")
+    assert "already initialized" not in caplog.text
+
+
+def test_config_no_warning_when_no_kwargs(caplog):
+    Config(region="eu-central-1")
+    with caplog.at_level(logging.WARNING, logger="aidefense_sdk.config"):
+        Config()
+    assert "already initialized" not in caplog.text
+
+
+def test_config_warns_on_positional_region_mismatch(caplog):
+    """Positional args (not just kwargs) must trigger the warning."""
+    Config("us-west-2")
+    with caplog.at_level(logging.WARNING, logger="aidefense_sdk.config"):
+        Config("eu-central-1")
+    assert "already initialized" in caplog.text
+    assert "region" in caplog.text
+
+
+def test_config_no_false_positive_on_trailing_slash_url(caplog):
+    """URLs with trailing slashes should be normalized before comparison."""
+    Config(runtime_base_url="https://custom.endpoint.com/")
+    with caplog.at_level(logging.WARNING, logger="aidefense_sdk.config"):
+        Config(runtime_base_url="https://custom.endpoint.com/")
+    assert "already initialized" not in caplog.text
