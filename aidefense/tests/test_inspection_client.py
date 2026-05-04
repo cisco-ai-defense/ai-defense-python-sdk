@@ -17,6 +17,7 @@ import pytest
 from aidefense.runtime.inspection_client import InspectionClient
 from aidefense.runtime.models import (
     Action,
+    DetectedPII,
     InspectResponse,
     Classification,
     Severity,
@@ -338,3 +339,97 @@ def test_parse_inspect_response_complex():
     assert result.client_transaction_id == "tx-9876"
     assert result.event_id == "b403de99-8d19-408f-8184-ec6d7907f508"
     assert result.action == Action.ALLOW
+
+
+def test_parse_inspect_response_with_detected_pii():
+    """Test parsing a response containing detected_pii entries."""
+    client = TestInspectionClient(TEST_API_KEY, Config())
+
+    response_data = {
+        "is_safe": False,
+        "classifications": ["SECURITY_VIOLATION"],
+        "action": "Allow",
+        "detected_pii": [
+            {
+                "message_index": "0",
+                "type": "PII_ENTITY_TYPE_EMAIL",
+                "start_index": "22",
+                "end_index": "48",
+            },
+            {
+                "message_index": "1",
+                "type": "PII_ENTITY_TYPE_PHONE_NUMBER",
+                "start_index": "5",
+                "end_index": "17",
+            },
+        ],
+    }
+
+    result = client._parse_inspect_response(response_data)
+
+    assert result.detected_pii is not None
+    assert len(result.detected_pii) == 2
+
+    assert isinstance(result.detected_pii[0], DetectedPII)
+    assert result.detected_pii[0].message_index == "0"
+    assert result.detected_pii[0].type == "PII_ENTITY_TYPE_EMAIL"
+    assert result.detected_pii[0].start_index == "22"
+    assert result.detected_pii[0].end_index == "48"
+
+    assert result.detected_pii[1].message_index == "1"
+    assert result.detected_pii[1].type == "PII_ENTITY_TYPE_PHONE_NUMBER"
+    assert result.detected_pii[1].start_index == "5"
+    assert result.detected_pii[1].end_index == "17"
+
+
+def test_parse_inspect_response_without_detected_pii():
+    """Test that detected_pii is None when absent from the response."""
+    client = TestInspectionClient(TEST_API_KEY, Config())
+
+    response_data = {
+        "is_safe": True,
+        "classifications": [],
+    }
+
+    result = client._parse_inspect_response(response_data)
+
+    assert result.detected_pii is None
+
+
+def test_parse_inspect_response_with_empty_detected_pii():
+    """Test that detected_pii is None when the API returns an empty list."""
+    client = TestInspectionClient(TEST_API_KEY, Config())
+
+    response_data = {
+        "is_safe": True,
+        "classifications": [],
+        "detected_pii": [],
+    }
+
+    result = client._parse_inspect_response(response_data)
+
+    assert result.detected_pii is None
+
+
+def test_parse_inspect_response_detected_pii_partial_fields():
+    """Test parsing detected_pii when some optional fields are missing."""
+    client = TestInspectionClient(TEST_API_KEY, Config())
+
+    response_data = {
+        "is_safe": False,
+        "classifications": [],
+        "detected_pii": [
+            {
+                "type": "PII_ENTITY_TYPE_SSN",
+            },
+        ],
+    }
+
+    result = client._parse_inspect_response(response_data)
+
+    assert result.detected_pii is not None
+    assert len(result.detected_pii) == 1
+    assert result.detected_pii[0].type == "PII_ENTITY_TYPE_SSN"
+    assert result.detected_pii[0].message_index is None
+    assert result.detected_pii[0].start_index is None
+    assert result.detected_pii[0].end_index is None
