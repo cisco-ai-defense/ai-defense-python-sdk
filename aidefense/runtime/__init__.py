@@ -25,6 +25,7 @@ from .models import (
     InspectionConfig,
     Metadata,
     InspectResponse,
+    DetectedPII,
 )
 from .http_models import HttpInspectRequest
 from .http_models import (

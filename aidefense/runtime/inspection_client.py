@@ -29,6 +29,7 @@ from .models import (
     Severity,
     Classification,
     InspectResponse,
+    DetectedPII,
 )
 from .constants import INTEGRATION_DETAILS
 from ..request_handler import RequestHandler
@@ -148,8 +149,16 @@ class BaseInspectionClient(ABC):
                 "attack_technique": "NONE_ATTACK_TECHNIQUE",
                 "explanation": "",
                 "client_transaction_id": "",
-                "event_id": "b403de99-8d19-408f-8184-ec6d7907f508"
-                "action": "Allow"
+                "event_id": "b403de99-8d19-408f-8184-ec6d7907f508",
+                "action": "Allow",
+                "detected_pii": [
+                    {
+                        "message_index": "0",
+                        "type": "PII_ENTITY_TYPE_EMAIL",
+                        "start_index": "22",
+                        "end_index": "48"
+                    }
+                ]
             }
             ```
 
@@ -170,8 +179,16 @@ class BaseInspectionClient(ABC):
                 attack_technique="NONE_ATTACK_TECHNIQUE",
                 explanation="",
                 client_transaction_id="",
-                event_id="b403de99-8d19-408f-8184-ec6d7907f508"
-                action="Allow"
+                event_id="b403de99-8d19-408f-8184-ec6d7907f508",
+                action="Allow",
+                detected_pii=[
+                    DetectedPII(
+                        message_index="0",
+                        type="PII_ENTITY_TYPE_EMAIL",
+                        start_index="22",
+                        end_index="48"
+                    )
+                ]
             )
             ```
         """
@@ -209,6 +226,19 @@ class BaseInspectionClient(ABC):
                 )
             return out
 
+        def _parse_detected_pii_list(detected_pii_list: list) -> List[DetectedPII]:
+            out = []
+            for detected_pii in detected_pii_list:
+                out.append(
+                    DetectedPII(
+                        message_index=detected_pii.get("message_index"),
+                        type=detected_pii.get("type"),
+                        start_index=detected_pii.get("start_index"),
+                        end_index=detected_pii.get("end_index"),
+                    )
+                )
+            return out
+
         # Parse rules if present
         rules = _parse_rule_list(response_data.get("rules", []))
         # Parse processed_rules if present (API may send processed_rules or processedRules)
@@ -240,6 +270,7 @@ class BaseInspectionClient(ABC):
             client_transaction_id=response_data.get("client_transaction_id"),
             event_id=response_data.get("event_id"),
             action=action,
+            detected_pii=_parse_detected_pii_list(response_data.get("detected_pii", [])) or None
         )
 
     def _prepare_inspection_metadata(self, metadata: Metadata) -> Dict:

@@ -85,6 +85,10 @@ class RuleName(str, Enum):
     SEXUAL_CONTENT_EXPLOITATION = "Sexual Content & Exploitation"
     SOCIAL_DIVISION_POLARIZATION = "Social Division & Polarization"
     VIOLENCE_PUBLIC_SAFETY_THREATS = "Violence & Public Safety Threats"
+    TOXICITY = "Toxicity"
+    GENERAL_HARMS = "General Harms"
+    TOOL_EXPLOITATION = "Tool Exploitation"
+    MALICIOUS_URL_DETECTION = "Malicious URL Detection"
 
 
 @dataclass
@@ -104,6 +108,24 @@ class Rule:
     entity_types: Optional[List[str]] = None
     rule_id: Optional[int] = None
     classification: Optional[Classification] = None
+
+
+@dataclass
+class DetectedPII:
+    """
+    Represents a detected PII entity in the inspected content.
+
+    Attributes:
+        message_index (Optional[str]): Index of the message in the conversation
+        type (Optional[str]): Type of the PII entity (e.g., Email Address, Phone Number)
+        start_index (Optional[str]): Start character index of the PII in the message
+        end_index (Optional[str]): End character index of the PII in the message
+    """
+
+    message_index: Optional[str] = None
+    type: Optional[str] = None
+    start_index: Optional[str] = None
+    end_index: Optional[str] = None
 
 
 @dataclass
@@ -165,6 +187,7 @@ class InspectResponse:
     Attributes:
         classifications (List[Classification]): List of detected classifications (e.g., PII, PCI, PHI).
         is_safe (bool): Whether the inspected content is considered safe.
+        action (Action): Action to take on the detected issue.
         severity (Optional[Severity]): Severity level of the detected issue (if any).
         rules (Optional[List[Rule]]): List of rules that matched during inspection.
         processed_rules (Optional[List[Rule]]): List of rules that were evaluated (same structure as rules).
@@ -172,6 +195,7 @@ class InspectResponse:
         explanation (Optional[str]): Human-readable explanation of the inspection result.
         client_transaction_id (Optional[str]): Unique client-provided transaction ID for tracing.
         event_id (Optional[str]): Unique event ID assigned by the backend.
+        detected_pii (Optional[List[DetectedPII]]): List of detected PII entities.
     """
 
     classifications: List[Classification]
@@ -184,3 +208,4 @@ class InspectResponse:
     explanation: Optional[str] = None
     client_transaction_id: Optional[str] = None
     event_id: Optional[str] = None
+    detected_pii: Optional[List[DetectedPII]] = None
