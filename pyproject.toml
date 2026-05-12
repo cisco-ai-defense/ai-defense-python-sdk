@@ -26,7 +26,6 @@ packages = [{include = "aidefense"}]
 aiohttp = "^3.13.2"
 python = "^3.9"
 requests = "^2.32.3"
-uuid = "^1.30"
 pydantic = "^2.12.5"
 tenacity = "^9.1.2"
 cisco-aibom = {version = ">=0.4.0", optional = true, python = ">=3.11,<3.14"}
