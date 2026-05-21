@@ -48,10 +48,10 @@ class BaseConfig(ABC):
     RUNTIME_REGION_ENDPOINTS = {
         "us": "https://us.api.inspect.aidefense.security.cisco.com",
         "eu": "https://eu.api.inspect.aidefense.security.cisco.com",
-        "apj": "https://apj.api.inspect.aidefense.security.cisco.com",
+        "apj": "https://ap.api.inspect.aidefense.security.cisco.com",
         "us-west-2": "https://us.api.inspect.aidefense.security.cisco.com",
         "eu-central-1": "https://eu.api.inspect.aidefense.security.cisco.com",
-        "ap-northeast-1": "https://apj.api.inspect.aidefense.security.cisco.com",
+        "ap-northeast-1": "https://ap.api.inspect.aidefense.security.cisco.com",
         "me-central-1": "https://uae.api.inspect.aidefense.security.cisco.com",
     }
 
