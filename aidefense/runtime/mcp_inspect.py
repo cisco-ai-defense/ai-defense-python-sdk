@@ -79,12 +79,13 @@ class MCPInspectionClient(InspectionClient):
         endpoint (str): The API endpoint for MCP inspection requests.
     """
 
-    def __init__(self, api_key: str, config: Config = None):
+    def __init__(self, api_key: Optional[str] = None, config: Config = None):
         """
         Initialize an MCPInspectionClient instance.
 
         Args:
-            api_key (str): Your Cisco AI Defense API key for authentication.
+            api_key (str, optional): Your Cisco AI Defense API key for authentication. May be omitted
+                to construct a client that requires a per-request api_key on each inspection call.
             config (Config, optional): SDK-level configuration for endpoints, logging, retries, etc.
         """
         config = config or Config()
@@ -96,6 +97,7 @@ class MCPInspectionClient(InspectionClient):
         message: MCPMessage,
         request_id: Optional[str] = None,
         timeout: Optional[int] = None,
+        api_key: Optional[str] = None,
     ) -> MCPInspectResponse:
         """
         Inspect an MCP JSON-RPC 2.0 message for security, privacy, and safety violations.
@@ -107,6 +109,7 @@ class MCPInspectionClient(InspectionClient):
             request_id (str, optional): Unique identifier for the request (usually a UUID)
                 to enable request tracing.
             timeout (int, optional): Request timeout in seconds.
+            api_key (str, optional): Per-request API key. Overrides the construction-time key for this call only.
 
         Returns:
             MCPInspectResponse: Inspection results wrapped in JSON-RPC 2.0 format.
@@ -148,7 +151,7 @@ class MCPInspectionClient(InspectionClient):
         self.config.logger.debug(
             f"Inspecting MCP message: {message} | Request ID: {request_id}"
         )
-        return self._inspect(message, request_id, timeout)
+        return self._inspect(message, request_id, timeout, api_key)
 
     def inspect_tool_call(
         self,
@@ -157,6 +160,7 @@ class MCPInspectionClient(InspectionClient):
         message_id: Optional[Union[str, int]] = None,
         request_id: Optional[str] = None,
         timeout: Optional[int] = None,
+        api_key: Optional[str] = None,
     ) -> MCPInspectResponse:
         """
         Convenience method to inspect an MCP tools/call request.
@@ -167,6 +171,7 @@ class MCPInspectionClient(InspectionClient):
             message_id (Union[str, int], optional): The JSON-RPC message ID.
             request_id (str, optional): Unique identifier for the request to enable tracing.
             timeout (int, optional): Request timeout in seconds.
+            api_key (str, optional): Per-request API key. Overrides the construction-time key for this call only.
 
         Returns:
             MCPInspectResponse: Inspection results wrapped in JSON-RPC 2.0 format.
@@ -199,7 +204,7 @@ class MCPInspectionClient(InspectionClient):
             params={"name": tool_name, "arguments": arguments or {}},
             id=message_id,
         )
-        return self._inspect(message, request_id, timeout)
+        return self._inspect(message, request_id, timeout, api_key)
 
     def inspect_resource_read(
         self,
@@ -207,6 +212,7 @@ class MCPInspectionClient(InspectionClient):
         message_id: Optional[Union[str, int]] = None,
         request_id: Optional[str] = None,
         timeout: Optional[int] = None,
+        api_key: Optional[str] = None,
     ) -> MCPInspectResponse:
         """
         Convenience method to inspect an MCP resources/read request.
@@ -216,6 +222,7 @@ class MCPInspectionClient(InspectionClient):
             message_id (Union[str, int], optional): The JSON-RPC message ID.
             request_id (str, optional): Unique identifier for the request to enable tracing.
             timeout (int, optional): Request timeout in seconds.
+            api_key (str, optional): Per-request API key. Overrides the construction-time key for this call only.
 
         Returns:
             MCPInspectResponse: Inspection results wrapped in JSON-RPC 2.0 format.
@@ -247,7 +254,7 @@ class MCPInspectionClient(InspectionClient):
             params={"uri": uri},
             id=message_id,
         )
-        return self._inspect(message, request_id, timeout)
+        return self._inspect(message, request_id, timeout, api_key)
 
     def inspect_prompt_get(
         self,
@@ -256,6 +263,7 @@ class MCPInspectionClient(InspectionClient):
         message_id: Optional[Union[str, int]] = None,
         request_id: Optional[str] = None,
         timeout: Optional[int] = None,
+        api_key: Optional[str] = None,
     ) -> MCPInspectResponse:
         """
         Convenience method to inspect an MCP prompts/get request.
@@ -266,6 +274,7 @@ class MCPInspectionClient(InspectionClient):
             message_id (Union[str, int], optional): The JSON-RPC message ID.
             request_id (str, optional): Unique identifier for the request to enable tracing.
             timeout (int, optional): Request timeout in seconds.
+            api_key (str, optional): Per-request API key. Overrides the construction-time key for this call only.
 
         Returns:
             MCPInspectResponse: Inspection results wrapped in JSON-RPC 2.0 format.
@@ -282,7 +291,7 @@ class MCPInspectionClient(InspectionClient):
             params={"name": prompt_name, "arguments": arguments or {}},
             id=message_id,
         )
-        return self._inspect(message, request_id, timeout)
+        return self._inspect(message, request_id, timeout, api_key)
 
     def inspect_response(
         self,
@@ -292,6 +301,7 @@ class MCPInspectionClient(InspectionClient):
         message_id: Optional[Union[str, int]] = None,
         request_id: Optional[str] = None,
         timeout: Optional[int] = None,
+        api_key: Optional[str] = None,
     ) -> MCPInspectResponse:
         """
         Convenience method to inspect an MCP response message.
@@ -308,6 +318,7 @@ class MCPInspectionClient(InspectionClient):
             message_id (Union[str, int], optional): The JSON-RPC message ID.
             request_id (str, optional): Unique identifier for the request to enable tracing.
             timeout (int, optional): Request timeout in seconds.
+            api_key (str, optional): Per-request API key. Overrides the construction-time key for this call only.
 
         Returns:
             MCPInspectResponse: Inspection results wrapped in JSON-RPC 2.0 format.
@@ -354,13 +365,14 @@ class MCPInspectionClient(InspectionClient):
             result=result_data,
             id=message_id,
         )
-        return self._inspect(message, request_id, timeout)
+        return self._inspect(message, request_id, timeout, api_key)
 
     def _inspect(
         self,
         message: MCPMessage,
         request_id: Optional[str] = None,
         timeout: Optional[int] = None,
+        api_key: Optional[str] = None,
     ) -> MCPInspectResponse:
         """
         Implements the inspection logic for MCP messages.
@@ -372,6 +384,7 @@ class MCPInspectionClient(InspectionClient):
             message (MCPMessage): The MCP message to inspect.
             request_id (str, optional): Unique identifier for the request to enable tracing.
             timeout (int, optional): Request timeout in seconds.
+            api_key (str, optional): Per-request API key. Overrides the construction-time key for this call only.
 
         Returns:
             MCPInspectResponse: Inspection results wrapped in JSON-RPC 2.0 format.
@@ -393,7 +406,7 @@ class MCPInspectionClient(InspectionClient):
         result = self._request_handler.request(
             method="POST",
             url=self.endpoint,
-            auth=self.auth,
+            auth=self._resolve_auth(api_key),
             headers=headers,
             json_data=request_dict,
             request_id=request_id,

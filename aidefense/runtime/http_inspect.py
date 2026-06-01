@@ -55,12 +55,13 @@ class HttpInspectionClient(InspectionClient):
         Rule, RuleName, HttpInspectRequest, ...: Shortcuts for internal models and enums.
     """
 
-    def __init__(self, api_key: str, config: Config = None):
+    def __init__(self, api_key: Optional[str] = None, config: Config = None):
         """
         Create a new HTTP inspection client.
 
         Args:
-            api_key (str): Your AI Defense API key.
+            api_key (str, optional): Your AI Defense API key. May be omitted to construct a client
+                that requires a per-request api_key on each inspection call.
             config (Config, optional): SDK configuration for endpoints, logging, retries, etc.
         """
         config = config or Config()
@@ -76,6 +77,7 @@ class HttpInspectionClient(InspectionClient):
         config: Optional[InspectionConfig] = None,
         request_id: Optional[str] = None,
         timeout: Optional[int] = None,
+        api_key: Optional[str] = None,
     ) -> InspectResponse:
         """
         Direct interface for HTTP inspection API using dicts for http_req, http_res, and http_meta.
@@ -89,6 +91,7 @@ class HttpInspectionClient(InspectionClient):
             config (InspectionConfig, optional): Inspection configuration.
             request_id (str, optional): Unique identifier for the request (usually a UUID) to enable request tracing.
             timeout (int, optional): Request timeout in seconds.
+            api_key (str, optional): Per-request API key. Overrides the construction-time key for this call only.
 
         Note:
             - The 'body' field for both request and response dicts must be a base64-encoded string representing the original bytes.
@@ -151,6 +154,7 @@ class HttpInspectionClient(InspectionClient):
             config,
             request_id=request_id,
             timeout=timeout,
+            api_key=api_key,
         )
 
     def inspect_request_from_http_library(
@@ -160,6 +164,7 @@ class HttpInspectionClient(InspectionClient):
         config: Optional[InspectionConfig] = None,
         request_id: Optional[str] = None,
         timeout: Optional[int] = None,
+        api_key: Optional[str] = None,
     ) -> InspectResponse:
         """
         Inspect an HTTP request from a supported HTTP library (currently requests) that is being sent to the model provider.
@@ -170,6 +175,7 @@ class HttpInspectionClient(InspectionClient):
             config (InspectionConfig, optional): Optional inspection configuration (rules, etc.).
             request_id (str, optional): Unique identifier for the request (usually a UUID) to enable request tracing.
             timeout (int, optional): Request timeout in seconds.
+            api_key (str, optional): Per-request API key. Overrides the construction-time key for this call only.
 
         Example:
             ```python
@@ -237,6 +243,7 @@ class HttpInspectionClient(InspectionClient):
             config,
             request_id=request_id,
             timeout=timeout,
+            api_key=api_key,
         )
 
     def inspect_response_from_http_library(
@@ -246,6 +253,7 @@ class HttpInspectionClient(InspectionClient):
         config: Optional[InspectionConfig] = None,
         request_id: Optional[str] = None,
         timeout: Optional[int] = None,
+        api_key: Optional[str] = None,
     ) -> InspectResponse:
         """
         Inspect an HTTP response from a supported HTTP library (currently requests) that comes from model provider and return inspection results.
@@ -256,6 +264,7 @@ class HttpInspectionClient(InspectionClient):
             config (InspectionConfig, optional): Inspection configuration.
             request_id (str, optional): Unique identifier for the request (usually a UUID) to enable request tracing.
             timeout (int, optional): Request timeout in seconds.
+            api_key (str, optional): Per-request API key. Overrides the construction-time key for this call only.
 
         Example:
             ```python
@@ -333,6 +342,7 @@ class HttpInspectionClient(InspectionClient):
             config,
             request_id=request_id,
             timeout=timeout,
+            api_key=api_key,
         )
 
     def inspect_request(
@@ -345,6 +355,7 @@ class HttpInspectionClient(InspectionClient):
         config: Optional[InspectionConfig] = None,
         request_id: Optional[str] = None,
         timeout: Optional[int] = None,
+        api_key: Optional[str] = None,
     ) -> InspectResponse:
         """
         Inspect an HTTP request with simplified arguments (method, url, headers, body).
@@ -358,6 +369,7 @@ class HttpInspectionClient(InspectionClient):
             config (InspectionConfig, optional): Inspection configuration.
             request_id (str, optional): Unique identifier for the request (usually a UUID) to enable request tracing.
             timeout (int, optional): Request timeout in seconds.
+            api_key (str, optional): Per-request API key. Overrides the construction-time key for this call only.
 
         Example:
             ```python
@@ -423,6 +435,7 @@ class HttpInspectionClient(InspectionClient):
             config,
             request_id=request_id,
             timeout=timeout,
+            api_key=api_key,
         )
 
     def inspect_response(
@@ -439,6 +452,7 @@ class HttpInspectionClient(InspectionClient):
         config: Optional[InspectionConfig] = None,
         request_id: Optional[str] = None,
         timeout: Optional[int] = None,
+        api_key: Optional[str] = None,
     ) -> InspectResponse:
         """
         Inspect an HTTP response (status code, url, headers, body), with request context and metadata, for security, privacy, and policy violations.
@@ -456,6 +470,7 @@ class HttpInspectionClient(InspectionClient):
             config (InspectionConfig, optional): Inspection configuration rules.
             request_id (str, optional): Unique identifier for the request (usually a UUID) to enable request tracing.
             timeout (int, optional): Request timeout in seconds.
+            api_key (str, optional): Per-request API key. Overrides the construction-time key for this call only.
 
         Example:
             ```python
@@ -570,6 +585,7 @@ class HttpInspectionClient(InspectionClient):
             config,
             request_id=request_id,
             timeout=timeout,
+            api_key=api_key,
         )
 
     def _inspect(
@@ -581,6 +597,7 @@ class HttpInspectionClient(InspectionClient):
         config: Optional[InspectionConfig] = None,
         request_id: Optional[str] = None,
         timeout: Optional[int] = None,
+        api_key: Optional[str] = None,
     ) -> InspectResponse:
         """
         Implements InspectionClient._inspect for HTTP inspection.
@@ -612,7 +629,7 @@ class HttpInspectionClient(InspectionClient):
         result = self._request_handler.request(
             method="POST",
             url=self.endpoint,
-            auth=self.auth,
+            auth=self._resolve_auth(api_key),
             headers=headers,
             json_data=request_dict,
             request_id=request_id,

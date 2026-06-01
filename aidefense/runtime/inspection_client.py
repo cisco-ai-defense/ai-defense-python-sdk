@@ -15,10 +15,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from abc import abstractmethod, ABC
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from dataclasses import asdict
 
 from .auth import RuntimeAuth, AsyncAuth
+from ..exceptions import ValidationError
 from .models import PII_ENTITIES, PCI_ENTITIES, PHI_ENTITIES
 from .models import (
     Action,
@@ -362,25 +363,53 @@ class InspectionClient(BaseInspectionClient):
 
         return super().__new__(cls)
 
-    def __init__(self, api_key: str, config: Config):
+    def __init__(self, api_key: Optional[str] = None, config: Config = None):
         """
         Initialize the InspectionClient.
 
         Args:
-            api_key (str): Your AI Defense API key for authentication.
+            api_key (str, optional): Your AI Defense API key for authentication. May be omitted
+                to construct a client that requires a per-request api_key on each call.
             config (Config, optional): SDK configuration for endpoints, logging, retries, etc.
                 If not provided, a default singleton Config is used.
 
         Attributes:
-            auth (RuntimeAuth): Authentication object for API requests.
+            auth (RuntimeAuth): Authentication object for API requests, or None when no
+                construction-time key was provided.
             config (Config): The runtime configuration object.
             api_key (str): The API key used for authentication.
             default_enabled_rules (list): List of Rule objects for all RuleNames. Only rules present in
                 DEFAULT_ENTITY_MAP (PII, PCI, PHI) will have their associated entity_types set; all others will have entity_types as None.
         """
         super().__init__(api_key, config)
-        self.auth = RuntimeAuth(api_key)
+        self.auth = RuntimeAuth(api_key) if api_key else None
         self._request_handler = RequestHandler(config)
+
+    def _resolve_auth(self, api_key: Optional[str]) -> RuntimeAuth:
+        """
+        Resolve the authentication object for a request.
+
+        A per-request api_key takes precedence over the construction-time key, allowing
+        a single client to authenticate different calls with different keys.
+
+        Args:
+            api_key (str, optional): Per-request API key. If provided, it is validated and used
+                for this request only. If omitted, the construction-time key is used.
+
+        Returns:
+            RuntimeAuth: The authentication object to use for the request.
+
+        Raises:
+            ValueError: If a provided per-request api_key has an invalid format.
+            ValidationError: If no api_key is available from either source.
+        """
+        if api_key:
+            return RuntimeAuth(api_key)
+        if self.auth:
+            return self.auth
+        raise ValidationError(
+            "No API key available: pass api_key to this method or to the client constructor."
+        )
 
     def _inspect(self, *args, **kwargs):
         """
@@ -432,17 +461,44 @@ class AsyncInspectionClient(BaseInspectionClient):
 
         return super().__new__(cls)
 
-    def __init__(self, api_key: str, config: AsyncConfig):
+    def __init__(self, api_key: Optional[str] = None, config: AsyncConfig = None):
         """
         Initialize the async inspection client.
 
         Args:
-            api_key (str): Your AI Defense API key for authentication.
+            api_key (str, optional): Your AI Defense API key for authentication. May be omitted
+                to construct a client that requires a per-request api_key on each call.
             config (AsyncConfig): Async SDK configuration for endpoints, logging, retries, etc.
         """
         super().__init__(api_key, config)
-        self.auth = AsyncAuth(api_key)
+        self.auth = AsyncAuth(api_key) if api_key else None
         self._request_handler = AsyncRequestHandler(config)
+
+    def _resolve_auth(self, api_key: Optional[str]) -> AsyncAuth:
+        """
+        Resolve the authentication object for a request.
+
+        A per-request api_key takes precedence over the construction-time key, allowing
+        a single client to authenticate different calls with different keys.
+
+        Args:
+            api_key (str, optional): Per-request API key. If provided, it is validated and used
+                for this request only. If omitted, the construction-time key is used.
+
+        Returns:
+            AsyncAuth: The authentication object to use for the request.
+
+        Raises:
+            ValueError: If a provided per-request api_key has an invalid format.
+            ValidationError: If no api_key is available from either source.
+        """
+        if api_key:
+            return AsyncAuth(api_key)
+        if self.auth:
+            return self.auth
+        raise ValidationError(
+            "No API key available: pass api_key to this method or to the client constructor."
+        )
 
     async def __aenter__(self):
         """
