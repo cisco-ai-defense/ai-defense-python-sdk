@@ -413,7 +413,7 @@ def main():
 
                     # Get event conversation using the new method signature with separate ID parameter
                     conversation = client.events.get_event_conversation(
-                        first_event.event_id, expanded=True
+                        first_event.event_id
                     )
 
                     if "messages" in conversation and conversation["messages"].items:

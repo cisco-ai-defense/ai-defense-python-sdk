@@ -36,6 +36,7 @@ class EditConnectionOperationType(str, Enum):
 class ConnectionStatus(str, Enum):
     """Connection status enum."""
 
+    Unspecified = "ConnectionStatusUnspecified"
     Connected = "Connected"
     Disconnected = "Disconnected"
     Pending = "Pending"
