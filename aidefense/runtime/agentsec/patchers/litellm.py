@@ -141,6 +141,23 @@ class _LiteLLMStreamingInspectionWrapper:
         self._inspect_interval = 10
         self._final_inspection_done = False
 
+    def __getattr__(self, name: str):
+        if name.startswith("_"):
+            raise AttributeError(name)
+        return getattr(self._stream, name)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+        return False
+
+    def close(self) -> None:
+        self._perform_final_inspection()
+        if hasattr(self._stream, "close"):
+            self._stream.close()
+
     def __iter__(self):
         return self
 
@@ -216,6 +233,25 @@ class _AsyncLiteLLMStreamingInspectionWrapper:
         self._chunk_count = 0
         self._inspect_interval = 10
         self._final_inspection_done = False
+
+    def __getattr__(self, name: str):
+        if name.startswith("_"):
+            raise AttributeError(name)
+        return getattr(self._stream, name)
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.aclose()
+        return False
+
+    async def aclose(self) -> None:
+        await self._perform_final_inspection()
+        if hasattr(self._stream, "aclose"):
+            await self._stream.aclose()
+        elif hasattr(self._stream, "close"):
+            self._stream.close()
 
     def __aiter__(self):
         return self
