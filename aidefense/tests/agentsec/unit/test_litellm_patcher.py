@@ -688,6 +688,37 @@ class TestLiteLLMStreamingInspectionWrapper:
         assert len(chunks) == 1
         assert mock_inspector.inspect_conversation.called
 
+    @patch("aidefense.runtime.agentsec.patchers.litellm._get_inspector")
+    def test_close_closes_stream_when_inspection_raises(self, mock_get_inspector):
+        mock_inspector = MagicMock()
+        mock_inspector.inspect_conversation.return_value = Decision.block(reasons=["policy"])
+        mock_get_inspector.return_value = mock_inspector
+
+        _state.set_state(
+            initialized=True,
+            api_mode={"llm_defaults": {"fail_open": True}, "llm": {"mode": "enforce"}},
+        )
+        clear_inspection_context()
+
+        chunk = SimpleNamespace(
+            choices=[SimpleNamespace(delta=SimpleNamespace(content="blocked"))],
+        )
+        mock_stream = MagicMock()
+        mock_stream.__iter__ = MagicMock(return_value=iter([chunk]))
+        mock_stream.headers = {}
+
+        wrapper = _LiteLLMStreamingInspectionWrapper(
+            mock_stream,
+            [{"role": "user", "content": "Hello"}],
+            {},
+        )
+        next(wrapper)
+
+        with pytest.raises(SecurityPolicyError):
+            wrapper.close()
+
+        mock_stream.close.assert_called_once()
+
 
 class TestAsyncLiteLLMStreamingInspectionWrapper:
     """Test async streaming wrapper attribute proxying."""
@@ -745,3 +776,50 @@ class TestAsyncLiteLLMStreamingInspectionWrapper:
         chunks = [c async for c in wrapper]
         assert len(chunks) == 1
         mock_inspector.ainspect_conversation.assert_called()
+
+    @pytest.mark.asyncio
+    @patch("aidefense.runtime.agentsec.patchers.litellm._get_inspector")
+    async def test_aclose_closes_stream_when_inspection_raises(self, mock_get_inspector):
+        mock_inspector = MagicMock()
+        mock_inspector.ainspect_conversation = AsyncMock(
+            return_value=Decision.block(reasons=["policy"]),
+        )
+        mock_get_inspector.return_value = mock_inspector
+
+        _state.set_state(
+            initialized=True,
+            api_mode={"llm_defaults": {"fail_open": True}, "llm": {"mode": "enforce"}},
+        )
+        clear_inspection_context()
+
+        chunk = SimpleNamespace(
+            choices=[SimpleNamespace(delta=SimpleNamespace(content="blocked"))],
+        )
+
+        class AsyncStream:
+            def __init__(self):
+                self.headers = {}
+                self._chunks = [chunk]
+                self.close = MagicMock()
+                self.aclose = AsyncMock()
+
+            def __aiter__(self):
+                return self
+
+            async def __anext__(self):
+                if not self._chunks:
+                    raise StopAsyncIteration
+                return self._chunks.pop(0)
+
+        stream = AsyncStream()
+        wrapper = _AsyncLiteLLMStreamingInspectionWrapper(
+            stream,
+            [{"role": "user", "content": "Hello"}],
+            {},
+        )
+        await wrapper.__anext__()
+
+        with pytest.raises(SecurityPolicyError):
+            await wrapper.aclose()
+
+        stream.aclose.assert_awaited_once()

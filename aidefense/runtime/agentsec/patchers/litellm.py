@@ -154,9 +154,11 @@ class _LiteLLMStreamingInspectionWrapper:
         return False
 
     def close(self) -> None:
-        self._perform_final_inspection()
-        if hasattr(self._stream, "close"):
-            self._stream.close()
+        try:
+            self._perform_final_inspection()
+        finally:
+            if hasattr(self._stream, "close"):
+                self._stream.close()
 
     def __iter__(self):
         return self
@@ -247,11 +249,13 @@ class _AsyncLiteLLMStreamingInspectionWrapper:
         return False
 
     async def aclose(self) -> None:
-        await self._perform_final_inspection()
-        if hasattr(self._stream, "aclose"):
-            await self._stream.aclose()
-        elif hasattr(self._stream, "close"):
-            self._stream.close()
+        try:
+            await self._perform_final_inspection()
+        finally:
+            if hasattr(self._stream, "aclose"):
+                await self._stream.aclose()
+            elif hasattr(self._stream, "close"):
+                self._stream.close()
 
     def __aiter__(self):
         return self
