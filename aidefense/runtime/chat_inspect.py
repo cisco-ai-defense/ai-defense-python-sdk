@@ -172,12 +172,13 @@ class ChatInspectionClient(BaseChatInspectionClient, InspectionClient):
             If not provided, a default singleton Config is used.
     """
 
-    def __init__(self, api_key: str, config: Config = None):
+    def __init__(self, api_key: Optional[str] = None, config: Config = None):
         """
         Initialize a ChatInspectionClient instance.
 
         Args:
-            api_key (str): Your Cisco AI Defense API key for authentication.
+            api_key (str, optional): Your Cisco AI Defense API key for authentication. May be omitted
+                to construct a client that requires a per-request api_key on each inspection call.
             config (Config, optional): SDK-level configuration for endpoints, logging, retries, etc.
                 This is NOT the InspectionConfig used in API requests, but the SDK-level configuration from aidefense/config.py.
         """
@@ -194,6 +195,7 @@ class ChatInspectionClient(BaseChatInspectionClient, InspectionClient):
         config: Optional[InspectionConfig] = None,
         request_id: Optional[str] = None,
         timeout: Optional[int] = None,
+        api_key: Optional[str] = None,
     ) -> InspectResponse:
         """
         Inspect a single user prompt for security, privacy, and safety violations.
@@ -204,6 +206,7 @@ class ChatInspectionClient(BaseChatInspectionClient, InspectionClient):
             config (InspectionConfig, optional): Optional inspection configuration (rules, etc.).
             request_id (str, optional): Unique identifier for the request (usually a UUID) to enable request tracing.
             timeout(int, optional): Request timeout in seconds.
+            api_key (str, optional): Per-request API key. Overrides the construction-time key for this call only.
 
         Returns:
             InspectResponse: Inspection results as an InspectResponse object.
@@ -235,7 +238,7 @@ class ChatInspectionClient(BaseChatInspectionClient, InspectionClient):
             f"Inspecting prompt: {prompt} | Metadata: {metadata}, Config: {config}, Request ID: {request_id}"
         )
         message = Message(role=Role.USER, content=prompt)
-        return self._inspect([message], metadata, config, request_id, timeout)
+        return self._inspect([message], metadata, config, request_id, timeout, api_key)
 
     def inspect_response(
         self,
@@ -244,6 +247,7 @@ class ChatInspectionClient(BaseChatInspectionClient, InspectionClient):
         config: Optional[InspectionConfig] = None,
         request_id: Optional[str] = None,
         timeout: Optional[int] = None,
+        api_key: Optional[str] = None,
     ) -> InspectResponse:
         """
         Inspect a single AI response for security, privacy, and safety risks.
@@ -254,6 +258,7 @@ class ChatInspectionClient(BaseChatInspectionClient, InspectionClient):
             config (InspectionConfig, optional): Optional inspection configuration (rules, etc.).
             request_id (str, optional): Unique identifier for the request (usually a UUID) to enable request tracing.
             timeout (int, optional): Request timeout in seconds.
+            api_key (str, optional): Per-request API key. Overrides the construction-time key for this call only.
 
         Returns:
             InspectResponse: Inspection results as an InspectResponse object.
@@ -296,7 +301,7 @@ class ChatInspectionClient(BaseChatInspectionClient, InspectionClient):
             f"Inspecting AI response: {response} | Metadata: {metadata}, Config: {config}, Request ID: {request_id}"
         )
         message = Message(role=Role.ASSISTANT, content=response)
-        return self._inspect([message], metadata, config, request_id, timeout)
+        return self._inspect([message], metadata, config, request_id, timeout, api_key)
 
     def inspect_conversation(
         self,
@@ -305,6 +310,7 @@ class ChatInspectionClient(BaseChatInspectionClient, InspectionClient):
         config: Optional[InspectionConfig] = None,
         request_id: Optional[str] = None,
         timeout: Optional[int] = None,
+        api_key: Optional[str] = None,
     ) -> InspectResponse:
         """
         Inspect a full conversation (list of messages) for security, privacy, and safety risks.
@@ -315,6 +321,7 @@ class ChatInspectionClient(BaseChatInspectionClient, InspectionClient):
             config (InspectionConfig, optional): Optional inspection configuration (rules, etc.).
             request_id (str, optional): Unique identifier for the request (usually a UUID) to enable request tracing.
             timeout (int, optional): Request timeout in seconds.
+            api_key (str, optional): Per-request API key. Overrides the construction-time key for this call only.
 
         Returns:
             InspectResponse: Inspection results as an InspectResponse object.
@@ -372,7 +379,7 @@ class ChatInspectionClient(BaseChatInspectionClient, InspectionClient):
         self.config.logger.debug(
             f"Inspecting conversation with {len(messages)} messages. | Messages: {messages}, Metadata: {metadata}, Config: {config}, Request ID: {request_id}"
         )
-        return self._inspect(messages, metadata, config, request_id, timeout)
+        return self._inspect(messages, metadata, config, request_id, timeout, api_key)
 
     def _inspect(
         self,
@@ -381,6 +388,7 @@ class ChatInspectionClient(BaseChatInspectionClient, InspectionClient):
         config: Optional[InspectionConfig] = None,
         request_id: Optional[str] = None,
         timeout: Optional[int] = None,
+        api_key: Optional[str] = None,
     ) -> InspectResponse:
         """
         Implements the inspection logic for chat conversations.
@@ -394,6 +402,7 @@ class ChatInspectionClient(BaseChatInspectionClient, InspectionClient):
             config (InspectionConfig, optional): Optional inspection configuration (rules, etc.).
             request_id (str, optional): Unique identifier for the request (usually a UUID) to enable request tracing.
             timeout (int, optional): Request timeout in seconds.
+            api_key (str, optional): Per-request API key. Overrides the construction-time key for this call only.
 
         Returns:
             InspectResponse: Inspection results as an InspectResponse object.
@@ -405,7 +414,7 @@ class ChatInspectionClient(BaseChatInspectionClient, InspectionClient):
         result = self._request_handler.request(
             method="POST",
             url=self.endpoint,
-            auth=self.auth,
+            auth=self._resolve_auth(api_key),
             headers=headers,
             json_data=request_dict,
             request_id=request_id,
@@ -433,12 +442,13 @@ class AsyncChatInspectionClient(BaseChatInspectionClient, AsyncInspectionClient)
             If not provided, a default singleton Config is used.
     """
 
-    def __init__(self, api_key: str, config: AsyncConfig = None):
+    def __init__(self, api_key: Optional[str] = None, config: AsyncConfig = None):
         """
         Initialize an AsyncChatInspectionClient instance.
 
         Args:
-            api_key (str): Your Cisco AI Defense API key for authentication.
+            api_key (str, optional): Your Cisco AI Defense API key for authentication. May be omitted
+                to construct a client that requires a per-request api_key on each inspection call.
             config (AsyncConfig, optional): Async SDK configuration for endpoints, logging, retries, etc.
                 If not provided, a default singleton AsyncConfig is used.
 
@@ -458,6 +468,7 @@ class AsyncChatInspectionClient(BaseChatInspectionClient, AsyncInspectionClient)
         config: Optional[InspectionConfig] = None,
         request_id: Optional[str] = None,
         timeout: Optional[int] = None,
+        api_key: Optional[str] = None,
     ) -> InspectResponse:
         """
         Inspect a single user prompt for security, privacy, and safety violations.
@@ -468,6 +479,7 @@ class AsyncChatInspectionClient(BaseChatInspectionClient, AsyncInspectionClient)
             config (InspectionConfig, optional): Optional inspection configuration (rules, etc.).
             request_id (str, optional): Unique identifier for the request (usually a UUID) to enable request tracing.
             timeout(int, optional): Request timeout in seconds.
+            api_key (str, optional): Per-request API key. Overrides the construction-time key for this call only.
 
         Returns:
             InspectResponse: Inspection results as an InspectResponse object.
@@ -498,7 +510,7 @@ class AsyncChatInspectionClient(BaseChatInspectionClient, AsyncInspectionClient)
             f"Inspecting prompt: {prompt} | Metadata: {metadata}, Config: {config}, Request ID: {request_id}"
         )
         message = Message(role=Role.USER, content=prompt)
-        return await self._inspect([message], metadata, config, request_id, timeout)
+        return await self._inspect([message], metadata, config, request_id, timeout, api_key)
 
     async def inspect_response(
         self,
@@ -507,6 +519,7 @@ class AsyncChatInspectionClient(BaseChatInspectionClient, AsyncInspectionClient)
         config: Optional[InspectionConfig] = None,
         request_id: Optional[str] = None,
         timeout: Optional[int] = None,
+        api_key: Optional[str] = None,
     ) -> InspectResponse:
         """
         Inspect a single AI response for security, privacy, and safety risks.
@@ -517,6 +530,7 @@ class AsyncChatInspectionClient(BaseChatInspectionClient, AsyncInspectionClient)
             config (InspectionConfig, optional): Optional inspection configuration (rules, etc.).
             request_id (str, optional): Unique identifier for the request (usually a UUID) to enable request tracing.
             timeout (int, optional): Request timeout in seconds. Overrides the default timeout.
+            api_key (str, optional): Per-request API key. Overrides the construction-time key for this call only.
 
         Returns:
             InspectResponse: Inspection results as an InspectResponse object.
@@ -558,7 +572,7 @@ class AsyncChatInspectionClient(BaseChatInspectionClient, AsyncInspectionClient)
             f"Inspecting AI response: {response} | Metadata: {metadata}, Config: {config}, Request ID: {request_id}"
         )
         message = Message(role=Role.ASSISTANT, content=response)
-        return await self._inspect([message], metadata, config, request_id, timeout)
+        return await self._inspect([message], metadata, config, request_id, timeout, api_key)
 
     async def inspect_conversation(
         self,
@@ -567,6 +581,7 @@ class AsyncChatInspectionClient(BaseChatInspectionClient, AsyncInspectionClient)
         config: Optional[InspectionConfig] = None,
         request_id: Optional[str] = None,
         timeout: Optional[int] = None,
+        api_key: Optional[str] = None,
     ) -> InspectResponse:
         """
         Inspect a full conversation (list of messages) for security, privacy, and safety risks.
@@ -577,6 +592,7 @@ class AsyncChatInspectionClient(BaseChatInspectionClient, AsyncInspectionClient)
             config (InspectionConfig, optional): Optional inspection configuration (rules, etc.).
             request_id (str, optional): Unique identifier for the request (usually a UUID) to enable request tracing.
             timeout (int, optional): Request timeout in seconds. Overrides the default client timeout if provided.
+            api_key (str, optional): Per-request API key. Overrides the construction-time key for this call only.
 
         Returns:
             InspectResponse: Inspection results as an InspectResponse object.
@@ -633,7 +649,7 @@ class AsyncChatInspectionClient(BaseChatInspectionClient, AsyncInspectionClient)
         self.config.logger.debug(
             f"Inspecting conversation with {len(messages)} messages. | Messages: {messages}, Metadata: {metadata}, Config: {config}, Request ID: {request_id}"
         )
-        return await self._inspect(messages, metadata, config, request_id, timeout)
+        return await self._inspect(messages, metadata, config, request_id, timeout, api_key)
 
     async def _inspect(
         self,
@@ -642,6 +658,7 @@ class AsyncChatInspectionClient(BaseChatInspectionClient, AsyncInspectionClient)
         config: Optional[InspectionConfig] = None,
         request_id: Optional[str] = None,
         timeout: Optional[int] = None,
+        api_key: Optional[str] = None,
     ) -> InspectResponse:
         """
         Implements the inspection logic for chat conversations.
@@ -655,6 +672,7 @@ class AsyncChatInspectionClient(BaseChatInspectionClient, AsyncInspectionClient)
             config (InspectionConfig, optional): Optional inspection configuration (rules, etc.).
             request_id (str, optional): Unique identifier for the request (usually a UUID) to enable request tracing.
             timeout (int, optional): Request timeout in seconds.
+            api_key (str, optional): Per-request API key. Overrides the construction-time key for this call only.
 
         Returns:
             InspectResponse: Inspection results as an InspectResponse object.
@@ -666,7 +684,7 @@ class AsyncChatInspectionClient(BaseChatInspectionClient, AsyncInspectionClient)
         result = await self._request_handler.request(
             method="POST",
             url=self.endpoint,
-            auth=self.auth,
+            auth=self._resolve_auth(api_key),
             headers=headers,
             json_data=request_dict,
             request_id=request_id,
