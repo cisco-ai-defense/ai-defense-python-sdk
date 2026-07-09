@@ -22,6 +22,7 @@ from aidefense.runtime.models import (
     Classification,
     Severity,
     Rule,
+    RuleResult,
     RuleName,
 )
 from aidefense.config import Config
@@ -196,6 +197,42 @@ def test_parse_inspect_response_with_processed_rules():
     assert result.processed_rules[0].rule_name == "PROMPT_INJECTION"
     assert result.processed_rules[0].rule_id == 10
     assert result.processed_rules[0].classification == Classification.SECURITY_VIOLATION
+
+
+def test_parse_inspect_response_with_profile_id():
+    """Test parsing profile IDs from rules and processed_rules."""
+    client = TestInspectionClient(TEST_API_KEY, Config())
+
+    response_data = {
+        "is_safe": False,
+        "classifications": ["CUSTOM_GUARDRAIL_PROFILE_VIOLATION"],
+        "rules": [
+            {
+                "rule_name": "Custom profile",
+                "rule_id": 0,
+                "classification": "CUSTOM_GUARDRAIL_PROFILE_VIOLATION",
+                "profile_id": "profile-123",
+            }
+        ],
+        "processed_rules": [
+            {
+                "rule_name": "Custom profile",
+                "rule_id": 0,
+                "classification": "CUSTOM_GUARDRAIL_PROFILE_VIOLATION",
+                "profile_id": "profile-123",
+            }
+        ],
+    }
+
+    result = client._parse_inspect_response(response_data)
+
+    assert Classification.CUSTOM_GUARDRAIL_PROFILE_VIOLATION in result.classifications
+    assert isinstance(result.rules[0], RuleResult)
+    assert result.rules[0].profile_id == "profile-123"
+    assert result.rules[0].custom_guardrail_profile_id == "profile-123"
+    assert isinstance(result.processed_rules[0], RuleResult)
+    assert result.processed_rules[0].profile_id == "profile-123"
+    assert result.processed_rules[0].custom_guardrail_profile_id == "profile-123"
 
 
 def test_parse_inspect_response_processed_rules_camel_case():

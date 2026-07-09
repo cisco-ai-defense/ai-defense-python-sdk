@@ -17,7 +17,7 @@
 """Policy models for the AI Defense Management API."""
 
 from enum import Enum
-from typing import List, Optional, Dict, Any, Union
+from typing import List, Optional, Union
 from datetime import datetime
 from pydantic import Field
 from ...models.base import AIDefenseModel
@@ -60,6 +60,12 @@ class GuardrailType(str, Enum):
     Security = "Security"
     Privacy = "Privacy"
     Safety = "Safety"
+
+
+class PolicyProfileType(str, Enum):
+    """Policy profile type enum."""
+
+    CUSTOM_POLICY = "PROFILE_TYPE_CUSTOM_POLICY"
 
 
 class Entity(AIDefenseModel):
@@ -106,7 +112,7 @@ class Policy(AIDefenseModel):
     description: Optional[str] = Field(None, description="Description")
     status: Optional[str] = Field(None, description="Status")
     connection_type: Optional[Union[ConnectionType, str]] = Field(
-    None, description="Connection type"
+        None, description="Connection type"
     )
     updated_at: Optional[datetime] = Field(None, description="Updated timestamp")
     created_at: Optional[datetime] = Field(None, description="Created timestamp")
@@ -139,7 +145,7 @@ class ListPoliciesRequest(AIDefenseModel):
     )
     language_type: Optional[str] = Field(None, description="Filter by language type")
     connection_type: Optional[Union[ConnectionType, str]] = Field(
-    None, description="Filter by connection type"
+        None, description="Filter by connection type"
     )
     policy_status: Optional[str] = Field(None, description="Filter by policy status")
     policy_name: Optional[str] = Field(None, description="Filter by policy name")
@@ -157,6 +163,31 @@ class UpdatePolicyRequest(AIDefenseModel):
     name: Optional[str] = Field(None, description="Policy name")
     description: Optional[str] = Field(None, description="Description of the policy")
     status: Optional[str] = Field(None, description="Status of the policy")
+
+
+class PolicyProfileAssociation(AIDefenseModel):
+    """Profile association for creating a policy with profiles."""
+
+    profile_type: Union[PolicyProfileType, str] = Field(description="Profile type")
+    profile_ids: List[str] = Field(description="Profile IDs to associate")
+
+
+class CreatePolicyWithProfilesRequest(AIDefenseModel):
+    """Create policy request with profile associations."""
+
+    name: str = Field(description="Policy name")
+    description: Optional[str] = Field(None, description="Description of the policy")
+    status: Optional[str] = Field(None, description="Status of the policy")
+    language: Optional[str] = Field(None, description="Policy language")
+    connection_type: Optional[Union[ConnectionType, str]] = Field(
+        None, description="Connection type"
+    )
+    connector_id: Optional[str] = Field(
+        None, description="Connector ID that determines policy sync target"
+    )
+    profile_associations: List[PolicyProfileAssociation] = Field(
+        default_factory=list, description="Profile associations for this policy"
+    )
 
 
 class AddOrUpdatePolicyConnectionsRequest(AIDefenseModel):

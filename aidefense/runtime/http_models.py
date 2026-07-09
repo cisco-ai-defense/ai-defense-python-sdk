@@ -66,6 +66,7 @@ class HttpInspectRequest:
         http_meta (Optional[HttpMetaObject]): HTTP metadata (e.g., URL).
         metadata (Optional[Metadata]): Additional metadata (user, app, etc.).
         config (Optional[InspectionConfig]): Inspection configuration for the request.
+        policy_id (Optional[str]): Optional policy ID to use for policy-based inspection.
     """
 
     http_req: Optional[HttpReqObject] = None
@@ -73,3 +74,4 @@ class HttpInspectRequest:
     http_meta: Optional[HttpMetaObject] = None
     metadata: Optional[Metadata] = None
     config: Optional[InspectionConfig] = None
+    policy_id: Optional[str] = None

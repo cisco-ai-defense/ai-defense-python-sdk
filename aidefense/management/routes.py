@@ -59,6 +59,10 @@ def policy_connections(policy_id: str) -> str:
     return f"{POLICIES}/{policy_id}/connections"
 
 
+def policies_with_profiles() -> str:
+    return f"{POLICIES}/with-profiles"
+
+
 # Events
 
 
@@ -104,6 +108,7 @@ __all__ = [
     "connection_keys",
     "policy_by_id",
     "policy_connections",
+    "policies_with_profiles",
     "event_by_id",
     "event_conversation",
     # Validation

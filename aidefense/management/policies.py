@@ -23,13 +23,14 @@ from .base_client import BaseClient
 from .models.policy import (
     Policy,
     Policies,
+    CreatePolicyWithProfilesRequest,
     ListPoliciesRequest,
     ListPoliciesResponse,
     UpdatePolicyRequest,
     AddOrUpdatePolicyConnectionsRequest,
 )
 from ..config import Config
-from .routes import POLICIES, policy_by_id, policy_connections
+from .routes import POLICIES, policy_by_id, policy_connections, policies_with_profiles
 
 
 class PolicyManagementClient(BaseClient):
@@ -93,6 +94,54 @@ class PolicyManagementClient(BaseClient):
             Policies, response.get("policies"), "list policies response"
         )
         return policies
+
+    def create_policy_with_profiles(
+        self, request: CreatePolicyWithProfilesRequest
+    ) -> Policy:
+        """
+        Create a policy with profile associations.
+
+        Args:
+            request: CreatePolicyWithProfilesRequest containing policy fields and
+                profile associations.
+
+        Returns:
+            Policy: Created policy.
+
+        Raises:
+            ValidationError, ApiError, SDKError
+
+        Example:
+            .. code-block:: python
+
+                request = CreatePolicyWithProfilesRequest(
+                    name="Agent Policy",
+                    status="Enabled",
+                    language="English",
+                    connection_type="API",
+                    profile_associations=[
+                        PolicyProfileAssociation(
+                            profile_type="PROFILE_TYPE_CUSTOM_POLICY",
+                            profile_ids=["460c4692-7156-5646-9d6c-5aa6efdeaf8b"],
+                        )
+                    ],
+                )
+                policy = client.policies.create_policy_with_profiles(request)
+        """
+        data = request.to_body_dict()
+        if not data.get("profile_associations"):
+            raise ValueError("At least one profile association is required")
+        for association in data["profile_associations"]:
+            if not association.get("profile_ids"):
+                raise ValueError("Each profile association must include profile_ids")
+
+        response = self.make_request("POST", policies_with_profiles(), data=data)
+        policy = self._parse_response(
+            Policy,
+            response.get("policy") or response,
+            "create policy with profiles response",
+        )
+        return policy
 
     def get_policy(self, policy_id: str, expanded: bool = None) -> Policy:
         """

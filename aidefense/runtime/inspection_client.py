@@ -23,6 +23,7 @@ from .models import PII_ENTITIES, PCI_ENTITIES, PHI_ENTITIES
 from .models import (
     Action,
     Rule,
+    RuleResult,
     RuleName,
     Metadata,
     InspectionConfig,
@@ -117,7 +118,9 @@ class BaseInspectionClient(ABC):
         """
         pass
 
-    def _parse_inspect_response(self, response_data: Dict[str, Any]) -> "InspectResponse":
+    def _parse_inspect_response(
+        self, response_data: Dict[str, Any]
+    ) -> "InspectResponse":
         """
         Parse API response (chat or http inspect) into an InspectResponse object.
 
@@ -192,7 +195,9 @@ class BaseInspectionClient(ABC):
             )
             ```
         """
-        self.config.logger.debug(f"_parse_inspect_response called | response_data: {response_data}")
+        self.config.logger.debug(
+            f"_parse_inspect_response called | response_data: {response_data}"
+        )
 
         # Convert classifications from strings to enum values
         classifications = []
@@ -203,25 +208,38 @@ class BaseInspectionClient(ABC):
             except ValueError:
                 # Log invalid classification but don't add it
                 self.config.logger.warning(f"Invalid classification type: {cls}")
-        def _parse_rule_list(rule_list: list) -> List[Rule]:
+
+        def _parse_rule_list(rule_list: list) -> List[RuleResult]:
             out = []
             for rule_data in rule_list:
                 rule_name = rule_data.get("rule_name")
                 try:
-                    rule_name = RuleName(rule_data["rule_name"]) if rule_name is not None else None
+                    rule_name = (
+                        RuleName(rule_data["rule_name"])
+                        if rule_name is not None
+                        else None
+                    )
                 except (ValueError, KeyError):
                     pass
                 classification = rule_data.get("classification")
                 try:
-                    classification = Classification(rule_data["classification"]) if classification is not None else None
+                    classification = (
+                        Classification(rule_data["classification"])
+                        if classification is not None
+                        else None
+                    )
                 except (ValueError, KeyError):
                     pass
                 out.append(
-                    Rule(
+                    RuleResult(
                         rule_name=rule_name,
                         entity_types=rule_data.get("entity_types"),
                         rule_id=rule_data.get("rule_id"),
                         classification=classification,
+                        profile_id=rule_data.get("profile_id")
+                        or rule_data.get("profileId")
+                        or rule_data.get("custom_guardrail_profile_id")
+                        or rule_data.get("customGuardrailProfileId"),
                     )
                 )
             return out
@@ -242,8 +260,14 @@ class BaseInspectionClient(ABC):
         # Parse rules if present
         rules = _parse_rule_list(response_data.get("rules", []))
         # Parse processed_rules if present (API may send processed_rules or processedRules)
-        processed_rules_data = response_data.get("processed_rules") or response_data.get("processedRules")
-        processed_rules = _parse_rule_list(processed_rules_data) if isinstance(processed_rules_data, list) else []
+        processed_rules_data = response_data.get(
+            "processed_rules"
+        ) or response_data.get("processedRules")
+        processed_rules = (
+            _parse_rule_list(processed_rules_data)
+            if isinstance(processed_rules_data, list)
+            else []
+        )
 
         # Parse severity if present
         severity = None
@@ -270,7 +294,8 @@ class BaseInspectionClient(ABC):
             client_transaction_id=response_data.get("client_transaction_id"),
             event_id=response_data.get("event_id"),
             action=action,
-            detected_pii=_parse_detected_pii_list(response_data.get("detected_pii", [])) or None
+            detected_pii=_parse_detected_pii_list(response_data.get("detected_pii", []))
+            or None,
         )
 
     def _prepare_inspection_metadata(self, metadata: Metadata) -> Dict:
@@ -316,7 +341,9 @@ class BaseInspectionClient(ABC):
                     d["classification"] = d["classification"].value
                 return d
 
-            config_dict["enabled_rules"] = [rule_to_dict(rule) for rule in config.enabled_rules if rule is not None]
+            config_dict["enabled_rules"] = [
+                rule_to_dict(rule) for rule in config.enabled_rules if rule is not None
+            ]
 
         for key in INTEGRATION_DETAILS:
             value = getattr(config, key, None)

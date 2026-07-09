@@ -20,6 +20,7 @@ from .chat_inspect import Message, Role, ChatInspectRequest
 from .models import (
     Action,
     Rule,
+    RuleResult,
     Classification,
     RuleName,
     InspectionConfig,
