@@ -706,7 +706,7 @@ dev = ["chroma-hnswlib (==0.7.6)", "fastapi (>=0.115.9)", "opentelemetry-instrum
 
 [[package]]
 name = "cisco-aidefense-sdk"
-version = "2.1.1"
+version = "2.1.2"
 description = "Cisco AI Defense Python SDK"
 optional = false
 python-versions = "^3.9"
@@ -718,7 +718,9 @@ aiohttp = "^3.13.2"
 pydantic = "^2.12.5"
 requests = "^2.32.3"
 tenacity = "^9.1.2"
-uuid = "^1.30"
+
+[package.extras]
+aibom = ["cisco-aibom (>=0.4.0)"]
 
 [package.source]
 type = "directory"
@@ -5028,16 +5030,6 @@ brotli = ["brotli (>=1.2.0)", "brotlicffi (>=1.2.0.0)"]
 h2 = ["h2 (>=4,<5)"]
 socks = ["pysocks (>=1.5.6,!=1.5.7,<2.0)"]
 zstd = ["backports-zstd (>=1.0.0)"]
-
-[[package]]
-name = "uuid"
-version = "1.30"
-description = "UUID object and generation functions (Python 2.3 or higher)"
-optional = false
-python-versions = "*"
-files = [
-    {file = "uuid-1.30.tar.gz", hash = "sha256:1f87cc004ac5120466f36c5beae48b4c48cc411968eed0eaecd3da82aa96193f"},
-]
 
 [[package]]
 name = "uv"
