@@ -367,6 +367,11 @@ class StreamingInspectionWrapper:
         self._inspect_interval = 10  # Inspect every N chunks
         self._final_inspection_done = False
 
+    def __getattr__(self, name: str):
+        if name.startswith("_"):
+            raise AttributeError(name)
+        return getattr(self._stream, name)
+
     def __enter__(self):
         return self
 
@@ -375,9 +380,11 @@ class StreamingInspectionWrapper:
         return False
 
     def close(self):
-        self._perform_final_inspection()
-        if hasattr(self._stream, "close"):
-            self._stream.close()
+        try:
+            self._perform_final_inspection()
+        finally:
+            if hasattr(self._stream, "close"):
+                self._stream.close()
     
     def __iter__(self):
         return self
@@ -472,6 +479,11 @@ class AsyncStreamingInspectionWrapper:
         self._inspect_interval = 10
         self._final_inspection_done = False
 
+    def __getattr__(self, name: str):
+        if name.startswith("_"):
+            raise AttributeError(name)
+        return getattr(self._stream, name)
+
     async def __aenter__(self):
         return self
 
@@ -483,22 +495,28 @@ class AsyncStreamingInspectionWrapper:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self._perform_final_inspection_sync()
-        if hasattr(self._stream, "close"):
-            self._stream.close()
+        try:
+            self._perform_final_inspection_sync()
+        finally:
+            if hasattr(self._stream, "close"):
+                self._stream.close()
         return False
 
     async def aclose(self):
-        await self._perform_final_inspection()
-        if hasattr(self._stream, "aclose"):
-            await self._stream.aclose()
-        elif hasattr(self._stream, "close"):
-            self._stream.close()
+        try:
+            await self._perform_final_inspection()
+        finally:
+            if hasattr(self._stream, "aclose"):
+                await self._stream.aclose()
+            elif hasattr(self._stream, "close"):
+                self._stream.close()
 
     def close(self):
-        self._perform_final_inspection_sync()
-        if hasattr(self._stream, "close"):
-            self._stream.close()
+        try:
+            self._perform_final_inspection_sync()
+        finally:
+            if hasattr(self._stream, "close"):
+                self._stream.close()
     
     def __aiter__(self):
         return self
