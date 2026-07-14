@@ -651,14 +651,52 @@ class TestStreamingInspectionWrapper:
         }
 
     def test_litellm_azure_with_raw_response_pattern(self):
-        inner_stream = iter([SimpleNamespace(choices=[])])
+        chunk = SimpleNamespace(
+            choices=[SimpleNamespace(delta=SimpleNamespace(content="Hi"))],
+        )
+        inner_stream = iter([chunk])
         raw_response = SimpleNamespace(
             headers={"x-ms-region": "eastus"},
             parse=lambda: inner_stream,
         )
-        wrapper = StreamingInspectionWrapper(raw_response, [], {})
+        wrapper = StreamingInspectionWrapper(
+            raw_response,
+            [{"role": "user", "content": "Hi"}],
+            {},
+        )
         assert dict(wrapper.headers) == {"x-ms-region": "eastus"}
-        assert wrapper.parse() is inner_stream
+        parsed = wrapper.parse()
+        assert isinstance(parsed, StreamingInspectionWrapper)
+        assert parsed is not wrapper
+        assert list(parsed) == [chunk]
+
+    @patch("aidefense.runtime.agentsec.patchers.openai._get_inspector")
+    def test_parse_stream_runs_inspection(self, mock_get_inspector):
+        mock_inspector = MagicMock()
+        mock_inspector.inspect_conversation.return_value = Decision.allow(reasons=[])
+        mock_get_inspector.return_value = mock_inspector
+
+        _state.set_state(
+            initialized=True,
+            api_mode={"llm_defaults": {"fail_open": True}, "llm": {"mode": "monitor"}},
+        )
+        clear_inspection_context()
+
+        chunk = SimpleNamespace(
+            choices=[SimpleNamespace(delta=SimpleNamespace(content="Hello"))],
+        )
+        raw_response = SimpleNamespace(
+            headers={},
+            parse=lambda: iter([chunk]),
+        )
+        wrapper = StreamingInspectionWrapper(
+            raw_response,
+            [{"role": "user", "content": "Hi"}],
+            {},
+        )
+
+        list(wrapper.parse())
+        mock_inspector.inspect_conversation.assert_called()
 
     def test_private_attribute_on_underlying_stream_not_proxied(self):
         mock_stream = SimpleNamespace(_internal="secret", headers={})
@@ -705,14 +743,23 @@ class TestAsyncStreamingInspectionWrapper:
         assert wrapper.headers == {"x-ms-region": "westus2"}
 
     def test_litellm_azure_with_raw_response_pattern(self):
-        inner_stream = iter([SimpleNamespace(choices=[])])
+        chunk = SimpleNamespace(
+            choices=[SimpleNamespace(delta=SimpleNamespace(content="Hi"))],
+        )
+        inner_stream = iter([chunk])
         raw_response = SimpleNamespace(
             headers={"x-ms-region": "westus2"},
             parse=lambda: inner_stream,
         )
-        wrapper = AsyncStreamingInspectionWrapper(raw_response, [], {})
+        wrapper = AsyncStreamingInspectionWrapper(
+            raw_response,
+            [{"role": "user", "content": "Hi"}],
+            {},
+        )
         assert dict(wrapper.headers) == {"x-ms-region": "westus2"}
-        assert wrapper.parse() is inner_stream
+        parsed = wrapper.parse()
+        assert isinstance(parsed, StreamingInspectionWrapper)
+        assert list(parsed) == [chunk]
 
     def test_private_attribute_on_underlying_stream_not_proxied(self):
         mock_stream = SimpleNamespace(_internal="secret", headers={})
@@ -859,7 +906,9 @@ class TestWrapChatCompletionsCreate:
         headers = dict(result.headers)
         assert headers["x-ms-region"] == "eastus"
         assert headers["content-type"] == "text/event-stream; charset=utf-8"
-        assert list(result.parse()) == [chunk]
+        parsed = result.parse()
+        assert isinstance(parsed, StreamingInspectionWrapper)
+        assert list(parsed) == [chunk]
 
     @patch("aidefense.runtime.agentsec.patchers.openai._get_inspector")
     @patch("aidefense.runtime.agentsec.patchers.openai.resolve_gateway_settings", return_value=None)
@@ -931,7 +980,9 @@ class TestWrapChatCompletionsCreate:
         assert isinstance(result, AsyncStreamingInspectionWrapper)
         headers = dict(result.headers)
         assert headers["x-ms-region"] == "eastus"
-        assert list(result.parse()) == [chunk]
+        parsed = result.parse()
+        assert isinstance(parsed, StreamingInspectionWrapper)
+        assert list(parsed) == [chunk]
 
 
 # ===========================================================================

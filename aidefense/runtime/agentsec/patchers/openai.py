@@ -372,6 +372,11 @@ class StreamingInspectionWrapper:
             raise AttributeError(name)
         return getattr(self._stream, name)
 
+    def parse(self, *args, **kwargs):
+        """Return an inspection-wrapped stream from LegacyAPIResponse.parse()."""
+        parsed = self._stream.parse(*args, **kwargs)
+        return StreamingInspectionWrapper(parsed, self._messages, self._metadata)
+
     def __enter__(self):
         return self
 
@@ -483,6 +488,13 @@ class AsyncStreamingInspectionWrapper:
         if name.startswith("_"):
             raise AttributeError(name)
         return getattr(self._stream, name)
+
+    def parse(self, *args, **kwargs):
+        """Return an inspection-wrapped stream from LegacyAPIResponse.parse()."""
+        parsed = self._stream.parse(*args, **kwargs)
+        if hasattr(parsed, "__aiter__"):
+            return AsyncStreamingInspectionWrapper(parsed, self._messages, self._metadata)
+        return StreamingInspectionWrapper(parsed, self._messages, self._metadata)
 
     async def __aenter__(self):
         return self

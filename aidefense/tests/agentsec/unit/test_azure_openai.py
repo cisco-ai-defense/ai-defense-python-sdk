@@ -295,6 +295,7 @@ class TestAIFW24950LitellmAzureStreamingRawResponse:
         assert headers["x-ratelimit-remaining-requests"] == "99"
 
         parsed_stream = result.parse()
+        assert isinstance(parsed_stream, StreamingInspectionWrapper)
         assert list(parsed_stream) == [chunk]
 
     @patch("aidefense.runtime.agentsec.patchers.openai._get_inspector")
@@ -372,7 +373,9 @@ class TestAIFW24950LitellmAzureStreamingRawResponse:
 
         assert isinstance(result, AsyncStreamingInspectionWrapper)
         assert dict(result.headers)["x-ms-region"] == "eastus"
-        assert list(result.parse()) == [chunk]
+        parsed = result.parse()
+        assert isinstance(parsed, StreamingInspectionWrapper)
+        assert list(parsed) == [chunk]
 
 
 
