@@ -19,7 +19,7 @@ These helpers centralize relative API paths used by the validation clients.
 They are intentionally kept internal so that end users do not override or
 depend on these paths directly.
 
-All paths returned here are relative. `BaseClient._get_url()` is responsible
+All paths returned here are relative. `_Api.request()` is responsible
 for adding the base URL and API version.
 """
 from __future__ import annotations

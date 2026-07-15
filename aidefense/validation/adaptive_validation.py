@@ -16,11 +16,13 @@
 
 """Adaptive (red team) validation resource for the AI Defense Validation API."""
 
-from typing import Optional
+from __future__ import annotations
 
-from ..management.auth import ManagementAuth
-from ..management.base_client import BaseClient
-from ..config import Config
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from .client import _Api
+
 from ._generated.ai_validation.v1.red_team_pydantic import (
     StartAdaptiveRedTeamRequest,
     StartRedTeamJobResponse,
@@ -50,7 +52,7 @@ from .routes import (
 )
 
 
-class AdaptiveValidation(BaseClient):
+class AdaptiveValidation:
     """
     Run and manage adaptive (red-team) validation jobs.
 
@@ -58,13 +60,8 @@ class AdaptiveValidation(BaseClient):
     learning from each response to discover weaknesses.
     """
 
-    def __init__(
-        self,
-        auth: ManagementAuth,
-        config: Optional[Config] = None,
-        request_handler=None,
-    ):
-        super().__init__(auth, config, request_handler)
+    def __init__(self, api: _Api):
+        self._api = api
 
     # ------------------------------------------------------------------
     # Job lifecycle
@@ -75,16 +72,16 @@ class AdaptiveValidation(BaseClient):
     ) -> StartRedTeamJobResponse:
         """Start a new adaptive red-team validation job."""
         data = request.model_dump(exclude_defaults=True)
-        response = self.make_request("POST", red_team_adaptive(), data=data)
-        return self._parse_response(
+        response = self._api.request("POST", red_team_adaptive(), data=data)
+        return self._api.parse(
             StartRedTeamJobResponse, response, "start adaptive validation response"
         )
 
     def get_job(self, job_id: str) -> GetRedTeamJobResponse:
         """Get details of a red-team job."""
-        self._ensure_uuid(job_id, "job_id")
-        response = self.make_request("GET", red_team_job(job_id))
-        return self._parse_response(
+        self._api.ensure_uuid(job_id, "job_id")
+        response = self._api.request("GET", red_team_job(job_id))
+        return self._api.parse(
             GetRedTeamJobResponse, response, "get red team job response"
         )
 
@@ -93,8 +90,8 @@ class AdaptiveValidation(BaseClient):
     ) -> ListRedTeamJobsResponse:
         """List red-team jobs with optional filtering and pagination."""
         params = request.model_dump(exclude_defaults=True)
-        response = self.make_request("GET", red_team_jobs(), params=params)
-        return self._parse_response(
+        response = self._api.request("GET", red_team_jobs(), params=params)
+        return self._api.parse(
             ListRedTeamJobsResponse, response, "list red team jobs response"
         )
 
@@ -102,18 +99,18 @@ class AdaptiveValidation(BaseClient):
         self, job_id: str, request: UpdateRedTeamJobRequest
     ) -> UpdateRedTeamJobResponse:
         """Update a red-team job (e.g. rename or change description)."""
-        self._ensure_uuid(job_id, "job_id")
+        self._api.ensure_uuid(job_id, "job_id")
         data = request.model_dump(exclude_defaults=True)
-        response = self.make_request("PATCH", red_team_job(job_id), data=data)
-        return self._parse_response(
+        response = self._api.request("PATCH", red_team_job(job_id), data=data)
+        return self._api.parse(
             UpdateRedTeamJobResponse, response, "update red team job response"
         )
 
     def pause_job(self, job_id: str) -> PauseRedTeamJobResponse:
         """Pause a running red-team job."""
-        self._ensure_uuid(job_id, "job_id")
-        response = self.make_request("POST", red_team_job_pause(job_id))
-        return self._parse_response(
+        self._api.ensure_uuid(job_id, "job_id")
+        response = self._api.request("POST", red_team_job_pause(job_id))
+        return self._api.parse(
             PauseRedTeamJobResponse, response, "pause red team job response"
         )
 
@@ -123,20 +120,20 @@ class AdaptiveValidation(BaseClient):
         options: Optional[ResumeRedTeamJobOptions] = None,
     ) -> ResumeRedTeamJobResponse:
         """Resume a paused red-team job."""
-        self._ensure_uuid(job_id, "job_id")
+        self._api.ensure_uuid(job_id, "job_id")
         data = options.model_dump(exclude_defaults=True) if options else None
-        response = self.make_request(
+        response = self._api.request(
             "POST", red_team_job_resume(job_id), data=data
         )
-        return self._parse_response(
+        return self._api.parse(
             ResumeRedTeamJobResponse, response, "resume red team job response"
         )
 
     def cancel_job(self, job_id: str) -> CancelRedTeamJobResponse:
         """Cancel a running or paused red-team job."""
-        self._ensure_uuid(job_id, "job_id")
-        response = self.make_request("POST", red_team_job_cancel(job_id))
-        return self._parse_response(
+        self._api.ensure_uuid(job_id, "job_id")
+        response = self._api.request("POST", red_team_job_cancel(job_id))
+        return self._api.parse(
             CancelRedTeamJobResponse, response, "cancel red team job response"
         )
 
@@ -146,20 +143,20 @@ class AdaptiveValidation(BaseClient):
         options: Optional[RestartRedTeamJobOptions] = None,
     ) -> RestartRedTeamJobResponse:
         """Restart a completed, cancelled, or failed red-team job."""
-        self._ensure_uuid(job_id, "job_id")
+        self._api.ensure_uuid(job_id, "job_id")
         data = options.model_dump(exclude_defaults=True) if options else None
-        response = self.make_request(
+        response = self._api.request(
             "POST", red_team_job_restart(job_id), data=data
         )
-        return self._parse_response(
+        return self._api.parse(
             RestartRedTeamJobResponse, response, "restart red team job response"
         )
 
     def delete_job(self, job_id: str) -> DeleteRedTeamJobResponse:
         """Delete a red-team job and its associated data."""
-        self._ensure_uuid(job_id, "job_id")
-        response = self.make_request("DELETE", red_team_job(job_id))
-        return self._parse_response(
+        self._api.ensure_uuid(job_id, "job_id")
+        response = self._api.request("DELETE", red_team_job(job_id))
+        return self._api.parse(
             DeleteRedTeamJobResponse, response, "delete red team job response"
         )
 
@@ -169,8 +166,8 @@ class AdaptiveValidation(BaseClient):
 
     def get_report(self, job_id: str) -> GetRedTeamReportResponse:
         """Get the report for a completed red-team job."""
-        self._ensure_uuid(job_id, "job_id")
-        response = self.make_request("GET", red_team_job_report(job_id))
-        return self._parse_response(
+        self._api.ensure_uuid(job_id, "job_id")
+        response = self._api.request("GET", red_team_job_report(job_id))
+        return self._api.parse(
             GetRedTeamReportResponse, response, "get red team report response"
         )

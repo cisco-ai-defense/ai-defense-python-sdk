@@ -16,11 +16,13 @@
 
 """Custom goals resource for the AI Defense Validation API."""
 
-from typing import Optional
+from __future__ import annotations
 
-from ..management.auth import ManagementAuth
-from ..management.base_client import BaseClient
-from ..config import Config
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .client import _Api
+
 from ._generated.ai_validation.v1.ai_validation_pydantic import (
     CreateAiValidationCustomGoalRequest,
     CreateAiValidationCustomGoalResponse,
@@ -32,7 +34,7 @@ from ._generated.ai_validation.v1.ai_validation_pydantic import (
 from .routes import ai_validation_custom_goals, ai_validation_custom_goal
 
 
-class CustomGoals(BaseClient):
+class CustomGoals:
     """
     Manage custom validation goals in the AI Defense Validation API.
 
@@ -40,13 +42,8 @@ class CustomGoals(BaseClient):
     that extend the built-in goal library.
     """
 
-    def __init__(
-        self,
-        auth: ManagementAuth,
-        config: Optional[Config] = None,
-        request_handler=None,
-    ):
-        super().__init__(auth, config, request_handler)
+    def __init__(self, api: _Api):
+        self._api = api
 
     def create(
         self, request: CreateAiValidationCustomGoalRequest
@@ -65,8 +62,8 @@ class CustomGoals(BaseClient):
             ValidationError, ApiError, SDKError
         """
         data = request.model_dump(exclude_defaults=True)
-        response = self.make_request("POST", ai_validation_custom_goals(), data=data)
-        return self._parse_response(
+        response = self._api.request("POST", ai_validation_custom_goals(), data=data)
+        return self._api.parse(
             CreateAiValidationCustomGoalResponse,
             response,
             "create custom goal response",
@@ -88,10 +85,10 @@ class CustomGoals(BaseClient):
             ValidationError, ApiError, SDKError
         """
         params = request.model_dump(exclude_defaults=True)
-        response = self.make_request(
+        response = self._api.request(
             "GET", ai_validation_custom_goals(), params=params
         )
-        return self._parse_response(
+        return self._api.parse(
             ListAiValidationCustomGoalsResponse,
             response,
             "list custom goals response",
@@ -113,12 +110,12 @@ class CustomGoals(BaseClient):
         Raises:
             ValidationError, ApiError, SDKError
         """
-        self._ensure_uuid(custom_goal_id, "custom_goal_id")
+        self._api.ensure_uuid(custom_goal_id, "custom_goal_id")
         data = request.model_dump(exclude_defaults=True)
-        response = self.make_request(
+        response = self._api.request(
             "PATCH", ai_validation_custom_goal(custom_goal_id), data=data
         )
-        return self._parse_response(
+        return self._api.parse(
             UpdateAiValidationCustomGoalResponse,
             response,
             "update custom goal response",
@@ -134,6 +131,6 @@ class CustomGoals(BaseClient):
         Raises:
             ValidationError, ApiError, SDKError
         """
-        self._ensure_uuid(custom_goal_id, "custom_goal_id")
-        self.make_request("DELETE", ai_validation_custom_goal(custom_goal_id))
+        self._api.ensure_uuid(custom_goal_id, "custom_goal_id")
+        self._api.request("DELETE", ai_validation_custom_goal(custom_goal_id))
         return None

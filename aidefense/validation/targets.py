@@ -16,11 +16,13 @@
 
 """Targets resource for the AI Defense Validation API."""
 
-from typing import Optional
+from __future__ import annotations
 
-from ..management.auth import ManagementAuth
-from ..management.base_client import BaseClient
-from ..config import Config
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .client import _Api
+
 from ._generated.ai_validation.v1.ai_validation_pydantic import (
     CreateTargetRequest,
     CreateTargetResponse,
@@ -44,7 +46,7 @@ from .routes import (
 )
 
 
-class Targets(BaseClient):
+class Targets:
     """
     Manage validation targets in the AI Defense Validation API.
 
@@ -52,13 +54,8 @@ class Targets(BaseClient):
     connectivity of validation targets.
     """
 
-    def __init__(
-        self,
-        auth: ManagementAuth,
-        config: Optional[Config] = None,
-        request_handler=None,
-    ):
-        super().__init__(auth, config, request_handler)
+    def __init__(self, api: _Api):
+        self._api = api
 
     def create(self, request: CreateTargetRequest) -> CreateTargetResponse:
         """
@@ -83,8 +80,8 @@ class Targets(BaseClient):
                 ))
         """
         data = request.model_dump(exclude_defaults=True)
-        response = self.make_request("POST", ai_validation_targets(), data=data)
-        return self._parse_response(
+        response = self._api.request("POST", ai_validation_targets(), data=data)
+        return self._api.parse(
             CreateTargetResponse, response, "create target response"
         )
 
@@ -101,9 +98,9 @@ class Targets(BaseClient):
         Raises:
             ValidationError, ApiError, SDKError
         """
-        self._ensure_uuid(target_id, "target_id")
-        response = self.make_request("GET", ai_validation_target(target_id))
-        return self._parse_response(
+        self._api.ensure_uuid(target_id, "target_id")
+        response = self._api.request("GET", ai_validation_target(target_id))
+        return self._api.parse(
             GetTargetResponse, response, "get target response"
         )
 
@@ -121,8 +118,8 @@ class Targets(BaseClient):
             ValidationError, ApiError, SDKError
         """
         params = request.model_dump(exclude_defaults=True)
-        response = self.make_request("GET", ai_validation_targets(), params=params)
-        return self._parse_response(
+        response = self._api.request("GET", ai_validation_targets(), params=params)
+        return self._api.parse(
             ListTargetsResponse, response, "list targets response"
         )
 
@@ -142,12 +139,12 @@ class Targets(BaseClient):
         Raises:
             ValidationError, ApiError, SDKError
         """
-        self._ensure_uuid(target_id, "target_id")
+        self._api.ensure_uuid(target_id, "target_id")
         data = request.model_dump(exclude_defaults=True)
-        response = self.make_request(
+        response = self._api.request(
             "PATCH", ai_validation_target(target_id), data=data
         )
-        return self._parse_response(
+        return self._api.parse(
             UpdateTargetResponse, response, "update target response"
         )
 
@@ -161,8 +158,8 @@ class Targets(BaseClient):
         Raises:
             ValidationError, ApiError, SDKError
         """
-        self._ensure_uuid(target_id, "target_id")
-        self.make_request("DELETE", ai_validation_target(target_id))
+        self._api.ensure_uuid(target_id, "target_id")
+        self._api.request("DELETE", ai_validation_target(target_id))
         return None
 
     def test_connection(
@@ -181,8 +178,8 @@ class Targets(BaseClient):
             ValidationError, ApiError, SDKError
         """
         data = request.model_dump(exclude_defaults=True)
-        response = self.make_request("POST", ai_validation_targets_test(), data=data)
-        return self._parse_response(
+        response = self._api.request("POST", ai_validation_targets_test(), data=data)
+        return self._api.parse(
             TestTargetConnectionResponse, response, "test target connection response"
         )
 
@@ -196,8 +193,8 @@ class Targets(BaseClient):
         Raises:
             ValidationError, ApiError, SDKError
         """
-        response = self.make_request("GET", ai_validation_targets_aggregates())
-        return self._parse_response(
+        response = self._api.request("GET", ai_validation_targets_aggregates())
+        return self._api.parse(
             GetTargetAggregatesResponse, response, "get target aggregates response"
         )
 
@@ -217,9 +214,9 @@ class Targets(BaseClient):
             ValidationError, ApiError, SDKError
         """
         params = request.model_dump(exclude_defaults=True)
-        response = self.make_request(
+        response = self._api.request(
             "GET", ai_validation_targets_aws_accounts(), params=params
         )
-        return self._parse_response(
+        return self._api.parse(
             ListAwsAccountsResponse, response, "list aws accounts response"
         )

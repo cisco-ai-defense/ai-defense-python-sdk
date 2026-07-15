@@ -16,16 +16,88 @@
 
 """Facade client for the AI Defense Validation API."""
 
-from typing import Optional
+from __future__ import annotations
+
+import uuid
+from typing import Any, Dict, Optional, Type, TypeVar, cast
+
+from pydantic import BaseModel, ValidationError as PydanticValidationError
 
 from ..management.auth import ManagementAuth
 from ..config import Config
+from ..exceptions import ResponseParseError
 from ..request_handler import RequestHandler
 from .targets import Targets
 from .profiles import Profiles
 from .custom_goals import CustomGoals
 from .standard_validation import StandardValidation
 from .adaptive_validation import AdaptiveValidation
+
+T = TypeVar("T", bound=BaseModel)
+
+
+class _Api:
+    """Shared request helper injected into every validation resource class.
+
+    Owns URL construction, HTTP dispatch, response parsing, and input
+    validation so that resource classes stay free of infrastructure concerns.
+    """
+
+    _API_PREFIX_TEMPLATE = "{base}/api/ai-defense/v1"
+
+    def __init__(
+        self,
+        auth: ManagementAuth,
+        config: Config,
+        request_handler: RequestHandler,
+    ):
+        self._auth = auth
+        self.config = config
+        self._request_handler = request_handler
+        self._api_prefix = self._API_PREFIX_TEMPLATE.format(
+            base=config.management_base_url
+        )
+
+    def request(
+        self,
+        method: str,
+        path: str,
+        params: Optional[Dict[str, Any]] = None,
+        data: Optional[Dict[str, Any]] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ) -> Dict[str, Any]:
+        """Build the full URL and dispatch the HTTP request."""
+        url = f"{self._api_prefix}/{path.lstrip('/')}"
+        return self._request_handler.request(
+            method=method,
+            url=url,
+            auth=self._auth,
+            headers=headers,
+            json_data=data,
+            params=params,
+            timeout=self.config.timeout,
+        )
+
+    def parse(self, model_class: Type[T], data: Any, context: str) -> T:
+        """Parse raw API response data into a Pydantic model."""
+        if data is None:
+            raise ResponseParseError(
+                message=f"Missing required data for {context}",
+                response_data=data,
+            )
+        try:
+            return cast(T, model_class.model_validate(data))
+        except PydanticValidationError as e:
+            self.config.logger.warning(f"Failed to parse {context}: {e}")
+            raise ResponseParseError(f"Failed to parse {context}: {e}") from e
+
+    @staticmethod
+    def ensure_uuid(value: str, field_name: str) -> None:
+        """Validate that *value* is a UUID string."""
+        try:
+            uuid.UUID(str(value))
+        except Exception:
+            raise ValueError(f"Invalid {field_name}: must be a UUID string")
 
 
 class ValidationClient:
@@ -70,21 +142,12 @@ class ValidationClient:
         self.config = config or Config()
         self._request_handler = RequestHandler(self.config)
 
-        self._targets = Targets(
-            self._auth, self.config, request_handler=self._request_handler
-        )
-        self._profiles = Profiles(
-            self._auth, self.config, request_handler=self._request_handler
-        )
-        self._custom_goals = CustomGoals(
-            self._auth, self.config, request_handler=self._request_handler
-        )
-        self._standard = StandardValidation(
-            self._auth, self.config, request_handler=self._request_handler
-        )
-        self._adaptive = AdaptiveValidation(
-            self._auth, self.config, request_handler=self._request_handler
-        )
+        api = _Api(self._auth, self.config, self._request_handler)
+        self._targets = Targets(api)
+        self._profiles = Profiles(api)
+        self._custom_goals = CustomGoals(api)
+        self._standard = StandardValidation(api)
+        self._adaptive = AdaptiveValidation(api)
 
     @property
     def targets(self) -> Targets:

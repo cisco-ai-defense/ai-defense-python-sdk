@@ -16,11 +16,13 @@
 
 """Profiles resource for the AI Defense Validation API."""
 
-from typing import Optional
+from __future__ import annotations
 
-from ..management.auth import ManagementAuth
-from ..management.base_client import BaseClient
-from ..config import Config
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .client import _Api
+
 from ._generated.ai_validation.v1.ai_validation_pydantic import (
     CreateAiValidationProfileRequest,
     CreateAiValidationProfileResponse,
@@ -38,7 +40,7 @@ from .routes import (
 )
 
 
-class Profiles(BaseClient):
+class Profiles:
     """
     Manage validation profiles in the AI Defense Validation API.
 
@@ -46,13 +48,8 @@ class Profiles(BaseClient):
     running a standard validation job.
     """
 
-    def __init__(
-        self,
-        auth: ManagementAuth,
-        config: Optional[Config] = None,
-        request_handler=None,
-    ):
-        super().__init__(auth, config, request_handler)
+    def __init__(self, api: _Api):
+        self._api = api
 
     def create(
         self, request: CreateAiValidationProfileRequest
@@ -71,8 +68,8 @@ class Profiles(BaseClient):
             ValidationError, ApiError, SDKError
         """
         data = request.model_dump(exclude_defaults=True)
-        response = self.make_request("POST", ai_validation_profiles(), data=data)
-        return self._parse_response(
+        response = self._api.request("POST", ai_validation_profiles(), data=data)
+        return self._api.parse(
             CreateAiValidationProfileResponse, response, "create profile response"
         )
 
@@ -89,9 +86,9 @@ class Profiles(BaseClient):
         Raises:
             ValidationError, ApiError, SDKError
         """
-        self._ensure_uuid(profile_id, "profile_id")
-        response = self.make_request("GET", ai_validation_profile(profile_id))
-        return self._parse_response(
+        self._api.ensure_uuid(profile_id, "profile_id")
+        response = self._api.request("GET", ai_validation_profile(profile_id))
+        return self._api.parse(
             GetAiValidationProfileResponse, response, "get profile response"
         )
 
@@ -111,8 +108,8 @@ class Profiles(BaseClient):
             ValidationError, ApiError, SDKError
         """
         params = request.model_dump(exclude_defaults=True)
-        response = self.make_request("GET", ai_validation_profiles(), params=params)
-        return self._parse_response(
+        response = self._api.request("GET", ai_validation_profiles(), params=params)
+        return self._api.parse(
             ListAiValidationProfilesResponse, response, "list profiles response"
         )
 
@@ -131,8 +128,8 @@ class Profiles(BaseClient):
         Raises:
             ValidationError, ApiError, SDKError
         """
-        response = self.make_request("GET", ai_validation_profiles_by_goal(goal_id))
-        return self._parse_response(
+        response = self._api.request("GET", ai_validation_profiles_by_goal(goal_id))
+        return self._api.parse(
             ListAiValidationProfilesByGoalIDResponse,
             response,
             "list profiles by goal response",
@@ -154,12 +151,12 @@ class Profiles(BaseClient):
         Raises:
             ValidationError, ApiError, SDKError
         """
-        self._ensure_uuid(profile_id, "profile_id")
+        self._api.ensure_uuid(profile_id, "profile_id")
         data = request.model_dump(exclude_defaults=True)
-        response = self.make_request(
+        response = self._api.request(
             "PATCH", ai_validation_profile(profile_id), data=data
         )
-        return self._parse_response(
+        return self._api.parse(
             UpdateAiValidationProfileResponse, response, "update profile response"
         )
 
@@ -173,6 +170,6 @@ class Profiles(BaseClient):
         Raises:
             ValidationError, ApiError, SDKError
         """
-        self._ensure_uuid(profile_id, "profile_id")
-        self.make_request("DELETE", ai_validation_profile(profile_id))
+        self._api.ensure_uuid(profile_id, "profile_id")
+        self._api.request("DELETE", ai_validation_profile(profile_id))
         return None

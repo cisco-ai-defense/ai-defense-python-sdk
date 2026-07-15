@@ -21,11 +21,13 @@ job listing/aggregates, results retrieval, config management, and
 supporting lookups (model IDs, asset names, content categories).
 """
 
-from typing import Optional
+from __future__ import annotations
 
-from ..management.auth import ManagementAuth
-from ..management.base_client import BaseClient
-from ..config import Config
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from .client import _Api
+
 from ._generated.ai_validation.v1.ai_validation_pydantic import (
     StartAiValidationRequest,
     StartAiValidationResponse,
@@ -80,7 +82,7 @@ from .routes import (
 )
 
 
-class StandardValidation(BaseClient):
+class StandardValidation:
     """
     Run and manage standard (non-adaptive) validation jobs.
 
@@ -88,13 +90,8 @@ class StandardValidation(BaseClient):
     driven by a validation profile.
     """
 
-    def __init__(
-        self,
-        auth: ManagementAuth,
-        config: Optional[Config] = None,
-        request_handler=None,
-    ):
-        super().__init__(auth, config, request_handler)
+    def __init__(self, api: _Api):
+        self._api = api
 
     # ------------------------------------------------------------------
     # Job lifecycle
@@ -105,8 +102,8 @@ class StandardValidation(BaseClient):
     ) -> StartAiValidationResponse:
         """Start a new standard validation job."""
         data = request.model_dump(exclude_defaults=True)
-        response = self.make_request("POST", ai_validation_start(), data=data)
-        return self._parse_response(
+        response = self._api.request("POST", ai_validation_start(), data=data)
+        return self._api.parse(
             StartAiValidationResponse, response, "start validation response"
         )
 
@@ -115,15 +112,15 @@ class StandardValidation(BaseClient):
     ) -> StartAiValidationResponse:
         """Start a multi-target standard validation job."""
         data = request.model_dump(exclude_defaults=True)
-        response = self.make_request("POST", ai_validation_start_multi(), data=data)
-        return self._parse_response(
+        response = self._api.request("POST", ai_validation_start_multi(), data=data)
+        return self._api.parse(
             StartAiValidationResponse, response, "start multi validation response"
         )
 
     def get_job(self, task_id: str) -> GetAiValidationJobResponse:
         """Get details of a validation job."""
-        response = self.make_request("GET", ai_validation_job(task_id))
-        return self._parse_response(
+        response = self._api.request("GET", ai_validation_job(task_id))
+        return self._api.parse(
             GetAiValidationJobResponse, response, "get job response"
         )
 
@@ -132,15 +129,15 @@ class StandardValidation(BaseClient):
     ) -> ListAiValidationJobsResponse:
         """List validation jobs with optional filtering and pagination."""
         params = request.model_dump(exclude_defaults=True)
-        response = self.make_request("GET", ai_validation_jobs(), params=params)
-        return self._parse_response(
+        response = self._api.request("GET", ai_validation_jobs(), params=params)
+        return self._api.parse(
             ListAiValidationJobsResponse, response, "list jobs response"
         )
 
     def pause_job(self, job_id: str) -> PauseAiValidationJobResponse:
         """Pause a running validation job."""
-        response = self.make_request("POST", ai_validation_job_pause(job_id))
-        return self._parse_response(
+        response = self._api.request("POST", ai_validation_job_pause(job_id))
+        return self._api.parse(
             PauseAiValidationJobResponse, response, "pause job response"
         )
 
@@ -151,17 +148,17 @@ class StandardValidation(BaseClient):
     ) -> ResumeAiValidationJobResponse:
         """Resume a paused validation job."""
         data = options.model_dump(exclude_defaults=True) if options else None
-        response = self.make_request(
+        response = self._api.request(
             "POST", ai_validation_job_resume(job_id), data=data
         )
-        return self._parse_response(
+        return self._api.parse(
             ResumeAiValidationJobResponse, response, "resume job response"
         )
 
     def cancel_job(self, job_id: str) -> CancelAiValidationJobResponse:
         """Cancel a running or paused validation job."""
-        response = self.make_request("POST", ai_validation_job_cancel(job_id))
-        return self._parse_response(
+        response = self._api.request("POST", ai_validation_job_cancel(job_id))
+        return self._api.parse(
             CancelAiValidationJobResponse, response, "cancel job response"
         )
 
@@ -172,24 +169,24 @@ class StandardValidation(BaseClient):
     ) -> RestartAiValidationJobResponse:
         """Restart a completed, cancelled, or failed validation job."""
         data = options.model_dump(exclude_defaults=True) if options else None
-        response = self.make_request(
+        response = self._api.request(
             "POST", ai_validation_job_restart(job_id), data=data
         )
-        return self._parse_response(
+        return self._api.parse(
             RestartAiValidationJobResponse, response, "restart job response"
         )
 
     def delete_job(self, task_id: str) -> DeleteAiValidationJobResponse:
         """Delete a validation job and its associated data."""
-        response = self.make_request("DELETE", ai_validation_job_delete(task_id))
-        return self._parse_response(
+        response = self._api.request("DELETE", ai_validation_job_delete(task_id))
+        return self._api.parse(
             DeleteAiValidationJobResponse, response, "delete job response"
         )
 
     def get_aggregates(self) -> GetAiValidationJobAggregatesResponse:
         """Get aggregate counts for validation jobs grouped by status."""
-        response = self.make_request("GET", ai_validation_jobs_aggregates())
-        return self._parse_response(
+        response = self._api.request("GET", ai_validation_jobs_aggregates())
+        return self._api.parse(
             GetAiValidationJobAggregatesResponse,
             response,
             "get job aggregates response",
@@ -199,10 +196,10 @@ class StandardValidation(BaseClient):
         self, task_id: str
     ) -> GetJobResultsSummaryResponse:
         """Get a summary of results for a job including severity counts."""
-        response = self.make_request(
+        response = self._api.request(
             "GET", ai_validation_job_results_summary(task_id)
         )
-        return self._parse_response(
+        return self._api.parse(
             GetJobResultsSummaryResponse, response, "get job results summary response"
         )
 
@@ -215,10 +212,10 @@ class StandardValidation(BaseClient):
     ) -> ListAiValidationResultsResponse:
         """List validation results for a job."""
         params = request.model_dump(exclude_defaults=True)
-        response = self.make_request(
+        response = self._api.request(
             "GET", ai_validation_results(task_id), params=params
         )
-        return self._parse_response(
+        return self._api.parse(
             ListAiValidationResultsResponse, response, "list results response"
         )
 
@@ -227,10 +224,10 @@ class StandardValidation(BaseClient):
     ) -> ListAiValidationResultsDetailResponse:
         """List detailed validation results including prompt/response pairs."""
         params = request.model_dump(exclude_defaults=True)
-        response = self.make_request(
+        response = self._api.request(
             "GET", ai_validation_results_detail(task_id), params=params
         )
-        return self._parse_response(
+        return self._api.parse(
             ListAiValidationResultsDetailResponse,
             response,
             "list results detail response",
@@ -240,10 +237,10 @@ class StandardValidation(BaseClient):
         self, task_id: str, attack_id: str
     ) -> GetAiValidationResultResponse:
         """Get a single validation result by task and attack IDs."""
-        response = self.make_request(
+        response = self._api.request(
             "GET", ai_validation_result(task_id, attack_id)
         )
-        return self._parse_response(
+        return self._api.parse(
             GetAiValidationResultResponse, response, "get result response"
         )
 
@@ -251,10 +248,10 @@ class StandardValidation(BaseClient):
         self, task_id: str, attack_id: str
     ) -> GetAiValidationResultErrorDetailResponse:
         """Get error details for a specific failed attack attempt."""
-        response = self.make_request(
+        response = self._api.request(
             "GET", ai_validation_attack_error_detail(task_id, attack_id)
         )
-        return self._parse_response(
+        return self._api.parse(
             GetAiValidationResultErrorDetailResponse,
             response,
             "get attack error detail response",
@@ -266,15 +263,15 @@ class StandardValidation(BaseClient):
 
     def get_config(self) -> GetAiValidationConfigResponse:
         """Get the current validation configuration."""
-        response = self.make_request("GET", ai_validation_config())
-        return self._parse_response(
+        response = self._api.request("GET", ai_validation_config())
+        return self._api.parse(
             GetAiValidationConfigResponse, response, "get config response"
         )
 
     def get_config_by_task(self, task_id: str) -> GetAiValidationConfigResponse:
         """Get the validation configuration used for a specific job."""
-        response = self.make_request("GET", ai_validation_config_by_task(task_id))
-        return self._parse_response(
+        response = self._api.request("GET", ai_validation_config_by_task(task_id))
+        return self._api.parse(
             GetAiValidationConfigResponse, response, "get config by task response"
         )
 
@@ -283,8 +280,8 @@ class StandardValidation(BaseClient):
     ) -> UpdateAiValidationConfigResponse:
         """Update the validation configuration."""
         data = request.model_dump(exclude_defaults=True)
-        response = self.make_request("PUT", ai_validation_config(), data=data)
-        return self._parse_response(
+        response = self._api.request("PUT", ai_validation_config(), data=data)
+        return self._api.parse(
             UpdateAiValidationConfigResponse, response, "update config response"
         )
 
@@ -297,10 +294,10 @@ class StandardValidation(BaseClient):
     ) -> ListAiValidationDataForModelIdResponse:
         """List validation data available for a given model ID."""
         params = request.model_dump(exclude_defaults=True)
-        response = self.make_request(
+        response = self._api.request(
             "GET", ai_validation_data_model_id(), params=params
         )
-        return self._parse_response(
+        return self._api.parse(
             ListAiValidationDataForModelIdResponse,
             response,
             "list data for model id response",
@@ -311,17 +308,17 @@ class StandardValidation(BaseClient):
     ) -> ListAiAssetNamesResponse:
         """List asset names available for validation."""
         params = request.model_dump(exclude_defaults=True)
-        response = self.make_request(
+        response = self._api.request(
             "GET", ai_validation_asset_names(), params=params
         )
-        return self._parse_response(
+        return self._api.parse(
             ListAiAssetNamesResponse, response, "list asset names response"
         )
 
     def list_content_categories(self) -> ListContentCategoriesResponse:
         """List available content categories for validation."""
-        response = self.make_request("GET", ai_validation_content_categories())
-        return self._parse_response(
+        response = self._api.request("GET", ai_validation_content_categories())
+        return self._api.parse(
             ListContentCategoriesResponse,
             response,
             "list content categories response",
