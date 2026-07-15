@@ -14,23 +14,18 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Facade client for the AI Defense Validation API.
-
-Provides a single entry point to all validation sub-clients: targets,
-profiles, custom goals, standard validation, and adaptive (red-team)
-validation.
-"""
+"""Facade client for the AI Defense Validation API."""
 
 from typing import Optional
 
 from ..management.auth import ManagementAuth
 from ..config import Config
 from ..request_handler import RequestHandler
-from .targets_client import TargetsClient
-from .profiles_client import ProfilesClient
-from .custom_goals_client import CustomGoalsClient
-from .standard_validation_client import StandardValidationClient
-from .adaptive_validation_client import AdaptiveValidationClient
+from .targets import Targets
+from .profiles import Profiles
+from .custom_goals import CustomGoals
+from .standard_validation import StandardValidation
+from .adaptive_validation import AdaptiveValidation
 
 
 class ValidationClient:
@@ -54,7 +49,7 @@ class ValidationClient:
             client = ValidationClient(api_key="your-api-key")
 
             # Manage targets
-            targets = client.targets.list_targets(ListTargetsRequest())
+            targets = client.targets.list(ListTargetsRequest())
 
             # Run standard validation
             response = client.standard.start(StartAiValidationRequest(...))
@@ -75,46 +70,46 @@ class ValidationClient:
         self.config = config or Config()
         self._request_handler = RequestHandler(self.config)
 
-        self._targets_client = TargetsClient(
+        self._targets = Targets(
             self._auth, self.config, request_handler=self._request_handler
         )
-        self._profiles_client = ProfilesClient(
+        self._profiles = Profiles(
             self._auth, self.config, request_handler=self._request_handler
         )
-        self._custom_goals_client = CustomGoalsClient(
+        self._custom_goals = CustomGoals(
             self._auth, self.config, request_handler=self._request_handler
         )
-        self._standard_client = StandardValidationClient(
+        self._standard = StandardValidation(
             self._auth, self.config, request_handler=self._request_handler
         )
-        self._adaptive_client = AdaptiveValidationClient(
+        self._adaptive = AdaptiveValidation(
             self._auth, self.config, request_handler=self._request_handler
         )
 
     @property
-    def targets(self) -> TargetsClient:
+    def targets(self) -> Targets:
         """Sub-client for managing validation targets."""
-        return self._targets_client
+        return self._targets
 
     @property
-    def profiles(self) -> ProfilesClient:
+    def profiles(self) -> Profiles:
         """Sub-client for managing validation profiles."""
-        return self._profiles_client
+        return self._profiles
 
     @property
-    def custom_goals(self) -> CustomGoalsClient:
+    def custom_goals(self) -> CustomGoals:
         """Sub-client for managing custom validation goals."""
-        return self._custom_goals_client
+        return self._custom_goals
 
     @property
-    def standard(self) -> StandardValidationClient:
+    def standard(self) -> StandardValidation:
         """Sub-client for standard (non-adaptive) validation jobs."""
-        return self._standard_client
+        return self._standard
 
     @property
-    def adaptive(self) -> AdaptiveValidationClient:
+    def adaptive(self) -> AdaptiveValidation:
         """Sub-client for adaptive (red-team) validation jobs."""
-        return self._adaptive_client
+        return self._adaptive
 
     @property
     def api_key(self) -> str:

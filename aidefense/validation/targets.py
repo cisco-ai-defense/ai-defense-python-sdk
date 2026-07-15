@@ -14,7 +14,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Targets client for the AI Defense Validation API."""
+"""Targets resource for the AI Defense Validation API."""
 
 from typing import Optional
 
@@ -44,9 +44,9 @@ from .routes import (
 )
 
 
-class TargetsClient(BaseClient):
+class Targets(BaseClient):
     """
-    Client for managing validation targets in the AI Defense Validation API.
+    Manage validation targets in the AI Defense Validation API.
 
     Provides methods for creating, retrieving, updating, deleting, and testing
     connectivity of validation targets.
@@ -58,26 +58,14 @@ class TargetsClient(BaseClient):
         config: Optional[Config] = None,
         request_handler=None,
     ):
-        """
-        Initialize the TargetsClient.
-
-        Args:
-            auth (ManagementAuth): Your AI Defense API authentication object.
-            config (Config, optional): SDK configuration for endpoints, logging, retries, etc.
-                Defaults to the singleton Config if not provided.
-            request_handler: Request handler for making API requests.
-        """
         super().__init__(auth, config, request_handler)
 
-    def create_target(self, request: CreateTargetRequest) -> CreateTargetResponse:
+    def create(self, request: CreateTargetRequest) -> CreateTargetResponse:
         """
         Create a new validation target.
 
         Args:
-            request: CreateTargetRequest containing target configuration including:
-                - name: Human-readable name for the target
-                - target_type: Type of target (MODEL, APPLICATION, AGENT)
-                - Provider config (one of aws_bedrock, custom, aws_agentcore)
+            request: CreateTargetRequest containing target configuration.
 
         Returns:
             CreateTargetResponse: Response containing the created target's ID.
@@ -88,13 +76,11 @@ class TargetsClient(BaseClient):
         Example:
             .. code-block:: python
 
-                request = CreateTargetRequest(
+                response = client.targets.create(CreateTargetRequest(
                     name="My Model Target",
                     target_type=TargetType.MODEL,
                     custom=CustomProviderConfig(...)
-                )
-                response = client.targets.create_target(request)
-                print(f"Created target: {response.target_id}")
+                ))
         """
         data = request.model_dump(exclude_defaults=True)
         response = self.make_request("POST", ai_validation_targets(), data=data)
@@ -102,24 +88,18 @@ class TargetsClient(BaseClient):
             CreateTargetResponse, response, "create target response"
         )
 
-    def get_target(self, target_id: str) -> GetTargetResponse:
+    def get(self, target_id: str) -> GetTargetResponse:
         """
         Get a validation target by ID.
 
         Args:
-            target_id (str): Unique identifier of the target to retrieve.
+            target_id: Unique identifier of the target to retrieve.
 
         Returns:
             GetTargetResponse: Full target details.
 
         Raises:
             ValidationError, ApiError, SDKError
-
-        Example:
-            .. code-block:: python
-
-                target = client.targets.get_target("target-uuid-here")
-                print(f"Target name: {target.name}")
         """
         self._ensure_uuid(target_id, "target_id")
         response = self.make_request("GET", ai_validation_target(target_id))
@@ -127,32 +107,18 @@ class TargetsClient(BaseClient):
             GetTargetResponse, response, "get target response"
         )
 
-    def list_targets(self, request: ListTargetsRequest) -> ListTargetsResponse:
+    def list(self, request: ListTargetsRequest) -> ListTargetsResponse:
         """
         List validation targets with optional filtering and pagination.
 
         Args:
-            request: ListTargetsRequest containing optional filters:
-                - target_type: Filter by target type
-                - provider: Filter by provider
-                - search_string: Text search
-                - status: Filter by status
-                - limit: Max results to return
-                - offset: Pagination offset
+            request: ListTargetsRequest containing optional filters.
 
         Returns:
-            ListTargetsResponse: Response containing a list of target summaries and paging info.
+            ListTargetsResponse: List of target summaries and paging info.
 
         Raises:
             ValidationError, ApiError, SDKError
-
-        Example:
-            .. code-block:: python
-
-                request = ListTargetsRequest(limit=10, target_type=TargetType.MODEL)
-                response = client.targets.list_targets(request)
-                for target in response.targets:
-                    print(f"{target.target_id}: {target.name}")
         """
         params = request.model_dump(exclude_defaults=True)
         response = self.make_request("GET", ai_validation_targets(), params=params)
@@ -160,14 +126,14 @@ class TargetsClient(BaseClient):
             ListTargetsResponse, response, "list targets response"
         )
 
-    def update_target(
+    def update(
         self, target_id: str, request: UpdateTargetRequest
     ) -> UpdateTargetResponse:
         """
         Update a validation target.
 
         Args:
-            target_id (str): Unique identifier of the target to update.
+            target_id: Unique identifier of the target to update.
             request: UpdateTargetRequest containing fields to update.
 
         Returns:
@@ -175,71 +141,44 @@ class TargetsClient(BaseClient):
 
         Raises:
             ValidationError, ApiError, SDKError
-
-        Example:
-            .. code-block:: python
-
-                request = UpdateTargetRequest(name="Updated Target Name")
-                response = client.targets.update_target("target-uuid-here", request)
         """
         self._ensure_uuid(target_id, "target_id")
         data = request.model_dump(exclude_defaults=True)
-        response = self.make_request("PATCH", ai_validation_target(target_id), data=data)
+        response = self.make_request(
+            "PATCH", ai_validation_target(target_id), data=data
+        )
         return self._parse_response(
             UpdateTargetResponse, response, "update target response"
         )
 
-    def delete_target(self, target_id: str) -> None:
+    def delete(self, target_id: str) -> None:
         """
         Delete a validation target.
 
         Args:
-            target_id (str): Unique identifier of the target to delete.
-
-        Returns:
-            None
+            target_id: Unique identifier of the target to delete.
 
         Raises:
             ValidationError, ApiError, SDKError
-
-        Example:
-            .. code-block:: python
-
-                client.targets.delete_target("target-uuid-here")
         """
         self._ensure_uuid(target_id, "target_id")
         self.make_request("DELETE", ai_validation_target(target_id))
         return None
 
-    def test_target_connection(
+    def test_connection(
         self, request: TestTargetConnectionRequest
     ) -> TestTargetConnectionResponse:
         """
         Test connectivity to a target with inline configuration (before saving).
 
         Args:
-            request: TestTargetConnectionRequest containing the target connection
-                configuration to test, including provider config.
+            request: TestTargetConnectionRequest with provider config to test.
 
         Returns:
-            TestTargetConnectionResponse: Response with success status, latency, and any error.
+            TestTargetConnectionResponse: Success status, latency, and any error.
 
         Raises:
             ValidationError, ApiError, SDKError
-
-        Example:
-            .. code-block:: python
-
-                request = TestTargetConnectionRequest(
-                    target_type=TargetType.MODEL,
-                    provider=TargetProvider.CUSTOM_ENDPOINT,
-                    custom=CustomProviderConfig(...)
-                )
-                result = client.targets.test_target_connection(request)
-                if result.success:
-                    print(f"Connection OK, latency: {result.latency_ms}ms")
-                else:
-                    print(f"Connection failed: {result.error}")
         """
         data = request.model_dump(exclude_defaults=True)
         response = self.make_request("POST", ai_validation_targets_test(), data=data)
@@ -247,7 +186,7 @@ class TargetsClient(BaseClient):
             TestTargetConnectionResponse, response, "test target connection response"
         )
 
-    def get_target_aggregates(self) -> GetTargetAggregatesResponse:
+    def get_aggregates(self) -> GetTargetAggregatesResponse:
         """
         Get aggregate counts for targets grouped by type.
 

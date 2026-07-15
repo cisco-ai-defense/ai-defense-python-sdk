@@ -14,7 +14,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Custom goals client for the AI Defense Validation API."""
+"""Custom goals resource for the AI Defense Validation API."""
 
 from typing import Optional
 
@@ -32,9 +32,9 @@ from ._generated.ai_validation.v1.ai_validation_pydantic import (
 from .routes import ai_validation_custom_goals, ai_validation_custom_goal
 
 
-class CustomGoalsClient(BaseClient):
+class CustomGoals(BaseClient):
     """
-    Client for managing custom validation goals in the AI Defense Validation API.
+    Manage custom validation goals in the AI Defense Validation API.
 
     Custom goals allow users to define organization-specific attack objectives
     that extend the built-in goal library.
@@ -48,7 +48,7 @@ class CustomGoalsClient(BaseClient):
     ):
         super().__init__(auth, config, request_handler)
 
-    def create_custom_goal(
+    def create(
         self, request: CreateAiValidationCustomGoalRequest
     ) -> CreateAiValidationCustomGoalResponse:
         """
@@ -72,7 +72,7 @@ class CustomGoalsClient(BaseClient):
             "create custom goal response",
         )
 
-    def list_custom_goals(
+    def list(
         self, request: ListAiValidationCustomGoalsRequest
     ) -> ListAiValidationCustomGoalsResponse:
         """
@@ -97,7 +97,7 @@ class CustomGoalsClient(BaseClient):
             "list custom goals response",
         )
 
-    def update_custom_goal(
+    def update(
         self, custom_goal_id: str, request: UpdateAiValidationCustomGoalRequest
     ) -> UpdateAiValidationCustomGoalResponse:
         """
@@ -124,7 +124,7 @@ class CustomGoalsClient(BaseClient):
             "update custom goal response",
         )
 
-    def delete_custom_goal(self, custom_goal_id: str) -> None:
+    def delete(self, custom_goal_id: str) -> None:
         """
         Delete a custom goal.
 

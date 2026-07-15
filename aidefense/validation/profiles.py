@@ -14,7 +14,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Profiles client for the AI Defense Validation API."""
+"""Profiles resource for the AI Defense Validation API."""
 
 from typing import Optional
 
@@ -38,9 +38,9 @@ from .routes import (
 )
 
 
-class ProfilesClient(BaseClient):
+class Profiles(BaseClient):
     """
-    Client for managing validation profiles in the AI Defense Validation API.
+    Manage validation profiles in the AI Defense Validation API.
 
     Profiles define which attack techniques and configurations to use when
     running a standard validation job.
@@ -54,7 +54,7 @@ class ProfilesClient(BaseClient):
     ):
         super().__init__(auth, config, request_handler)
 
-    def create_profile(
+    def create(
         self, request: CreateAiValidationProfileRequest
     ) -> CreateAiValidationProfileResponse:
         """
@@ -76,7 +76,7 @@ class ProfilesClient(BaseClient):
             CreateAiValidationProfileResponse, response, "create profile response"
         )
 
-    def get_profile(self, profile_id: str) -> GetAiValidationProfileResponse:
+    def get(self, profile_id: str) -> GetAiValidationProfileResponse:
         """
         Get a validation profile by ID.
 
@@ -95,7 +95,7 @@ class ProfilesClient(BaseClient):
             GetAiValidationProfileResponse, response, "get profile response"
         )
 
-    def list_profiles(
+    def list(
         self, request: ListAiValidationProfilesRequest
     ) -> ListAiValidationProfilesResponse:
         """
@@ -116,7 +116,7 @@ class ProfilesClient(BaseClient):
             ListAiValidationProfilesResponse, response, "list profiles response"
         )
 
-    def list_profiles_by_goal(
+    def list_by_goal(
         self, goal_id: str
     ) -> ListAiValidationProfilesByGoalIDResponse:
         """
@@ -138,7 +138,7 @@ class ProfilesClient(BaseClient):
             "list profiles by goal response",
         )
 
-    def update_profile(
+    def update(
         self, profile_id: str, request: UpdateAiValidationProfileRequest
     ) -> UpdateAiValidationProfileResponse:
         """
@@ -163,7 +163,7 @@ class ProfilesClient(BaseClient):
             UpdateAiValidationProfileResponse, response, "update profile response"
         )
 
-    def delete_profile(self, profile_id: str) -> None:
+    def delete(self, profile_id: str) -> None:
         """
         Delete a validation profile.
 

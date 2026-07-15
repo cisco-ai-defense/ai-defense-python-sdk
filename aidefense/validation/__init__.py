@@ -16,18 +16,18 @@
 
 """AI Defense Validation SDK — standard and adaptive validation."""
 
-from .validation_client import ValidationClient
-from .targets_client import TargetsClient
-from .profiles_client import ProfilesClient
-from .custom_goals_client import CustomGoalsClient
-from .standard_validation_client import StandardValidationClient
-from .adaptive_validation_client import AdaptiveValidationClient
+from .client import ValidationClient
+from .targets import Targets
+from .profiles import Profiles
+from .custom_goals import CustomGoals
+from .standard_validation import StandardValidation
+from .adaptive_validation import AdaptiveValidation
 
 __all__ = [
     "ValidationClient",
-    "TargetsClient",
-    "ProfilesClient",
-    "CustomGoalsClient",
-    "StandardValidationClient",
-    "AdaptiveValidationClient",
+    "Targets",
+    "Profiles",
+    "CustomGoals",
+    "StandardValidation",
+    "AdaptiveValidation",
 ]
