@@ -41,7 +41,7 @@ from aidefense.config import Config
 from aidefense.exceptions import ApiError, SDKError, ValidationError
 
 from aidefense.validation import ValidationClient
-from aidefense.validation._generated.ai_validation.v1.ai_validation_pydantic import (
+from ai_validation.v1.ai_validation_pydantic import (
     CreateTargetRequest,
     CustomProviderConfig,
     ListTargetsRequest,
@@ -55,7 +55,7 @@ from aidefense.validation._generated.ai_validation.v1.ai_validation_pydantic imp
     StartAiValidationRequest,
     ListAiValidationJobsRequest,
 )
-from aidefense.validation._generated.ai_validation.v1.red_team_pydantic import (
+from ai_validation.v1.red_team_pydantic import (
     StartAdaptiveRedTeamRequest,
     ListRedTeamJobsRequest,
 )

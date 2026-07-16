@@ -28,7 +28,7 @@ from typing import TYPE_CHECKING, Optional
 if TYPE_CHECKING:
     from .client import _Api
 
-from ._generated.ai_validation.v1.ai_validation_pydantic import (
+from ai_validation.v1.ai_validation_pydantic import (
     StartAiValidationRequest,
     StartAiValidationResponse,
     GetAiValidationJobResponse,

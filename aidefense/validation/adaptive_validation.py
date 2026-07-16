@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING, Optional
 if TYPE_CHECKING:
     from .client import _Api
 
-from ._generated.ai_validation.v1.red_team_pydantic import (
+from ai_validation.v1.red_team_pydantic import (
     StartAdaptiveRedTeamRequest,
     StartRedTeamJobResponse,
     GetRedTeamJobResponse,

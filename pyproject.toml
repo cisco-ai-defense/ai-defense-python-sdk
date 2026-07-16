@@ -27,6 +27,7 @@ aiohttp = "^3.13.2"
 python = "^3.9"
 requests = "^2.32.3"
 pydantic = "^2.12.5"
+cisco-ai-defense-protos = {git = "https://github.com/cisco-aispg/ai-common.git", subdirectory = "protos/gen/python", branch = "AIFW-23555-pydantic-codegen"}
 tenacity = "^9.1.2"
 cisco-aibom = {version = ">=0.4.0", optional = true, python = ">=3.11,<3.14"}
 
