@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from .client import _Api
 
 from aidefense.pydantic.validation.ai_validation.v1.ai_validation_pydantic import (
+    JobStatus,
     StartAiValidationRequest,
     StartAiValidationResponse,
     GetAiValidationJobResponse,
@@ -83,7 +84,9 @@ from .routes import (
 )
 
 _TERMINAL_STATUSES = frozenset({
-    "JOB_COMPLETED", "JOB_FAILED", "JOB_CANCELLED",
+    JobStatus.JOB_COMPLETED,
+    JobStatus.JOB_FAILED,
+    JobStatus.JOB_CANCELLED,
 })
 
 
@@ -258,12 +261,11 @@ class StandardValidation:
             job = await self.get_job(task_id)
             if on_poll is not None:
                 on_poll(job)
-            status = getattr(job, "status", None) or ""
-            if status.upper() in _TERMINAL_STATUSES:
+            if job.status in _TERMINAL_STATUSES:
                 return job
             if elapsed >= timeout:
                 raise TimeoutError(
-                    f"Job {task_id} did not complete within {timeout}s (last status: {status})"
+                    f"Job {task_id} did not complete within {timeout}s (last status: {job.status})"
                 )
             await asyncio.sleep(poll_interval)
             elapsed += poll_interval

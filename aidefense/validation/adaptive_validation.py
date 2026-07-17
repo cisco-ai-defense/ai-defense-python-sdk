@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from .client import _Api
 
 from aidefense.pydantic.validation.ai_validation.v1.red_team_pydantic import (
+    RedTeamJobStatus,
     StartAdaptiveRedTeamRequest,
     StartRedTeamJobResponse,
     GetRedTeamJobResponse,
@@ -53,9 +54,9 @@ from .routes import (
 )
 
 _TERMINAL_STATUSES = frozenset({
-    "RED_TEAM_JOB_STATUS_COMPLETED",
-    "RED_TEAM_JOB_STATUS_FAILED",
-    "RED_TEAM_JOB_STATUS_CANCELLED",
+    RedTeamJobStatus.RED_TEAM_JOB_STATUS_COMPLETED,
+    RedTeamJobStatus.RED_TEAM_JOB_STATUS_FAILED,
+    RedTeamJobStatus.RED_TEAM_JOB_STATUS_CANCELLED,
 })
 
 
@@ -210,12 +211,11 @@ class AdaptiveValidation:
             job = await self.get_job(job_id)
             if on_poll is not None:
                 on_poll(job)
-            status = getattr(job, "status", None) or ""
-            if status.upper() in _TERMINAL_STATUSES:
+            if job.status in _TERMINAL_STATUSES:
                 return job
             if elapsed >= timeout:
                 raise TimeoutError(
-                    f"Job {job_id} did not complete within {timeout}s (last status: {status})"
+                    f"Job {job_id} did not complete within {timeout}s (last status: {job.status})"
                 )
             await asyncio.sleep(poll_interval)
             elapsed += poll_interval
