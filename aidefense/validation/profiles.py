@@ -44,98 +44,53 @@ class Profiles:
     """
     Manage validation profiles in the AI Defense Validation API.
 
-    Profiles define which attack techniques and configurations to use when
-    running a standard validation job.
+    All methods are coroutines — call them with ``await``.
     """
 
     def __init__(self, api: _Api):
         self._api = api
 
-    def create(
+    async def create(
         self, request: CreateAiValidationProfileRequest
     ) -> CreateAiValidationProfileResponse:
-        """
-        Create a new validation profile.
-
-        Args:
-            request: Profile creation request with name, description,
-                goal assignments, and attack configurations.
-
-        Returns:
-            CreateAiValidationProfileResponse: The created profile ID.
-
-        Raises:
-            ValidationError, ApiError, SDKError
-        """
+        """Create a new validation profile."""
         data = request.model_dump(exclude_defaults=True)
-        response = self._api.request("POST", ai_validation_profiles(), data=data)
+        response = await self._api.request("POST", ai_validation_profiles(), data=data)
         return self._api.parse(
             CreateAiValidationProfileResponse, response, "create profile response"
         )
 
-    def get(self, profile_id: str) -> GetAiValidationProfileResponse:
-        """
-        Get a validation profile by ID.
-
-        Args:
-            profile_id: Unique identifier of the profile.
-
-        Returns:
-            GetAiValidationProfileResponse: Full profile details.
-
-        Raises:
-            ValidationError, ApiError, SDKError
-        """
+    async def get(self, profile_id: str) -> GetAiValidationProfileResponse:
+        """Get a validation profile by ID."""
         self._api.ensure_uuid(profile_id, "profile_id")
-        response = self._api.request("GET", ai_validation_profile(profile_id))
+        response = await self._api.request("GET", ai_validation_profile(profile_id))
         return self._api.parse(
             GetAiValidationProfileResponse, response, "get profile response"
         )
 
-    def list(
+    async def list(
         self, request: ListAiValidationProfilesRequest
     ) -> ListAiValidationProfilesResponse:
-        """
-        List validation profiles with optional filtering and pagination.
-
-        Args:
-            request: List request with optional search, view, limit, offset.
-
-        Returns:
-            ListAiValidationProfilesResponse: List of profile summaries.
-
-        Raises:
-            ValidationError, ApiError, SDKError
-        """
+        """List validation profiles with optional filtering and pagination."""
         params = request.model_dump(exclude_defaults=True)
-        response = self._api.request("GET", ai_validation_profiles(), params=params)
+        response = await self._api.request("GET", ai_validation_profiles(), params=params)
         return self._api.parse(
             ListAiValidationProfilesResponse, response, "list profiles response"
         )
 
-    def list_by_goal(
+    async def list_by_goal(
         self, goal_id: str
     ) -> ListAiValidationProfilesByGoalIDResponse:
-        """
-        List profiles associated with a specific goal.
-
-        Args:
-            goal_id: The goal ID to filter by.
-
-        Returns:
-            ListAiValidationProfilesByGoalIDResponse: Matching profiles.
-
-        Raises:
-            ValidationError, ApiError, SDKError
-        """
-        response = self._api.request("GET", ai_validation_profiles_by_goal(goal_id))
+        """List profiles associated with a specific goal."""
+        self._api.ensure_uuid(goal_id, "goal_id")
+        response = await self._api.request("GET", ai_validation_profiles_by_goal(goal_id))
         return self._api.parse(
             ListAiValidationProfilesByGoalIDResponse,
             response,
             "list profiles by goal response",
         )
 
-    def update(
+    async def update(
         self, profile_id: str, request: ProfileUpdate
     ) -> UpdateAiValidationProfileResponse:
         """
@@ -143,36 +98,18 @@ class Profiles:
 
         The request body should contain only the fields to change.
         grpc-gateway auto-derives the update mask from the JSON keys present.
-
-        Args:
-            profile_id: Unique identifier of the profile to update.
-            request: ProfileUpdate containing only the fields to change.
-
-        Returns:
-            UpdateAiValidationProfileResponse: The update response.
-
-        Raises:
-            ValidationError, ApiError, SDKError
         """
         self._api.ensure_uuid(profile_id, "profile_id")
         data = request.model_dump(exclude_none=True)
-        response = self._api.request(
+        response = await self._api.request(
             "PATCH", ai_validation_profile(profile_id), data=data
         )
         return self._api.parse(
             UpdateAiValidationProfileResponse, response, "update profile response"
         )
 
-    def delete(self, profile_id: str) -> None:
-        """
-        Delete a validation profile.
-
-        Args:
-            profile_id: Unique identifier of the profile to delete.
-
-        Raises:
-            ValidationError, ApiError, SDKError
-        """
+    async def delete(self, profile_id: str) -> None:
+        """Delete a validation profile."""
         self._api.ensure_uuid(profile_id, "profile_id")
-        self._api.request("DELETE", ai_validation_profile(profile_id))
+        await self._api.request("DELETE", ai_validation_profile(profile_id))
         return None

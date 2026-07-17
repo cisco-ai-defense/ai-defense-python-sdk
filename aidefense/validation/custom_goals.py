@@ -38,54 +38,30 @@ class CustomGoals:
     """
     Manage custom validation goals in the AI Defense Validation API.
 
-    Custom goals allow users to define organization-specific attack objectives
-    that extend the built-in goal library.
+    All methods are coroutines — call them with ``await``.
     """
 
     def __init__(self, api: _Api):
         self._api = api
 
-    def create(
+    async def create(
         self, request: CreateAiValidationCustomGoalRequest
     ) -> CreateAiValidationCustomGoalResponse:
-        """
-        Create a new custom goal.
-
-        Args:
-            request: Custom goal creation request with name, description,
-                and prompt configuration.
-
-        Returns:
-            CreateAiValidationCustomGoalResponse: The created goal ID.
-
-        Raises:
-            ValidationError, ApiError, SDKError
-        """
+        """Create a new custom goal."""
         data = request.model_dump(exclude_defaults=True)
-        response = self._api.request("POST", ai_validation_custom_goals(), data=data)
+        response = await self._api.request("POST", ai_validation_custom_goals(), data=data)
         return self._api.parse(
             CreateAiValidationCustomGoalResponse,
             response,
             "create custom goal response",
         )
 
-    def list(
+    async def list(
         self, request: ListAiValidationCustomGoalsRequest
     ) -> ListAiValidationCustomGoalsResponse:
-        """
-        List custom goals with optional filtering and pagination.
-
-        Args:
-            request: List request with optional search, limit, offset.
-
-        Returns:
-            ListAiValidationCustomGoalsResponse: List of custom goals.
-
-        Raises:
-            ValidationError, ApiError, SDKError
-        """
+        """List custom goals with optional filtering and pagination."""
         params = request.model_dump(exclude_defaults=True)
-        response = self._api.request(
+        response = await self._api.request(
             "GET", ai_validation_custom_goals(), params=params
         )
         return self._api.parse(
@@ -94,7 +70,7 @@ class CustomGoals:
             "list custom goals response",
         )
 
-    def update(
+    async def update(
         self, custom_goal_id: str, request: CustomGoalUpdate
     ) -> UpdateAiValidationCustomGoalResponse:
         """
@@ -102,20 +78,10 @@ class CustomGoals:
 
         The request body should contain only the fields to change.
         grpc-gateway auto-derives the update mask from the JSON keys present.
-
-        Args:
-            custom_goal_id: Unique identifier of the custom goal to update.
-            request: CustomGoalUpdate containing only the fields to change.
-
-        Returns:
-            UpdateAiValidationCustomGoalResponse: The update response.
-
-        Raises:
-            ValidationError, ApiError, SDKError
         """
         self._api.ensure_uuid(custom_goal_id, "custom_goal_id")
         data = request.model_dump(exclude_none=True)
-        response = self._api.request(
+        response = await self._api.request(
             "PATCH", ai_validation_custom_goal(custom_goal_id), data=data
         )
         return self._api.parse(
@@ -124,16 +90,8 @@ class CustomGoals:
             "update custom goal response",
         )
 
-    def delete(self, custom_goal_id: str) -> None:
-        """
-        Delete a custom goal.
-
-        Args:
-            custom_goal_id: Unique identifier of the custom goal to delete.
-
-        Raises:
-            ValidationError, ApiError, SDKError
-        """
+    async def delete(self, custom_goal_id: str) -> None:
+        """Delete a custom goal."""
         self._api.ensure_uuid(custom_goal_id, "custom_goal_id")
-        self._api.request("DELETE", ai_validation_custom_goal(custom_goal_id))
+        await self._api.request("DELETE", ai_validation_custom_goal(custom_goal_id))
         return None

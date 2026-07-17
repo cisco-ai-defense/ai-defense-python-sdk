@@ -50,80 +50,37 @@ class Targets:
     """
     Manage validation targets in the AI Defense Validation API.
 
-    Provides methods for creating, retrieving, updating, deleting, and testing
-    connectivity of validation targets.
+    All methods are coroutines — call them with ``await``.
     """
 
     def __init__(self, api: _Api):
         self._api = api
 
-    def create(self, request: CreateTargetRequest) -> CreateTargetResponse:
-        """
-        Create a new validation target.
-
-        Args:
-            request: CreateTargetRequest containing target configuration.
-
-        Returns:
-            CreateTargetResponse: Response containing the created target's ID.
-
-        Raises:
-            ValidationError, ApiError, SDKError
-
-        Example:
-            .. code-block:: python
-
-                response = client.targets.create(CreateTargetRequest(
-                    name="My Model Target",
-                    target_type=TargetType.MODEL,
-                    custom=CustomProviderConfig(...)
-                ))
-        """
+    async def create(self, request: CreateTargetRequest) -> CreateTargetResponse:
+        """Create a new validation target."""
         data = request.model_dump(exclude_defaults=True)
-        response = self._api.request("POST", ai_validation_targets(), data=data)
+        response = await self._api.request("POST", ai_validation_targets(), data=data)
         return self._api.parse(
             CreateTargetResponse, response, "create target response"
         )
 
-    def get(self, target_id: str) -> GetTargetResponse:
-        """
-        Get a validation target by ID.
-
-        Args:
-            target_id: Unique identifier of the target to retrieve.
-
-        Returns:
-            GetTargetResponse: Full target details.
-
-        Raises:
-            ValidationError, ApiError, SDKError
-        """
+    async def get(self, target_id: str) -> GetTargetResponse:
+        """Get a validation target by ID."""
         self._api.ensure_uuid(target_id, "target_id")
-        response = self._api.request("GET", ai_validation_target(target_id))
+        response = await self._api.request("GET", ai_validation_target(target_id))
         return self._api.parse(
             GetTargetResponse, response, "get target response"
         )
 
-    def list(self, request: ListTargetsRequest) -> ListTargetsResponse:
-        """
-        List validation targets with optional filtering and pagination.
-
-        Args:
-            request: ListTargetsRequest containing optional filters.
-
-        Returns:
-            ListTargetsResponse: List of target summaries and paging info.
-
-        Raises:
-            ValidationError, ApiError, SDKError
-        """
+    async def list(self, request: ListTargetsRequest) -> ListTargetsResponse:
+        """List validation targets with optional filtering and pagination."""
         params = request.model_dump(exclude_defaults=True)
-        response = self._api.request("GET", ai_validation_targets(), params=params)
+        response = await self._api.request("GET", ai_validation_targets(), params=params)
         return self._api.parse(
             ListTargetsResponse, response, "list targets response"
         )
 
-    def update(
+    async def update(
         self, target_id: str, request: TargetUpdate
     ) -> UpdateTargetResponse:
         """
@@ -131,93 +88,45 @@ class Targets:
 
         The request body should contain only the fields to change.
         grpc-gateway auto-derives the update mask from the JSON keys present.
-
-        Args:
-            target_id: Unique identifier of the target to update.
-            request: TargetUpdate containing only the fields to change.
-
-        Returns:
-            UpdateTargetResponse: The update response.
-
-        Raises:
-            ValidationError, ApiError, SDKError
         """
         self._api.ensure_uuid(target_id, "target_id")
         data = request.model_dump(exclude_none=True)
-        response = self._api.request(
+        response = await self._api.request(
             "PATCH", ai_validation_target(target_id), data=data
         )
         return self._api.parse(
             UpdateTargetResponse, response, "update target response"
         )
 
-    def delete(self, target_id: str) -> None:
-        """
-        Delete a validation target.
-
-        Args:
-            target_id: Unique identifier of the target to delete.
-
-        Raises:
-            ValidationError, ApiError, SDKError
-        """
+    async def delete(self, target_id: str) -> None:
+        """Delete a validation target."""
         self._api.ensure_uuid(target_id, "target_id")
-        self._api.request("DELETE", ai_validation_target(target_id))
+        await self._api.request("DELETE", ai_validation_target(target_id))
         return None
 
-    def test_connection(
+    async def test_connection(
         self, request: TestTargetConnectionRequest
     ) -> TestTargetConnectionResponse:
-        """
-        Test connectivity to a target with inline configuration (before saving).
-
-        Args:
-            request: TestTargetConnectionRequest with provider config to test.
-
-        Returns:
-            TestTargetConnectionResponse: Success status, latency, and any error.
-
-        Raises:
-            ValidationError, ApiError, SDKError
-        """
+        """Test connectivity to a target with inline configuration (before saving)."""
         data = request.model_dump(exclude_defaults=True)
-        response = self._api.request("POST", ai_validation_targets_test(), data=data)
+        response = await self._api.request("POST", ai_validation_targets_test(), data=data)
         return self._api.parse(
             TestTargetConnectionResponse, response, "test target connection response"
         )
 
-    def get_aggregates(self) -> GetTargetAggregatesResponse:
-        """
-        Get aggregate counts for targets grouped by type.
-
-        Returns:
-            GetTargetAggregatesResponse: Aggregate counts by target type.
-
-        Raises:
-            ValidationError, ApiError, SDKError
-        """
-        response = self._api.request("GET", ai_validation_targets_aggregates())
+    async def get_aggregates(self) -> GetTargetAggregatesResponse:
+        """Get aggregate counts for targets grouped by type."""
+        response = await self._api.request("GET", ai_validation_targets_aggregates())
         return self._api.parse(
             GetTargetAggregatesResponse, response, "get target aggregates response"
         )
 
-    def list_aws_accounts(
+    async def list_aws_accounts(
         self, request: ListAwsAccountsRequest
     ) -> ListAwsAccountsResponse:
-        """
-        List AWS accounts available for targeting.
-
-        Args:
-            request: ListAwsAccountsRequest with optional pagination.
-
-        Returns:
-            ListAwsAccountsResponse: List of available AWS accounts.
-
-        Raises:
-            ValidationError, ApiError, SDKError
-        """
+        """List AWS accounts available for targeting."""
         params = request.model_dump(exclude_defaults=True)
-        response = self._api.request(
+        response = await self._api.request(
             "GET", ai_validation_targets_aws_accounts(), params=params
         )
         return self._api.parse(

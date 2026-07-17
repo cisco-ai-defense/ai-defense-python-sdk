@@ -18,7 +18,6 @@
 
 from abc import ABC, abstractmethod
 import logging
-import threading
 
 import aiohttp
 import requests
@@ -30,9 +29,6 @@ from aidefense.exceptions import ValidationError
 
 class BaseConfig(ABC):
     """Base configuration class for all AI Defense SDK clients."""
-
-    _instances = {}
-    _lock = threading.Lock()
 
     DEFAULT_STATUS_FORCELIST = (429, 500, 502, 503, 504)
     DEFAULT_BACKOFF_FACTOR = 0.5
@@ -62,44 +58,16 @@ class BaseConfig(ABC):
         "me-central-1": "https://uae.api.aidefense.security.cisco.com",
     }
 
-    # Backward-compat: map legacy short codes to canonical AWS region names.
     _SHORT_REGION_MAP = {
         "us": "us-west-2",
         "eu": "eu-central-1",
         "apj": "ap-northeast-1",
     }
 
-    def __new__(cls, *args, **kwargs):
-        if cls is BaseConfig:
-            raise TypeError("BaseConfig is abstract and cannot be instantiated directly")
-
-        # Singleton constructor for Config. Ensures only one instance is created per subclass.
-        # Acquiring a lock is expensive, so we only do it if we need to. Future initializations will be fast.
-        # Once the lock is acquired, we check again to ensure no other thread has created an instance.
-        if cls not in cls._instances:
-            with cls._lock:
-                if cls not in cls._instances:
-                    cls._instances[cls] = super().__new__(cls)
-
-        return cls._instances[cls]
-
     _logger = logging.getLogger("aidefense_sdk.config")
 
     def __init__(self, *args, **kwargs):
-        # Double-checked locking: fast path avoids the lock for already-init'd
-        # singletons; the lock prevents concurrent first-time callers from both
-        # running _initialize on the same instance.
-        if not getattr(self, "_initialized", False):
-            with self._lock:
-                if not getattr(self, "_initialized", False):
-                    try:
-                        self._initialize(*args, **kwargs)
-                        self._initialized = True
-                    except Exception:
-                        self._instances.pop(type(self), None)
-                        raise
-        elif args or kwargs:
-            self._warn_if_params_differ(*args, **kwargs)
+        self._initialize(*args, **kwargs)
 
     def _set_region(self, region: str):
         if not isinstance(region, str):
@@ -181,53 +149,6 @@ class BaseConfig(ABC):
             "pool_connections": pool_config.get("pool_connections", self.DEFAULT_POOL_CONNECTIONS),
             "pool_maxsize": pool_config.get("pool_maxsize", self.DEFAULT_POOL_MAXSIZE),
         }
-
-    _INIT_PARAM_NAMES = (
-        "region", "runtime_base_url", "management_base_url", "timeout",
-    )
-
-    def _warn_if_params_differ(self, *args, **kwargs):
-        """Log a warning when the singleton is re-requested with different parameters."""
-        merged = dict(zip(self._INIT_PARAM_NAMES, args))
-        merged.update(kwargs)
-
-        _NORMALIZERS = {
-            "region": self._normalize_requested_region,
-            "runtime_base_url": self._normalize_url,
-            "management_base_url": self._normalize_url,
-        }
-        diffs = []
-        for key in self._INIT_PARAM_NAMES:
-            if key not in merged or merged[key] is None:
-                continue
-            requested = merged[key]
-            normalizer = _NORMALIZERS.get(key)
-            if normalizer:
-                requested = normalizer(requested)
-            current = getattr(self, key, None)
-            if current is not None and requested != current:
-                diffs.append(f"{key}={current!r} (requested {merged[key]!r})")
-        if diffs:
-            self._logger.warning(
-                "%s singleton already initialized. Ignoring different "
-                "parameters: %s. Construct %s once and share it, or clear "
-                "%s._instances to re-initialize.",
-                type(self).__name__,
-                ", ".join(diffs),
-                type(self).__name__,
-                type(self).__name__,
-            )
-
-    @staticmethod
-    def _normalize_requested_region(region):
-        """Map short-code regions to canonical names for comparison."""
-        _SHORT = {"us": "us-west-2", "eu": "eu-central-1", "apj": "ap-northeast-1"}
-        return _SHORT.get(region, region) if isinstance(region, str) else region
-
-    @staticmethod
-    def _normalize_url(url):
-        """Strip trailing slash to match stored value normalization."""
-        return url.rstrip("/") if isinstance(url, str) else url
 
     @abstractmethod
     def _initialize(self, *args, **kwargs):

@@ -18,7 +18,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+import asyncio
+from typing import TYPE_CHECKING, Callable, Optional
 
 if TYPE_CHECKING:
     from .client import _Api
@@ -51,13 +52,14 @@ from .routes import (
     red_team_job_report,
 )
 
+_TERMINAL_STATUSES = frozenset({"COMPLETED", "FAILED", "CANCELLED"})
+
 
 class AdaptiveValidation:
     """
     Run and manage adaptive (red-team) validation jobs.
 
-    Adaptive validation uses an AI attacker that iteratively probes the target,
-    learning from each response to discover weaknesses.
+    All methods are coroutines — call them with ``await``.
     """
 
     def __init__(self, api: _Api):
@@ -67,57 +69,57 @@ class AdaptiveValidation:
     # Job lifecycle
     # ------------------------------------------------------------------
 
-    def start(
+    async def start(
         self, request: StartAdaptiveRedTeamRequest
     ) -> StartRedTeamJobResponse:
         """Start a new adaptive red-team validation job."""
         data = request.model_dump(exclude_defaults=True)
-        response = self._api.request("POST", red_team_adaptive(), data=data)
+        response = await self._api.request("POST", red_team_adaptive(), data=data)
         return self._api.parse(
             StartRedTeamJobResponse, response, "start adaptive validation response"
         )
 
-    def get_job(self, job_id: str) -> GetRedTeamJobResponse:
+    async def get_job(self, job_id: str) -> GetRedTeamJobResponse:
         """Get details of a red-team job."""
         self._api.ensure_uuid(job_id, "job_id")
-        response = self._api.request("GET", red_team_job(job_id))
+        response = await self._api.request("GET", red_team_job(job_id))
         return self._api.parse(
             GetRedTeamJobResponse, response, "get red team job response"
         )
 
-    def list_jobs(
+    async def list_jobs(
         self, request: ListRedTeamJobsRequest
     ) -> ListRedTeamJobsResponse:
         """List red-team jobs with optional filtering and pagination."""
         params = request.model_dump(exclude_defaults=True)
-        response = self._api.request("GET", red_team_jobs(), params=params)
+        response = await self._api.request("GET", red_team_jobs(), params=params)
         return self._api.parse(
             ListRedTeamJobsResponse, response, "list red team jobs response"
         )
 
-    def update_job(
+    async def update_job(
         self, job_id: str, request: UpdateRedTeamJobRequest
     ) -> UpdateRedTeamJobResponse:
         """Update a red-team job (e.g. rename or change description)."""
         self._api.ensure_uuid(job_id, "job_id")
         data = request.model_dump(exclude_defaults=True)
-        response = self._api.request("PATCH", red_team_job(job_id), data=data)
+        response = await self._api.request("PATCH", red_team_job(job_id), data=data)
         return self._api.parse(
             UpdateRedTeamJobResponse, response, "update red team job response"
         )
 
-    def pause_job(self, job_id: str) -> PauseRedTeamJobResponse:
+    async def pause_job(self, job_id: str) -> PauseRedTeamJobResponse:
         """Pause a running red-team job.
 
         Note: This endpoint may not be available on all deployments.
         """
         self._api.ensure_uuid(job_id, "job_id")
-        response = self._api.request("POST", red_team_job_pause(job_id))
+        response = await self._api.request("POST", red_team_job_pause(job_id))
         return self._api.parse(
             PauseRedTeamJobResponse, response, "pause red team job response"
         )
 
-    def resume_job(
+    async def resume_job(
         self,
         job_id: str,
         options: Optional[ResumeRedTeamJobOptions] = None,
@@ -128,25 +130,25 @@ class AdaptiveValidation:
         """
         self._api.ensure_uuid(job_id, "job_id")
         data = options.model_dump(exclude_defaults=True) if options else None
-        response = self._api.request(
+        response = await self._api.request(
             "POST", red_team_job_resume(job_id), data=data
         )
         return self._api.parse(
             ResumeRedTeamJobResponse, response, "resume red team job response"
         )
 
-    def cancel_job(self, job_id: str) -> CancelRedTeamJobResponse:
+    async def cancel_job(self, job_id: str) -> CancelRedTeamJobResponse:
         """Cancel a running or paused red-team job.
 
         Note: This endpoint may not be available on all deployments.
         """
         self._api.ensure_uuid(job_id, "job_id")
-        response = self._api.request("POST", red_team_job_cancel(job_id))
+        response = await self._api.request("POST", red_team_job_cancel(job_id))
         return self._api.parse(
             CancelRedTeamJobResponse, response, "cancel red team job response"
         )
 
-    def restart_job(
+    async def restart_job(
         self,
         job_id: str,
         options: Optional[RestartRedTeamJobOptions] = None,
@@ -157,29 +159,71 @@ class AdaptiveValidation:
         """
         self._api.ensure_uuid(job_id, "job_id")
         data = options.model_dump(exclude_defaults=True) if options else None
-        response = self._api.request(
+        response = await self._api.request(
             "POST", red_team_job_restart(job_id), data=data
         )
         return self._api.parse(
             RestartRedTeamJobResponse, response, "restart red team job response"
         )
 
-    def delete_job(self, job_id: str) -> DeleteRedTeamJobResponse:
+    async def delete_job(self, job_id: str) -> DeleteRedTeamJobResponse:
         """Delete a red-team job and its associated data."""
         self._api.ensure_uuid(job_id, "job_id")
-        response = self._api.request("DELETE", red_team_job(job_id))
+        response = await self._api.request("DELETE", red_team_job(job_id))
         return self._api.parse(
             DeleteRedTeamJobResponse, response, "delete red team job response"
         )
 
     # ------------------------------------------------------------------
+    # Polling helper
+    # ------------------------------------------------------------------
+
+    async def wait_for_completion(
+        self,
+        job_id: str,
+        *,
+        poll_interval: float = 10.0,
+        timeout: float = 3600.0,
+        on_poll: Optional[Callable[[GetRedTeamJobResponse], None]] = None,
+    ) -> GetRedTeamJobResponse:
+        """Poll a job until it reaches a terminal state (COMPLETED, FAILED, CANCELLED).
+
+        Args:
+            job_id: The red-team job ID to poll.
+            poll_interval: Seconds between each poll. Defaults to 10.
+            timeout: Maximum seconds to wait before raising TimeoutError. Defaults to 3600.
+            on_poll: Optional callback invoked after each poll with the latest job response.
+
+        Returns:
+            The final ``GetRedTeamJobResponse`` in a terminal state.
+
+        Raises:
+            TimeoutError: If the job does not finish within *timeout* seconds.
+        """
+        self._api.ensure_uuid(job_id, "job_id")
+        elapsed = 0.0
+        while True:
+            job = await self.get_job(job_id)
+            if on_poll is not None:
+                on_poll(job)
+            status = getattr(job, "status", None) or ""
+            if status.upper() in _TERMINAL_STATUSES:
+                return job
+            if elapsed >= timeout:
+                raise TimeoutError(
+                    f"Job {job_id} did not complete within {timeout}s (last status: {status})"
+                )
+            await asyncio.sleep(poll_interval)
+            elapsed += poll_interval
+
+    # ------------------------------------------------------------------
     # Reports
     # ------------------------------------------------------------------
 
-    def get_report(self, job_id: str) -> GetRedTeamReportResponse:
+    async def get_report(self, job_id: str) -> GetRedTeamReportResponse:
         """Get the report for a completed red-team job."""
         self._api.ensure_uuid(job_id, "job_id")
-        response = self._api.request("GET", red_team_job_report(job_id))
+        response = await self._api.request("GET", red_team_job_report(job_id))
         return self._api.parse(
             GetRedTeamReportResponse, response, "get red team report response"
         )

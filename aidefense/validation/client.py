@@ -14,19 +14,20 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Facade client for the AI Defense Validation API."""
+"""Async facade client for the AI Defense Validation API."""
 
 from __future__ import annotations
 
+import logging
+import platform
 import uuid
 from typing import Any, Dict, Optional, Type, TypeVar, cast
 
+import aiohttp
 from pydantic import BaseModel, ValidationError as PydanticValidationError
 
-from ..management.auth import ManagementAuth
-from ..config import Config
-from ..exceptions import ResponseParseError
-from ..request_handler import RequestHandler
+from ..exceptions import ApiError, ResponseParseError, SDKError, ValidationError
+from ..version import version
 from .targets import Targets
 from .profiles import Profiles
 from .custom_goals import CustomGoals
@@ -35,30 +36,48 @@ from .adaptive_validation import AdaptiveValidation
 
 T = TypeVar("T", bound=BaseModel)
 
+_USER_AGENT = f"Cisco-AI-Defense-Python-SDK/{version} (Python {platform.python_version()})"
+_AUTH_HEADER = "X-Cisco-AI-Defense-Tenant-API-Key"
+_REQUEST_ID_HEADER = "x-aidefense-request-id"
+
 
 class _Api:
-    """Shared request helper injected into every validation resource class.
-
-    Owns URL construction, HTTP dispatch, response parsing, and input
-    validation so that resource classes stay free of infrastructure concerns.
-    """
+    """Shared async request helper injected into every validation resource class."""
 
     _API_PREFIX_TEMPLATE = "{base}/api/ai-defense/v1"
 
     def __init__(
         self,
-        auth: ManagementAuth,
-        config: Config,
-        request_handler: RequestHandler,
+        api_key: str,
+        base_url: str,
+        timeout: int = 30,
+        logger: Optional[logging.Logger] = None,
     ):
-        self._auth = auth
-        self.config = config
-        self._request_handler = request_handler
-        self._api_prefix = self._API_PREFIX_TEMPLATE.format(
-            base=config.management_base_url
-        )
+        self._api_key = api_key
+        self._base_url = base_url.rstrip("/")
+        self._timeout = aiohttp.ClientTimeout(total=timeout)
+        self._logger = logger or logging.getLogger("aidefense_sdk.validation")
+        self._api_prefix = self._API_PREFIX_TEMPLATE.format(base=self._base_url)
+        self._session: Optional[aiohttp.ClientSession] = None
 
-    def request(
+    async def _ensure_session(self) -> aiohttp.ClientSession:
+        if self._session is None or self._session.closed:
+            self._session = aiohttp.ClientSession(
+                timeout=self._timeout,
+                headers={
+                    "User-Agent": _USER_AGENT,
+                    "Content-Type": "application/json",
+                    _AUTH_HEADER: self._api_key,
+                },
+            )
+        return self._session
+
+    async def close(self) -> None:
+        if self._session and not self._session.closed:
+            await self._session.close()
+            self._session = None
+
+    async def request(
         self,
         method: str,
         path: str,
@@ -66,17 +85,48 @@ class _Api:
         data: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
-        """Build the full URL and dispatch the HTTP request."""
+        """Build the full URL and dispatch the async HTTP request."""
+        session = await self._ensure_session()
         url = f"{self._api_prefix}/{path.lstrip('/')}"
-        return self._request_handler.request(
+        request_id = str(uuid.uuid4())
+
+        req_headers: Dict[str, str] = {_REQUEST_ID_HEADER: request_id}
+        if headers:
+            req_headers.update(headers)
+
+        self._logger.debug("request %s %s", method, url)
+
+        async with session.request(
             method=method,
             url=url,
-            auth=self._auth,
-            headers=headers,
-            json_data=data,
+            headers=req_headers,
             params=params,
-            timeout=self.config.timeout,
-        )
+            json=data,
+        ) as response:
+            if response.status >= 400:
+                return await self._handle_error(response, request_id)
+            if response.status == 204 or response.content_length == 0:
+                return {}
+            return await response.json()
+
+    async def _handle_error(
+        self, response: aiohttp.ClientResponse, request_id: str
+    ) -> Dict[str, Any]:
+        try:
+            error_data = await response.json()
+        except (ValueError, aiohttp.ContentTypeError):
+            text = await response.text()
+            error_data = {"message": text or "Unknown error"}
+
+        msg = error_data.get("message", "Unknown error")
+        status = response.status
+
+        if status == 401:
+            raise SDKError(f"Authentication error: {msg}", status)
+        elif status == 400:
+            raise ValidationError(f"Bad request: {msg}", status)
+        else:
+            raise ApiError(f"API error {status}: {msg}", status, request_id=request_id)
 
     def parse(self, model_class: Type[T], data: Any, context: str) -> T:
         """Parse raw API response data into a Pydantic model."""
@@ -88,7 +138,7 @@ class _Api:
         try:
             return cast(T, model_class.model_validate(data))
         except PydanticValidationError as e:
-            self.config.logger.warning(f"Failed to parse {context}: {e}")
+            self._logger.warning("Failed to parse %s: %s", context, e)
             raise ResponseParseError(f"Failed to parse {context}: {e}") from e
 
     @staticmethod
@@ -100,54 +150,61 @@ class _Api:
             raise ValueError(f"Invalid {field_name}: must be a UUID string")
 
 
+# Default region endpoints for convenience when Config is not used.
+_MANAGEMENT_REGION_ENDPOINTS = {
+    "us": "https://us.api.aidefense.security.cisco.com",
+    "eu": "https://eu.api.aidefense.security.cisco.com",
+    "ap": "https://ap.api.aidefense.security.cisco.com",
+}
+
+
 class ValidationClient:
     """
-    Client for the AI Defense Validation API.
+    Async client for the AI Defense Validation API.
 
-    Provides access to all validation API functionality through
-    resource-specific sub-clients. Creates a shared ``RequestHandler``
-    for connection pooling across all sub-clients.
+    Use as an async context manager to ensure the HTTP session is closed::
+
+        async with ValidationClient(api_key="...") as client:
+            targets = await client.targets.list(ListTargetsRequest())
 
     Args:
         api_key: Your AI Defense API key for authentication.
-        config: SDK configuration for endpoints, logging, retries, etc.
-            If not provided, a default singleton ``Config`` is used.
-
-    Example:
-        .. code-block:: python
-
-            from aidefense.validation import ValidationClient
-
-            client = ValidationClient(api_key="your-api-key")
-
-            # Manage targets
-            targets = client.targets.list(ListTargetsRequest())
-
-            # Run standard validation
-            response = client.standard.start(StartAiValidationRequest(...))
-
-            # Run adaptive (red-team) validation
-            response = client.adaptive.start(StartAdaptiveRedTeamRequest(...))
+        base_url: Management API base URL. Defaults to the US endpoint.
+        timeout: HTTP request timeout in seconds. Defaults to 30.
+        logger: Optional custom logger instance.
     """
 
     def __init__(
         self,
         api_key: str,
-        config: Optional[Config] = None,
+        base_url: str = "https://us.api.aidefense.security.cisco.com",
+        timeout: int = 30,
+        logger: Optional[logging.Logger] = None,
     ):
         if not api_key or not isinstance(api_key, str) or api_key.strip() == "":
             raise ValueError("API key is required")
 
-        self._auth = ManagementAuth(api_key)
-        self.config = config or Config()
-        self._request_handler = RequestHandler(self.config)
+        self._api = _Api(
+            api_key=api_key,
+            base_url=base_url,
+            timeout=timeout,
+            logger=logger,
+        )
+        self._targets = Targets(self._api)
+        self._profiles = Profiles(self._api)
+        self._custom_goals = CustomGoals(self._api)
+        self._standard = StandardValidation(self._api)
+        self._adaptive = AdaptiveValidation(self._api)
 
-        api = _Api(self._auth, self.config, self._request_handler)
-        self._targets = Targets(api)
-        self._profiles = Profiles(api)
-        self._custom_goals = CustomGoals(api)
-        self._standard = StandardValidation(api)
-        self._adaptive = AdaptiveValidation(api)
+    async def __aenter__(self) -> ValidationClient:
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        await self.close()
+
+    async def close(self) -> None:
+        """Close the underlying HTTP session."""
+        await self._api.close()
 
     @property
     def targets(self) -> Targets:
@@ -173,8 +230,3 @@ class ValidationClient:
     def adaptive(self) -> AdaptiveValidation:
         """Sub-client for adaptive (red-team) validation jobs."""
         return self._adaptive
-
-    @property
-    def api_key(self) -> str:
-        """Expose the API key for compatibility."""
-        return self._auth.api_key
