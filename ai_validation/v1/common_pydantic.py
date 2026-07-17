@@ -44,11 +44,11 @@ class AttackRerunFilter(_ProtoEnum):
     the source job. When no filters are specified, every attack is rerun.
     """
 
-    UNSPECIFIED = ("UNSPECIFIED", 0)
+    ATTACK_RERUN_FILTER_UNSPECIFIED = ("ATTACK_RERUN_FILTER_UNSPECIFIED", 0)
     # The attack succeeded against the target; the target failed to prevent it.
-    ATTACK_SUCCESSFUL = ("ATTACK_SUCCESSFUL", 1)
+    ATTACK_RERUN_FILTER_ATTACK_SUCCESSFUL = ("ATTACK_RERUN_FILTER_ATTACK_SUCCESSFUL", 1)
     # The attack loop produced an error and skipped the attack.
-    ATTACK_SKIPPED = ("ATTACK_SKIPPED", 2)
+    ATTACK_RERUN_FILTER_ATTACK_SKIPPED = ("ATTACK_RERUN_FILTER_ATTACK_SKIPPED", 2)
 
 
 class PageRequest(_ProtoModel):

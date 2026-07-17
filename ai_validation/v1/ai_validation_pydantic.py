@@ -101,10 +101,10 @@ class TargetType(_ProtoEnum):
     TargetType defines the type of validation target
     """
 
-    UNSPECIFIED = ("UNSPECIFIED", 0)
-    MODEL = ("MODEL", 1)
-    APPLICATION = ("APPLICATION", 2)
-    AGENT = ("AGENT", 3)
+    TARGET_TYPE_UNSPECIFIED = ("TARGET_TYPE_UNSPECIFIED", 0)
+    TARGET_TYPE_MODEL = ("TARGET_TYPE_MODEL", 1)
+    TARGET_TYPE_APPLICATION = ("TARGET_TYPE_APPLICATION", 2)
+    TARGET_TYPE_AGENT = ("TARGET_TYPE_AGENT", 3)
 
 
 class TargetProvider(_ProtoEnum):
@@ -112,18 +112,18 @@ class TargetProvider(_ProtoEnum):
     TargetProvider defines the infrastructure provider for the target
     """
 
-    UNSPECIFIED = ("UNSPECIFIED", 0)
-    AWS_BEDROCK = ("AWS_BEDROCK", 1)
-    CUSTOM_ENDPOINT = ("CUSTOM_ENDPOINT", 2)
-    AI_DEFENSE_APPLICATION = ("AI_DEFENSE_APPLICATION", 3)
-    AWS_AGENTCORE = ("AWS_AGENTCORE", 4)
+    TARGET_PROVIDER_UNSPECIFIED = ("TARGET_PROVIDER_UNSPECIFIED", 0)
+    TARGET_PROVIDER_AWS_BEDROCK = ("TARGET_PROVIDER_AWS_BEDROCK", 1)
+    TARGET_PROVIDER_CUSTOM_ENDPOINT = ("TARGET_PROVIDER_CUSTOM_ENDPOINT", 2)
+    TARGET_PROVIDER_AI_DEFENSE_APPLICATION = ("TARGET_PROVIDER_AI_DEFENSE_APPLICATION", 3)
+    TARGET_PROVIDER_AWS_AGENTCORE = ("TARGET_PROVIDER_AWS_AGENTCORE", 4)
 
 
 class ObjectStatus(_ProtoEnum):
-    UNSPECIFIED = ("UNSPECIFIED", 0)
-    ACTIVE = ("ACTIVE", 1)
-    INACTIVE = ("INACTIVE", 2)
-    DELETED = ("DELETED", 3)
+    OBJECT_STATUS_UNSPECIFIED = ("OBJECT_STATUS_UNSPECIFIED", 0)
+    OBJECT_STATUS_ACTIVE = ("OBJECT_STATUS_ACTIVE", 1)
+    OBJECT_STATUS_INACTIVE = ("OBJECT_STATUS_INACTIVE", 2)
+    OBJECT_STATUS_DELETED = ("OBJECT_STATUS_DELETED", 3)
 
 
 class ConnectionTestState(_ProtoEnum):
@@ -132,13 +132,13 @@ class ConnectionTestState(_ProtoEnum):
     Distinct from ObjectStatus, which tracks whether the target is usable (ACTIVE/INACTIVE).
     """
 
-    UNSPECIFIED = ("UNSPECIFIED", 0)
+    CONNECTION_TEST_STATE_UNSPECIFIED = ("CONNECTION_TEST_STATE_UNSPECIFIED", 0)
     # never tested / unknown
-    IN_PROGRESS = ("IN_PROGRESS", 1)
+    CONNECTION_TEST_STATE_IN_PROGRESS = ("CONNECTION_TEST_STATE_IN_PROGRESS", 1)
     # a connection test is currently running
-    PASSED = ("PASSED", 2)
+    CONNECTION_TEST_STATE_PASSED = ("CONNECTION_TEST_STATE_PASSED", 2)
     # most recent test succeeded
-    FAILED = ("FAILED", 3)
+    CONNECTION_TEST_STATE_FAILED = ("CONNECTION_TEST_STATE_FAILED", 3)
     # most recent test failed; see error_detail
 
 
@@ -148,21 +148,21 @@ class AttackVersionStatus(_ProtoEnum):
     processed for a given version.
     """
 
-    UNSPECIFIED = ("UNSPECIFIED", 0)
+    ATTACK_VERSION_STATUS_UNSPECIFIED = ("ATTACK_VERSION_STATUS_UNSPECIFIED", 0)
     # The version is queued and waiting for processing to begin.
-    PENDING = ("PENDING", 1)
+    ATTACK_VERSION_STATUS_PENDING = ("ATTACK_VERSION_STATUS_PENDING", 1)
     # Attacks for the version are currently being processed.
-    PROCESSING = ("PROCESSING", 2)
+    ATTACK_VERSION_STATUS_PROCESSING = ("ATTACK_VERSION_STATUS_PROCESSING", 2)
     # Processing completed successfully and the attacks are available for use.
-    AVAILABLE = ("AVAILABLE", 3)
+    ATTACK_VERSION_STATUS_AVAILABLE = ("ATTACK_VERSION_STATUS_AVAILABLE", 3)
     # Processing failed.
-    FAILED = ("FAILED", 4)
+    ATTACK_VERSION_STATUS_FAILED = ("ATTACK_VERSION_STATUS_FAILED", 4)
 
 
 class PromptBankSource(_ProtoEnum):
-    UNSPECIFIED = ("UNSPECIFIED", 0)
-    PREDEFINED = ("PREDEFINED", 1)
-    CUSTOM = ("CUSTOM", 2)
+    PROMPT_BANK_SOURCE_UNSPECIFIED = ("PROMPT_BANK_SOURCE_UNSPECIFIED", 0)
+    PROMPT_BANK_SOURCE_PREDEFINED = ("PROMPT_BANK_SOURCE_PREDEFINED", 1)
+    PROMPT_BANK_SOURCE_CUSTOM = ("PROMPT_BANK_SOURCE_CUSTOM", 2)
 
 
 class JobStatus(_ProtoEnum):
@@ -213,20 +213,20 @@ class ValidationJobSortBy(_ProtoEnum):
     Enum for sorting validation jobs
     """
 
-    UNSPECIFIED = ("UNSPECIFIED", 0)
-    STARTED_AT = ("STARTED_AT", 1)
-    CREATED_AT = ("CREATED_AT", 2)
-    STATUS = ("STATUS", 3)
-    VALIDATION_SCAN_NAME = ("VALIDATION_SCAN_NAME", 4)
-    ASSET_TYPE = ("ASSET_TYPE", 5)
-    AI_ASSET_NAME = ("AI_ASSET_NAME", 6)
-    MODEL_ENDPOINT_URL_MODEL_ID = ("MODEL_ENDPOINT_URL_MODEL_ID", 7)
+    VALIDATION_JOB_SORT_BY_UNSPECIFIED = ("VALIDATION_JOB_SORT_BY_UNSPECIFIED", 0)
+    VALIDATION_JOB_SORT_BY_STARTED_AT = ("VALIDATION_JOB_SORT_BY_STARTED_AT", 1)
+    VALIDATION_JOB_SORT_BY_CREATED_AT = ("VALIDATION_JOB_SORT_BY_CREATED_AT", 2)
+    VALIDATION_JOB_SORT_BY_STATUS = ("VALIDATION_JOB_SORT_BY_STATUS", 3)
+    VALIDATION_JOB_SORT_BY_VALIDATION_SCAN_NAME = ("VALIDATION_JOB_SORT_BY_VALIDATION_SCAN_NAME", 4)
+    VALIDATION_JOB_SORT_BY_ASSET_TYPE = ("VALIDATION_JOB_SORT_BY_ASSET_TYPE", 5)
+    VALIDATION_JOB_SORT_BY_AI_ASSET_NAME = ("VALIDATION_JOB_SORT_BY_AI_ASSET_NAME", 6)
+    VALIDATION_JOB_SORT_BY_MODEL_ENDPOINT_URL_MODEL_ID = ("VALIDATION_JOB_SORT_BY_MODEL_ENDPOINT_URL_MODEL_ID", 7)
 
 
 class SortOrder(_ProtoEnum):
-    UNSPECIFIED = ("UNSPECIFIED", 0)
-    ASC = ("ASC", 1)
-    DESC = ("DESC", 2)
+    SORT_ORDER_UNSPECIFIED = ("SORT_ORDER_UNSPECIFIED", 0)
+    SORT_ORDER_ASC = ("SORT_ORDER_ASC", 1)
+    SORT_ORDER_DESC = ("SORT_ORDER_DESC", 2)
 
 
 class ProfileView(_ProtoEnum):
@@ -235,11 +235,11 @@ class ProfileView(_ProtoEnum):
     """
 
     # Default. Returns base profile information only.
-    UNSPECIFIED = ("UNSPECIFIED", 0)
+    PROFILE_VIEW_UNSPECIFIED = ("PROFILE_VIEW_UNSPECIFIED", 0)
     # Returns base profile information only.
-    BASIC = ("BASIC", 1)
+    PROFILE_VIEW_BASIC = ("PROFILE_VIEW_BASIC", 1)
     # Returns base profile information along with usage data (e.g. job IDs).
-    WITH_USAGE = ("WITH_USAGE", 2)
+    PROFILE_VIEW_WITH_USAGE = ("PROFILE_VIEW_WITH_USAGE", 2)
 
 
 class Header(_ProtoModel):
@@ -1605,11 +1605,28 @@ class GetAiValidationJobAggregatesResponse(_ProtoModel):
     )
 
 
-class ValidationProfile(_ProtoModel):
+class StandardRedTeamProfileConfig(_ProtoModel):
     """
-    ==================== Validation Profile Messages ===================
+    Profile configuration for standard red team test runs.
     """
 
+    # Attacks for the specified modalities will be used for test runs using this
+    # profile. Limited to max of 1 modality temporarily.
+    attack_modalities: "list[AttackModality]" = _Field(
+        default_factory=list,
+        description="Attacks for the specified modalities will be used for test runs using this\nprofile. Limited to max of 1 modality temporarily.",
+    )
+
+
+class AdaptiveRedTeamProfileConfig(_ProtoModel):
+    """
+    Profile configuration for adaptive red team test runs.
+    """
+
+    pass
+
+
+class ValidationProfile(_ProtoModel):
     # Unique identifier for a Validation Profile.
     profile_id: str = _Field(
         default="",
@@ -1663,11 +1680,22 @@ class ValidationProfile(_ProtoModel):
         default=None,
         description="Current state of the Validation Profile.",
     )
+    # Deprecated: Use StandardRedTeamProfileConfig (standard_config) instead.
     # Attacks for the specified modalities will be used for test runs using this
     # profile. Limited to max of 1 modality temporarily.
     attack_modalities: "list[AttackModality]" = _Field(
         default_factory=list,
-        description="Attacks for the specified modalities will be used for test runs using this\nprofile. Limited to max of 1 modality temporarily.",
+        description="Deprecated: Use StandardRedTeamProfileConfig (standard_config) instead.\nAttacks for the specified modalities will be used for test runs using this\nprofile. Limited to max of 1 modality temporarily.",
+    )
+    # Configuration for standard red team test runs using this profile.
+    standard_config: "StandardRedTeamProfileConfig | None" = _Field(
+        default=None,
+        description="Configuration for standard red team test runs using this profile.",
+    )
+    # Configuration for adaptive red team test runs using this profile.
+    adaptive_config: "AdaptiveRedTeamProfileConfig | None" = _Field(
+        default=None,
+        description="Configuration for adaptive red team test runs using this profile.",
     )
 
 
@@ -1718,11 +1746,22 @@ class CreateAiValidationProfileRequest(_ProtoModel):
         default_factory=list,
         description="Optional custom attack goal IDs that jobs using this profile will run.",
     )
+    # Deprecated: Use StandardRedTeamProfileConfig (standard_config) instead.
     # Attacks for the specified modalities will be used for test runs using this
     # profile. Limited to max of 1 modality temporarily.
     attack_modalities: "list[AttackModality]" = _Field(
         default_factory=list,
-        description="Attacks for the specified modalities will be used for test runs using this\nprofile. Limited to max of 1 modality temporarily.",
+        description="Deprecated: Use StandardRedTeamProfileConfig (standard_config) instead.\nAttacks for the specified modalities will be used for test runs using this\nprofile. Limited to max of 1 modality temporarily.",
+    )
+    # Configuration for standard red team test runs using this profile.
+    standard_config: "StandardRedTeamProfileConfig | None" = _Field(
+        default=None,
+        description="Configuration for standard red team test runs using this profile.",
+    )
+    # Configuration for adaptive red team test runs using this profile.
+    adaptive_config: "AdaptiveRedTeamProfileConfig | None" = _Field(
+        default=None,
+        description="Configuration for adaptive red team test runs using this profile.",
     )
 
 
@@ -2063,15 +2102,27 @@ class CreateTargetRequest(_ProtoModel):
         default=None,
         description="JSON path (same syntax as the target's response path) checked for a block signal when output is empty; a present, non-empty value means blocked.",
     )
+    # Deprecated: Use StandardRedTeamTargetConfig (standard_config) instead.
     # Supported attack modalities that can be run against this target.
     attack_modalities: "list[AttackModality]" = _Field(
         default_factory=list,
-        description="Supported attack modalities that can be run against this target.",
+        description="Deprecated: Use StandardRedTeamTargetConfig (standard_config) instead.\nSupported attack modalities that can be run against this target.",
     )
+    # Deprecated: Use AdaptiveRedTeamTargetConfig (adaptive_config) instead.
     # Extra information about the target to assist adaptive red team test runs.
     red_team_target_info: "RedTeamTargetInfo | None" = _Field(
         default=None,
-        description="Extra information about the target to assist adaptive red team test runs.",
+        description="Deprecated: Use AdaptiveRedTeamTargetConfig (adaptive_config) instead.\nExtra information about the target to assist adaptive red team test runs.",
+    )
+    # Configuration for standard red team test runs against this target.
+    standard_config: "StandardRedTeamTargetConfig | None" = _Field(
+        default=None,
+        description="Configuration for standard red team test runs against this target.",
+    )
+    # Configuration for adaptive red team test runs against this target.
+    adaptive_config: "AdaptiveRedTeamTargetConfig | None" = _Field(
+        default=None,
+        description="Configuration for adaptive red team test runs against this target.",
     )
 
     @_model_validator(mode="after")
@@ -2090,6 +2141,30 @@ class CreateTargetRequest(_ProtoModel):
 
 class RedTeamTargetInfo(_ProtoModel):
     target_context: "RedTeamTargetContext | None" = _Field(default=None)
+
+
+class StandardRedTeamTargetConfig(_ProtoModel):
+    """
+    Target configuration for standard red team test runs.
+    """
+
+    # Supported attack modalities that can be run against this target.
+    attack_modalities: "list[AttackModality]" = _Field(
+        default_factory=list,
+        description="Supported attack modalities that can be run against this target.",
+    )
+
+
+class AdaptiveRedTeamTargetConfig(_ProtoModel):
+    """
+    Target configuration for adaptive red team test runs.
+    """
+
+    # Extra information about the target to assist adaptive red team test runs.
+    target_context: "RedTeamTargetContext | None" = _Field(
+        default=None,
+        description="Extra information about the target to assist adaptive red team test runs.",
+    )
 
 
 class CreateTargetResponse(_ProtoModel):
@@ -2179,10 +2254,21 @@ class GetTargetResponse(_ProtoModel):
         default=None,
         description="JSON path checked for a block signal when output is empty.",
     )
+    # Deprecated: Use StandardRedTeamTargetConfig (standard_config) instead.
     # Supported attack modalities that can be run against this target.
     attack_modalities: "list[AttackModality]" = _Field(
         default_factory=list,
-        description="Supported attack modalities that can be run against this target.",
+        description="Deprecated: Use StandardRedTeamTargetConfig (standard_config) instead.\nSupported attack modalities that can be run against this target.",
+    )
+    # Configuration for standard red team test runs against this target.
+    standard_config: "StandardRedTeamTargetConfig | None" = _Field(
+        default=None,
+        description="Configuration for standard red team test runs against this target.",
+    )
+    # Configuration for adaptive red team test runs against this target.
+    adaptive_config: "AdaptiveRedTeamTargetConfig | None" = _Field(
+        default=None,
+        description="Configuration for adaptive red team test runs against this target.",
     )
 
     @_model_validator(mode="after")
@@ -2275,6 +2361,11 @@ class TargetUpdate(_ProtoModel):
     block_response_key: str = _Field(
         default="",
         description="JSON path checked for a block signal when output is empty; a present, non-empty value means blocked.",
+    )
+    # Standard red team configuration (e.g. attack modalities) to apply to the target.
+    standard_config: "StandardRedTeamTargetConfig | None" = _Field(
+        default=None,
+        description="Standard red team configuration (e.g. attack modalities) to apply to the target.",
     )
     custom: "CustomProviderUpdate | None" = _Field(
         default=None,
@@ -2403,10 +2494,21 @@ class TargetSummary(_ProtoModel):
         default=None,
         description="JSON path checked for a block signal when output is empty.",
     )
+    # Deprecated: Use StandardRedTeamTargetConfig (standard_config) instead.
     # Supported attack modalities that can be run against this target.
     attack_modalities: "list[AttackModality]" = _Field(
         default_factory=list,
-        description="Supported attack modalities that can be run against this target.",
+        description="Deprecated: Use StandardRedTeamTargetConfig (standard_config) instead.\nSupported attack modalities that can be run against this target.",
+    )
+    # Configuration for standard red team test runs against this target.
+    standard_config: "StandardRedTeamTargetConfig | None" = _Field(
+        default=None,
+        description="Configuration for standard red team test runs against this target.",
+    )
+    # Configuration for adaptive red team test runs against this target.
+    adaptive_config: "AdaptiveRedTeamTargetConfig | None" = _Field(
+        default=None,
+        description="Configuration for adaptive red team test runs against this target.",
     )
 
     @_model_validator(mode="after")
