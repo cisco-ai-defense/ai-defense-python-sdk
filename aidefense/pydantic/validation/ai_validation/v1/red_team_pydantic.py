@@ -10,7 +10,7 @@ from .common_pydantic import PageInfo
 
 from .common_pydantic import AttackRerunFilter
 
-from ai_validation_service.v1.ai_validation_service_pydantic import RedTeamReport
+from aidefense.pydantic.validation.ai_validation_service.v1.ai_validation_service_pydantic import RedTeamReport
 
 
 class _ProtoModel(_BaseModel):

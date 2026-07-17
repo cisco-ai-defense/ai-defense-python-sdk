@@ -11,39 +11,39 @@ from ._proto_types import ProtoInt64, ProtoTimestamp, _EnumValueOptions, _ProtoE
 
 from .common_pydantic import AttackRerunFilter
 
-from ai_validation_service.v1.ai_validation_service_pydantic import AWSRegion
+from aidefense.pydantic.validation.ai_validation_service.v1.ai_validation_service_pydantic import AWSRegion
 
-from ai_validation_service.v1.ai_validation_service_pydantic import ExternalApiProvider
+from aidefense.pydantic.validation.ai_validation_service.v1.ai_validation_service_pydantic import ExternalApiProvider
 
-from ai_validation_service.v1.ai_validation_service_pydantic import Language
+from aidefense.pydantic.validation.ai_validation_service.v1.ai_validation_service_pydantic import Language
 
-from ai_validation_service.v1.ai_validation_service_pydantic import PromptBank
+from aidefense.pydantic.validation.ai_validation_service.v1.ai_validation_service_pydantic import PromptBank
 
-from ai_validation_service.v1.ai_validation_service_pydantic import WebsocketResponseTypeConfig
+from aidefense.pydantic.validation.ai_validation_service.v1.ai_validation_service_pydantic import WebsocketResponseTypeConfig
 
-from ai_defense.deployment_controller.v1.deployment_controller_pydantic import HybridEnvironment
+from aidefense.pydantic.validation.ai_defense.deployment_controller.v1.deployment_controller_pydantic import HybridEnvironment
 
-from ai_validation_service.v1.ai_validation_service_pydantic import AttackType
+from aidefense.pydantic.validation.ai_validation_service.v1.ai_validation_service_pydantic import AttackType
 
-from ai_validation_service.v1.ai_validation_service_pydantic import ValidateResult
+from aidefense.pydantic.validation.ai_validation_service.v1.ai_validation_service_pydantic import ValidateResult
 
-from ai_validation_service.v1.ai_validation_service_pydantic import AttackModality
+from aidefense.pydantic.validation.ai_validation_service.v1.ai_validation_service_pydantic import AttackModality
 
-from ai_validation_service.v1.ai_validation_service_pydantic import ContentCategory
+from aidefense.pydantic.validation.ai_validation_service.v1.ai_validation_service_pydantic import ContentCategory
 
-from ai_validation_service.v1.ai_validation_service_pydantic import ContentType
+from aidefense.pydantic.validation.ai_validation_service.v1.ai_validation_service_pydantic import ContentType
 
-from ai_validation_service.v1.ai_validation_service_pydantic import MessageRequestConfig
+from aidefense.pydantic.validation.ai_validation_service.v1.ai_validation_service_pydantic import MessageRequestConfig
 
-from ai_validation_service.v1.ai_validation_service_pydantic import RedTeamTargetContext
+from aidefense.pydantic.validation.ai_validation_service.v1.ai_validation_service_pydantic import RedTeamTargetContext
 
-from ai_validation_service.v1.ai_validation_service_pydantic import Severity
+from aidefense.pydantic.validation.ai_validation_service.v1.ai_validation_service_pydantic import Severity
 
-from ai_validation_service.v1.ai_validation_service_pydantic import AttackResult
+from aidefense.pydantic.validation.ai_validation_service.v1.ai_validation_service_pydantic import AttackResult
 
-from ai_validation_service.v1.ai_validation_service_pydantic import SubTechnique
+from aidefense.pydantic.validation.ai_validation_service.v1.ai_validation_service_pydantic import SubTechnique
 
-from ai_validation_service.v1.ai_validation_service_pydantic import Technique
+from aidefense.pydantic.validation.ai_validation_service.v1.ai_validation_service_pydantic import Technique
 
 
 class _ProtoModel(_BaseModel):

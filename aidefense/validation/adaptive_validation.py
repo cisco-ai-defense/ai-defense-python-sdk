@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING, Callable, Optional
 if TYPE_CHECKING:
     from .client import _Api
 
-from ai_validation.v1.red_team_pydantic import (
+from aidefense.pydantic.validation.ai_validation.v1.red_team_pydantic import (
     StartAdaptiveRedTeamRequest,
     StartRedTeamJobResponse,
     GetRedTeamJobResponse,

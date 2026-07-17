@@ -29,7 +29,7 @@ from typing import TYPE_CHECKING, Callable, Optional
 if TYPE_CHECKING:
     from .client import _Api
 
-from ai_validation.v1.ai_validation_pydantic import (
+from aidefense.pydantic.validation.ai_validation.v1.ai_validation_pydantic import (
     StartAiValidationRequest,
     StartAiValidationResponse,
     GetAiValidationJobResponse,

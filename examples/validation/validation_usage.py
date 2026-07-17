@@ -41,7 +41,7 @@ from datetime import datetime
 from aidefense.exceptions import ApiError, SDKError, ValidationError
 
 from aidefense.validation import ValidationClient
-from ai_validation.v1.ai_validation_pydantic import (
+from aidefense.pydantic.validation.ai_validation.v1.ai_validation_pydantic import (
     CreateTargetRequest,
     CustomProviderConfig,
     ListTargetsRequest,
@@ -55,7 +55,7 @@ from ai_validation.v1.ai_validation_pydantic import (
     StartAiValidationRequest,
     ListAiValidationJobsRequest,
 )
-from ai_validation.v1.red_team_pydantic import (
+from aidefense.pydantic.validation.ai_validation.v1.red_team_pydantic import (
     StartAdaptiveRedTeamRequest,
     ListRedTeamJobsRequest,
 )
