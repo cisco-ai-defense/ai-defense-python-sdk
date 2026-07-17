@@ -107,7 +107,10 @@ class AdaptiveValidation:
         )
 
     def pause_job(self, job_id: str) -> PauseRedTeamJobResponse:
-        """Pause a running red-team job."""
+        """Pause a running red-team job.
+
+        Note: This endpoint may not be available on all deployments.
+        """
         self._api.ensure_uuid(job_id, "job_id")
         response = self._api.request("POST", red_team_job_pause(job_id))
         return self._api.parse(
@@ -119,7 +122,10 @@ class AdaptiveValidation:
         job_id: str,
         options: Optional[ResumeRedTeamJobOptions] = None,
     ) -> ResumeRedTeamJobResponse:
-        """Resume a paused red-team job."""
+        """Resume a paused red-team job.
+
+        Note: This endpoint may not be available on all deployments.
+        """
         self._api.ensure_uuid(job_id, "job_id")
         data = options.model_dump(exclude_defaults=True) if options else None
         response = self._api.request(
@@ -130,7 +136,10 @@ class AdaptiveValidation:
         )
 
     def cancel_job(self, job_id: str) -> CancelRedTeamJobResponse:
-        """Cancel a running or paused red-team job."""
+        """Cancel a running or paused red-team job.
+
+        Note: This endpoint may not be available on all deployments.
+        """
         self._api.ensure_uuid(job_id, "job_id")
         response = self._api.request("POST", red_team_job_cancel(job_id))
         return self._api.parse(
@@ -142,7 +151,10 @@ class AdaptiveValidation:
         job_id: str,
         options: Optional[RestartRedTeamJobOptions] = None,
     ) -> RestartRedTeamJobResponse:
-        """Restart a completed, cancelled, or failed red-team job."""
+        """Restart a completed, cancelled, or failed red-team job.
+
+        Note: This endpoint may not be available on all deployments.
+        """
         self._api.ensure_uuid(job_id, "job_id")
         data = options.model_dump(exclude_defaults=True) if options else None
         response = self._api.request(

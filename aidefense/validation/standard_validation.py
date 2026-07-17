@@ -135,7 +135,10 @@ class StandardValidation:
         )
 
     def pause_job(self, job_id: str) -> PauseAiValidationJobResponse:
-        """Pause a running validation job."""
+        """Pause a running validation job.
+
+        Note: This endpoint may not be available on all deployments.
+        """
         response = self._api.request("POST", ai_validation_job_pause(job_id))
         return self._api.parse(
             PauseAiValidationJobResponse, response, "pause job response"
@@ -146,7 +149,10 @@ class StandardValidation:
         job_id: str,
         options: Optional[ResumeAiValidationJobOptions] = None,
     ) -> ResumeAiValidationJobResponse:
-        """Resume a paused validation job."""
+        """Resume a paused validation job.
+
+        Note: This endpoint may not be available on all deployments.
+        """
         data = options.model_dump(exclude_defaults=True) if options else None
         response = self._api.request(
             "POST", ai_validation_job_resume(job_id), data=data
@@ -156,7 +162,10 @@ class StandardValidation:
         )
 
     def cancel_job(self, job_id: str) -> CancelAiValidationJobResponse:
-        """Cancel a running or paused validation job."""
+        """Cancel a running or paused validation job.
+
+        Note: This endpoint may not be available on all deployments.
+        """
         response = self._api.request("POST", ai_validation_job_cancel(job_id))
         return self._api.parse(
             CancelAiValidationJobResponse, response, "cancel job response"
@@ -167,7 +176,10 @@ class StandardValidation:
         job_id: str,
         options: Optional[RestartAiValidationJobOptions] = None,
     ) -> RestartAiValidationJobResponse:
-        """Restart a completed, cancelled, or failed validation job."""
+        """Restart a completed, cancelled, or failed validation job.
+
+        Note: This endpoint may not be available on all deployments.
+        """
         data = options.model_dump(exclude_defaults=True) if options else None
         response = self._api.request(
             "POST", ai_validation_job_restart(job_id), data=data
