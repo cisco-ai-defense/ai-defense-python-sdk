@@ -82,7 +82,9 @@ from .routes import (
     ai_validation_content_categories,
 )
 
-_TERMINAL_STATUSES = frozenset({"COMPLETED", "FAILED", "CANCELLED"})
+_TERMINAL_STATUSES = frozenset({
+    "JOB_COMPLETED", "JOB_FAILED", "JOB_CANCELLED",
+})
 
 
 class StandardValidation:
@@ -236,7 +238,7 @@ class StandardValidation:
         timeout: float = 3600.0,
         on_poll: Optional[Callable[[GetAiValidationJobResponse], None]] = None,
     ) -> GetAiValidationJobResponse:
-        """Poll a job until it reaches a terminal state (COMPLETED, FAILED, CANCELLED).
+        """Poll a job until it reaches a terminal state (JOB_COMPLETED, JOB_FAILED, JOB_CANCELLED).
 
         Args:
             task_id: The job/task ID to poll.

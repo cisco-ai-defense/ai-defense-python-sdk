@@ -110,9 +110,9 @@ async def main() -> None:
                 target_type=TargetType.TARGET_TYPE_MODEL,
                 provider=TargetProvider.TARGET_PROVIDER_CUSTOM_ENDPOINT,
                 custom=CustomProviderConfig(
-                    endpoint="https://httpbin.org/post",
-                    request_template='{"prompt": "{{prompt}}"}',
-                    response_json_path="json.prompt",
+                    model_endpoint_url="https://httpbin.org/post",
+                    model_request_template='{"prompt": "{{prompt}}"}',
+                    model_response_json_path="json.prompt",
                 ),
             )
             create_resp = await client.targets.create(create_req)
@@ -125,9 +125,9 @@ async def main() -> None:
                     target_type=TargetType.TARGET_TYPE_MODEL,
                     provider=TargetProvider.TARGET_PROVIDER_CUSTOM_ENDPOINT,
                     custom=CustomProviderConfig(
-                        endpoint="https://httpbin.org/post",
-                        request_template='{"prompt": "{{prompt}}"}',
-                        response_json_path="json.prompt",
+                        model_endpoint_url="https://httpbin.org/post",
+                        model_request_template='{"prompt": "{{prompt}}"}',
+                        model_response_json_path="json.prompt",
                     ),
                 )
             )

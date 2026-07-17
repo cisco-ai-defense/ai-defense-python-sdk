@@ -52,7 +52,11 @@ from .routes import (
     red_team_job_report,
 )
 
-_TERMINAL_STATUSES = frozenset({"COMPLETED", "FAILED", "CANCELLED"})
+_TERMINAL_STATUSES = frozenset({
+    "RED_TEAM_JOB_STATUS_COMPLETED",
+    "RED_TEAM_JOB_STATUS_FAILED",
+    "RED_TEAM_JOB_STATUS_CANCELLED",
+})
 
 
 class AdaptiveValidation:
@@ -186,7 +190,7 @@ class AdaptiveValidation:
         timeout: float = 3600.0,
         on_poll: Optional[Callable[[GetRedTeamJobResponse], None]] = None,
     ) -> GetRedTeamJobResponse:
-        """Poll a job until it reaches a terminal state (COMPLETED, FAILED, CANCELLED).
+        """Poll a job until it reaches a terminal state.
 
         Args:
             job_id: The red-team job ID to poll.
