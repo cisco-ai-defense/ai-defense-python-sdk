@@ -438,25 +438,6 @@ files = [
 ]
 
 [[package]]
-name = "cisco-ai-defense-protos"
-version = "0.1.0"
-description = ""
-optional = false
-python-versions = ">=3.9"
-files = []
-develop = false
-
-[package.dependencies]
-pydantic = ">=2.12"
-
-[package.source]
-type = "git"
-url = "https://github.com/cisco-aispg/ai-common.git"
-reference = "AIFW-23555-pydantic-codegen"
-resolved_reference = "4cabe85e2d503f3d353bc6a804ea558bf5451f38"
-subdirectory = "protos/gen/python"
-
-[[package]]
 name = "cisco-aibom"
 version = "0.5.2"
 description = "A tool to generate an AI BOM from source code."
@@ -3606,4 +3587,4 @@ aibom = ["cisco-aibom"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "c7ee1afe27d5734e9e385cedc4f0d8f9bc5c467beeb929a581292c5420277458"
+content-hash = "3eb6c725b601b88aa43347cfa99810e6fc4b5522ad1a6fe6552609c062a661b2"
