@@ -30,7 +30,7 @@ from ai_validation.v1.ai_validation_pydantic import (
     ListAiValidationProfilesRequest,
     ListAiValidationProfilesResponse,
     ListAiValidationProfilesByGoalIDResponse,
-    UpdateAiValidationProfileRequest,
+    ProfileUpdate,
     UpdateAiValidationProfileResponse,
 )
 from .routes import (
@@ -136,14 +136,17 @@ class Profiles:
         )
 
     def update(
-        self, profile_id: str, request: UpdateAiValidationProfileRequest
+        self, profile_id: str, request: ProfileUpdate
     ) -> UpdateAiValidationProfileResponse:
         """
         Update a validation profile.
 
+        The request body should contain only the fields to change.
+        grpc-gateway auto-derives the update mask from the JSON keys present.
+
         Args:
             profile_id: Unique identifier of the profile to update.
-            request: Fields to update on the profile.
+            request: ProfileUpdate containing only the fields to change.
 
         Returns:
             UpdateAiValidationProfileResponse: The update response.
@@ -152,7 +155,7 @@ class Profiles:
             ValidationError, ApiError, SDKError
         """
         self._api.ensure_uuid(profile_id, "profile_id")
-        data = request.model_dump(exclude_defaults=True)
+        data = request.model_dump(exclude_none=True)
         response = self._api.request(
             "PATCH", ai_validation_profile(profile_id), data=data
         )

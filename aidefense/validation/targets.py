@@ -29,7 +29,7 @@ from ai_validation.v1.ai_validation_pydantic import (
     GetTargetResponse,
     ListTargetsRequest,
     ListTargetsResponse,
-    UpdateTargetRequest,
+    TargetUpdate,
     UpdateTargetResponse,
     TestTargetConnectionRequest,
     TestTargetConnectionResponse,
@@ -124,14 +124,17 @@ class Targets:
         )
 
     def update(
-        self, target_id: str, request: UpdateTargetRequest
+        self, target_id: str, request: TargetUpdate
     ) -> UpdateTargetResponse:
         """
         Update a validation target.
 
+        The request body should contain only the fields to change.
+        grpc-gateway auto-derives the update mask from the JSON keys present.
+
         Args:
             target_id: Unique identifier of the target to update.
-            request: UpdateTargetRequest containing fields to update.
+            request: TargetUpdate containing only the fields to change.
 
         Returns:
             UpdateTargetResponse: The update response.
@@ -140,7 +143,7 @@ class Targets:
             ValidationError, ApiError, SDKError
         """
         self._api.ensure_uuid(target_id, "target_id")
-        data = request.model_dump(exclude_defaults=True)
+        data = request.model_dump(exclude_none=True)
         response = self._api.request(
             "PATCH", ai_validation_target(target_id), data=data
         )

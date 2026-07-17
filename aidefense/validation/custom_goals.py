@@ -28,7 +28,7 @@ from ai_validation.v1.ai_validation_pydantic import (
     CreateAiValidationCustomGoalResponse,
     ListAiValidationCustomGoalsRequest,
     ListAiValidationCustomGoalsResponse,
-    UpdateAiValidationCustomGoalRequest,
+    CustomGoalUpdate,
     UpdateAiValidationCustomGoalResponse,
 )
 from .routes import ai_validation_custom_goals, ai_validation_custom_goal
@@ -95,14 +95,17 @@ class CustomGoals:
         )
 
     def update(
-        self, custom_goal_id: str, request: UpdateAiValidationCustomGoalRequest
+        self, custom_goal_id: str, request: CustomGoalUpdate
     ) -> UpdateAiValidationCustomGoalResponse:
         """
         Update a custom goal.
 
+        The request body should contain only the fields to change.
+        grpc-gateway auto-derives the update mask from the JSON keys present.
+
         Args:
             custom_goal_id: Unique identifier of the custom goal to update.
-            request: Fields to update on the custom goal.
+            request: CustomGoalUpdate containing only the fields to change.
 
         Returns:
             UpdateAiValidationCustomGoalResponse: The update response.
@@ -111,7 +114,7 @@ class CustomGoals:
             ValidationError, ApiError, SDKError
         """
         self._api.ensure_uuid(custom_goal_id, "custom_goal_id")
-        data = request.model_dump(exclude_defaults=True)
+        data = request.model_dump(exclude_none=True)
         response = self._api.request(
             "PATCH", ai_validation_custom_goal(custom_goal_id), data=data
         )
