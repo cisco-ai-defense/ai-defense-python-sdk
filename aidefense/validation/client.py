@@ -27,7 +27,6 @@ from pydantic import BaseModel, ValidationError as PydanticValidationError
 
 from ..config import AsyncConfig
 from ..exceptions import ApiError, ResponseParseError, SDKError, ValidationError
-from ..management.auth import AsyncManagementAuth
 from ..management.base_client import BaseClient
 from ..request_handler import BaseRequestHandler
 from .targets import Targets
@@ -48,13 +47,15 @@ class _Api:
     prefix, User-Agent, and request-id header are defined in a single place.
     """
 
+    _AUTH_HEADER = "X-Cisco-AI-Defense-Tenant-API-Key"
+
     def __init__(
         self,
         config: AsyncConfig,
-        auth: AsyncManagementAuth,
+        api_key: str,
     ):
         self._config = config
-        self._auth = auth
+        self._api_key = api_key
         base = config.management_base_url
         self._api_prefix = (
             f"{base}/{BaseClient.AI_DEFENSE_API_PREFIX}"
@@ -73,6 +74,7 @@ class _Api:
                 headers={
                     "User-Agent": BaseRequestHandler.USER_AGENT,
                     "Content-Type": "application/json",
+                    self._AUTH_HEADER: self._api_key,
                 },
             )
         return self._session
@@ -106,7 +108,6 @@ class _Api:
         async with session.request(
             method=method,
             url=url,
-            middlewares=(self._auth,),
             headers=req_headers,
             params=params,
             json=data,
@@ -199,10 +200,8 @@ class ValidationClient:
                 kwargs["logger"] = logger
             config = AsyncConfig(**kwargs)
 
-        auth = AsyncManagementAuth(api_key)
-
         self._config = config
-        self._api = _Api(config=config, auth=auth)
+        self._api = _Api(config=config, api_key=api_key)
         self._targets = Targets(self._api)
         self._profiles = Profiles(self._api)
         self._custom_goals = CustomGoals(self._api)
