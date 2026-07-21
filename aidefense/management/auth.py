@@ -14,6 +14,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from aiohttp import ClientRequest, ClientResponse
+
 from requests.auth import AuthBase
 
 
@@ -55,3 +57,23 @@ class ManagementAuth(AuthBase):
         if not self.token or not isinstance(self.token, str) or len(self.token) != 64:
             raise ValueError("Invalid API key format")
         return True
+
+
+class AsyncManagementAuth:
+    """Async aiohttp middleware for Management / Tenant API-key authentication.
+
+    Works the same way as :class:`ManagementAuth` but is designed to be
+    passed as an ``aiohttp`` per-request middleware via the ``middlewares``
+    kwarg of :meth:`aiohttp.ClientSession.request`.
+    """
+
+    AUTH_HEADER = "X-Cisco-AI-Defense-Tenant-API-Key"
+
+    def __init__(self, api_key: str):
+        self._api_key = api_key
+
+    async def __call__(
+        self, request: ClientRequest, handler
+    ) -> ClientResponse:
+        request.headers[self.AUTH_HEADER] = self._api_key
+        return await handler(request)

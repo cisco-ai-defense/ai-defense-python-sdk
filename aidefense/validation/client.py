@@ -19,15 +19,17 @@
 from __future__ import annotations
 
 import logging
-import platform
 import uuid
 from typing import Any, Dict, Optional, Type, TypeVar, cast
 
 import aiohttp
 from pydantic import BaseModel, ValidationError as PydanticValidationError
 
+from ..config import AsyncConfig
 from ..exceptions import ApiError, ResponseParseError, SDKError, ValidationError
-from ..version import version
+from ..management.auth import AsyncManagementAuth
+from ..management.base_client import BaseClient
+from ..request_handler import BaseRequestHandler
 from .targets import Targets
 from .profiles import Profiles
 from .custom_goals import CustomGoals
@@ -36,38 +38,41 @@ from .adaptive_validation import AdaptiveValidation
 
 T = TypeVar("T", bound=BaseModel)
 
-_USER_AGENT = f"Cisco-AI-Defense-Python-SDK/{version} (Python {platform.python_version()})"
-_AUTH_HEADER = "X-Cisco-AI-Defense-Tenant-API-Key"
-_REQUEST_ID_HEADER = "x-aidefense-request-id"
-
 
 class _Api:
-    """Shared async request helper injected into every validation resource class."""
+    """Shared async request helper injected into every validation resource class.
 
-    _API_PREFIX_TEMPLATE = "{base}/api/ai-defense/v1"
+    Delegates session management to :class:`~aidefense.config.AsyncConfig` and
+    reuses constants from :class:`~aidefense.management.base_client.BaseClient`
+    and :class:`~aidefense.request_handler.BaseRequestHandler` so that the API
+    prefix, User-Agent, and request-id header are defined in a single place.
+    """
 
     def __init__(
         self,
-        api_key: str,
-        base_url: str,
-        timeout: int = 30,
-        logger: Optional[logging.Logger] = None,
+        config: AsyncConfig,
+        auth: AsyncManagementAuth,
     ):
-        self._api_key = api_key
-        self._base_url = base_url.rstrip("/")
-        self._timeout = aiohttp.ClientTimeout(total=timeout)
-        self._logger = logger or logging.getLogger("aidefense_sdk.validation")
-        self._api_prefix = self._API_PREFIX_TEMPLATE.format(base=self._base_url)
+        self._config = config
+        self._auth = auth
+        base = config.management_base_url
+        self._api_prefix = (
+            f"{base}/{BaseClient.AI_DEFENSE_API_PREFIX}"
+            f"/{BaseClient.DEFAULT_API_VERSION}"
+        )
+        self._logger = config.logger
+        self._timeout = aiohttp.ClientTimeout(total=config.timeout)
         self._session: Optional[aiohttp.ClientSession] = None
 
     async def _ensure_session(self) -> aiohttp.ClientSession:
         if self._session is None or self._session.closed:
             self._session = aiohttp.ClientSession(
+                connector=self._config.connection_pool,
+                connector_owner=False,
                 timeout=self._timeout,
                 headers={
-                    "User-Agent": _USER_AGENT,
+                    "User-Agent": BaseRequestHandler.USER_AGENT,
                     "Content-Type": "application/json",
-                    _AUTH_HEADER: self._api_key,
                 },
             )
         return self._session
@@ -90,7 +95,9 @@ class _Api:
         url = f"{self._api_prefix}/{path.lstrip('/')}"
         request_id = str(uuid.uuid4())
 
-        req_headers: Dict[str, str] = {_REQUEST_ID_HEADER: request_id}
+        req_headers: Dict[str, str] = {
+            BaseRequestHandler.REQUEST_ID_HEADER: request_id,
+        }
         if headers:
             req_headers.update(headers)
 
@@ -99,6 +106,7 @@ class _Api:
         async with session.request(
             method=method,
             url=url,
+            middlewares=(self._auth,),
             headers=req_headers,
             params=params,
             json=data,
@@ -120,13 +128,14 @@ class _Api:
 
         msg = error_data.get("message", "Unknown error")
         status = response.status
-
         if status == 401:
             raise SDKError(f"Authentication error: {msg}", status)
         elif status == 400:
             raise ValidationError(f"Bad request: {msg}", status)
         else:
-            raise ApiError(f"API error {status}: {msg}", status, request_id=request_id)
+            raise ApiError(
+                f"API error {status}: {msg}", status, request_id=request_id
+            )
 
     def parse(self, model_class: Type[T], data: Any, context: str) -> T:
         """Parse raw API response data into a Pydantic model."""
@@ -150,14 +159,6 @@ class _Api:
             raise ValueError(f"Invalid {field_name}: must be a UUID string")
 
 
-# Default region endpoints for convenience when Config is not used.
-_MANAGEMENT_REGION_ENDPOINTS = {
-    "us": "https://us.api.aidefense.security.cisco.com",
-    "eu": "https://eu.api.aidefense.security.cisco.com",
-    "ap": "https://ap.api.aidefense.security.cisco.com",
-}
-
-
 class ValidationClient:
     """
     Async client for the AI Defense Validation API.
@@ -169,27 +170,39 @@ class ValidationClient:
 
     Args:
         api_key: Your AI Defense API key for authentication.
-        base_url: Management API base URL. Defaults to the US endpoint.
+        base_url: Management API base URL. Overrides the region default.
+            Defaults to the US endpoint when neither *base_url* nor *config*
+            is provided.
         timeout: HTTP request timeout in seconds. Defaults to 30.
         logger: Optional custom logger instance.
+        config: Optional :class:`~aidefense.config.AsyncConfig` for full
+            control over region, retries, connection pool, and logging.
+            When provided, *base_url*, *timeout*, and *logger* are ignored.
     """
 
     def __init__(
         self,
         api_key: str,
-        base_url: str = "https://us.api.aidefense.security.cisco.com",
+        base_url: Optional[str] = None,
         timeout: int = 30,
         logger: Optional[logging.Logger] = None,
+        config: Optional[AsyncConfig] = None,
     ):
         if not api_key or not isinstance(api_key, str) or api_key.strip() == "":
             raise ValueError("API key is required")
 
-        self._api = _Api(
-            api_key=api_key,
-            base_url=base_url,
-            timeout=timeout,
-            logger=logger,
-        )
+        if config is None:
+            kwargs: Dict[str, Any] = {"timeout": timeout}
+            if base_url is not None:
+                kwargs["management_base_url"] = base_url
+            if logger is not None:
+                kwargs["logger"] = logger
+            config = AsyncConfig(**kwargs)
+
+        auth = AsyncManagementAuth(api_key)
+
+        self._config = config
+        self._api = _Api(config=config, auth=auth)
         self._targets = Targets(self._api)
         self._profiles = Profiles(self._api)
         self._custom_goals = CustomGoals(self._api)
