@@ -42,7 +42,7 @@ def ai_validation_start() -> str:
 
 
 def ai_validation_start_multi() -> str:
-    return f"{AI_VALIDATION}/start/multi"
+    return f"{ai_validation_start()}/multi"
 
 
 def ai_validation_jobs() -> str:
@@ -50,35 +50,36 @@ def ai_validation_jobs() -> str:
 
 
 def ai_validation_job_pause(job_id: str) -> str:
-    return f"{AI_VALIDATION}/jobs/{job_id}/pause"
+    return f"{ai_validation_jobs()}/{job_id}/pause"
 
 
 def ai_validation_job_resume(job_id: str) -> str:
-    return f"{AI_VALIDATION}/jobs/{job_id}/resume"
+    return f"{ai_validation_jobs()}/{job_id}/resume"
 
 
 def ai_validation_job_cancel(job_id: str) -> str:
-    return f"{AI_VALIDATION}/jobs/{job_id}/cancel"
+    return f"{ai_validation_jobs()}/{job_id}/cancel"
 
 
 def ai_validation_job_restart(job_id: str) -> str:
-    return f"{AI_VALIDATION}/jobs/{job_id}/restart"
+    return f"{ai_validation_jobs()}/{job_id}/restart"
 
 
 def ai_validation_job(task_id: str) -> str:
+    """Uses singular /job/ per proto definition (GetAiValidationJob RPC)."""
     return f"{AI_VALIDATION}/job/{task_id}"
 
 
 def ai_validation_job_delete(task_id: str) -> str:
-    return f"{AI_VALIDATION}/jobs/{task_id}"
+    return f"{ai_validation_jobs()}/{task_id}"
 
 
 def ai_validation_jobs_aggregates() -> str:
-    return f"{AI_VALIDATION}/jobs/aggregates"
+    return f"{ai_validation_jobs()}/aggregates"
 
 
 def ai_validation_job_results_summary(task_id: str) -> str:
-    return f"{AI_VALIDATION}/jobs/{task_id}/results/summary"
+    return f"{ai_validation_jobs()}/{task_id}/results/summary"
 
 
 # --- Results ---------------------------------------------------------------
@@ -93,11 +94,12 @@ def ai_validation_results_detail(task_id: str) -> str:
 
 
 def ai_validation_result(task_id: str, attack_id: str) -> str:
-    return f"{AI_VALIDATION}/results/{task_id}/{attack_id}"
+    return f"{ai_validation_results(task_id)}/{attack_id}"
 
 
 def ai_validation_attack_error_detail(task_id: str, attack_id: str) -> str:
-    return f"{AI_VALIDATION}/job/{task_id}/attack/{attack_id}/error-detail"
+    """Uses singular /job/ per proto definition (GetAttackErrorDetail RPC)."""
+    return f"{ai_validation_job(task_id)}/attack/{attack_id}/error-detail"
 
 
 # --- Config ----------------------------------------------------------------
@@ -108,7 +110,7 @@ def ai_validation_config() -> str:
 
 
 def ai_validation_config_by_task(task_id: str) -> str:
-    return f"{AI_VALIDATION}/config/{task_id}"
+    return f"{ai_validation_config()}/{task_id}"
 
 
 # --- Targets ---------------------------------------------------------------
@@ -119,19 +121,19 @@ def ai_validation_targets() -> str:
 
 
 def ai_validation_target(target_id: str) -> str:
-    return f"{AI_VALIDATION}/targets/{target_id}"
+    return f"{ai_validation_targets()}/{target_id}"
 
 
 def ai_validation_targets_aggregates() -> str:
-    return f"{AI_VALIDATION}/targets/aggregates"
+    return f"{ai_validation_targets()}/aggregates"
 
 
 def ai_validation_targets_test() -> str:
-    return f"{AI_VALIDATION}/targets/test"
+    return f"{ai_validation_targets()}/test"
 
 
 def ai_validation_targets_aws_accounts() -> str:
-    return f"{AI_VALIDATION}/targets/aws-accounts"
+    return f"{ai_validation_targets()}/aws-accounts"
 
 
 # --- Profiles --------------------------------------------------------------
@@ -142,11 +144,11 @@ def ai_validation_profiles() -> str:
 
 
 def ai_validation_profile(profile_id: str) -> str:
-    return f"{AI_VALIDATION}/profiles/{profile_id}"
+    return f"{ai_validation_profiles()}/{profile_id}"
 
 
 def ai_validation_profiles_by_goal(goal_id: str) -> str:
-    return f"{AI_VALIDATION}/profiles/goals/{goal_id}"
+    return f"{ai_validation_profiles()}/goals/{goal_id}"
 
 
 # --- Custom Goals ----------------------------------------------------------
@@ -157,7 +159,7 @@ def ai_validation_custom_goals() -> str:
 
 
 def ai_validation_custom_goal(custom_goal_id: str) -> str:
-    return f"{AI_VALIDATION}/custom-goals/{custom_goal_id}"
+    return f"{ai_validation_custom_goals()}/{custom_goal_id}"
 
 
 # --- Other -----------------------------------------------------------------
@@ -189,27 +191,27 @@ def red_team_jobs() -> str:
 
 
 def red_team_job(job_id: str) -> str:
-    return f"{RED_TEAM}/jobs/{job_id}"
+    return f"{red_team_jobs()}/{job_id}"
 
 
 def red_team_job_pause(job_id: str) -> str:
-    return f"{RED_TEAM}/jobs/{job_id}/pause"
+    return f"{red_team_job(job_id)}/pause"
 
 
 def red_team_job_resume(job_id: str) -> str:
-    return f"{RED_TEAM}/jobs/{job_id}/resume"
+    return f"{red_team_job(job_id)}/resume"
 
 
 def red_team_job_cancel(job_id: str) -> str:
-    return f"{RED_TEAM}/jobs/{job_id}/cancel"
+    return f"{red_team_job(job_id)}/cancel"
 
 
 def red_team_job_restart(job_id: str) -> str:
-    return f"{RED_TEAM}/jobs/{job_id}/restart"
+    return f"{red_team_job(job_id)}/restart"
 
 
 def red_team_job_report(job_id: str) -> str:
-    return f"{RED_TEAM}/jobs/{job_id}/report"
+    return f"{red_team_job(job_id)}/report"
 
 
 __all__ = [
