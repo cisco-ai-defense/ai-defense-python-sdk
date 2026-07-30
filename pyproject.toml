@@ -20,12 +20,7 @@ classifiers = [
     "Operating System :: OS Independent",
     "Intended Audience :: Developers"
 ]
-packages = [
-    {include = "aidefense"},
-    {include = "ai_validation"},
-    {include = "ai_validation_service"},
-    {include = "ai_defense"},
-]
+packages = [{include = "aidefense"}]
 
 [tool.poetry.dependencies]
 aiohttp = "^3.13.2"
