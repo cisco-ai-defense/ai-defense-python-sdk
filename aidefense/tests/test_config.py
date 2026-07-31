@@ -39,6 +39,13 @@ def test_config_default():
     assert hasattr(config, "connection_pool")
 
 
+def test_config_is_singleton():
+    first = Config(region="us-west-2")
+    second = Config()
+
+    assert second is first
+
+
 def test_config_with_runtime_base_url():
     url = "https://custom.endpoint.com"
     config = Config(runtime_base_url=url)
