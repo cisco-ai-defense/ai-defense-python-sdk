@@ -22,9 +22,6 @@ classifiers = [
 ]
 packages = [
     {include = "aidefense"},
-    {include = "ai_validation"},
-    {include = "ai_validation_service"},
-    {include = "ai_defense"},
 ]
 
 [tool.poetry.dependencies]
