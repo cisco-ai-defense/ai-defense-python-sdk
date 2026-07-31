@@ -78,7 +78,7 @@ Agent Runtime SDK Examples
 --------------------------
 
 The Agent Runtime SDK automatically patches LLM and MCP clients to inspect all interactions.
-See the `agentsec examples README <https://github.com/cisco/ai-defense-python-sdk/tree/main/examples/agentsec>`_ for end-to-end walkthroughs.
+See the `agentsec examples README <https://github.com/cisco-ai-defense/ai-defense-python-sdk/tree/main/examples/agentsec>`_ for end-to-end walkthroughs.
 
 YAML Configuration (Recommended)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
