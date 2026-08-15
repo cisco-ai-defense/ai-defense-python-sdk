@@ -26,6 +26,7 @@ from aidefense.mcpscan.routes import (
     mcp_server_delete,
     mcp_server_get,
     mcp_servers_list,
+    mcp_servers_stats,
     mcp_server_update_auth_config,
     mcp_server_capabilities,
     mcp_server_threats,
@@ -69,6 +70,10 @@ class TestMCPServerRoutes:
     def test_mcp_servers_list(self):
         """Test the MCP servers list route."""
         assert mcp_servers_list() == "mcp/servers"
+
+    def test_mcp_servers_stats(self):
+        """Test the MCP servers stats route."""
+        assert mcp_servers_stats() == "mcp/servers:stats"
 
     def test_mcp_server_update_auth_config(self):
         """Test the MCP server update auth config route."""
