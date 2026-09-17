@@ -49,6 +49,7 @@ The SDK enables you to detect security, privacy, and safety risks in real time, 
 
 - **Agent Runtime SDK**: Auto-patch LLM clients (OpenAI, Azure OpenAI, Bedrock, Vertex AI, Cohere, Mistral, Google GenAI, LiteLLM) and MCP clients with just 2 lines of code. Supports API mode (inspection) and Gateway mode (proxy).
 - **Chat Inspection**: Analyze chat prompts, responses, or full conversations for risks.
+- **Bidirectional Stream Inspection**: Safely release Strands, AgentCore, and adapter-based vendor events only after server acknowledgement.
 - **HTTP Inspection**: Inspect HTTP requests and responses, including support for `requests.Request`, `requests.PreparedRequest`, and `requests.Response` objects.
 - **MCP Inspection**: Inspect Model Context Protocol (MCP) JSON-RPC 2.0 messages for security, privacy, and safety violations in AI agent tool calls, resource access, and responses.
 - **MCP Server Scanning**: Scan MCP servers for security threats and vulnerabilities, manage resource connections, policies, and events.

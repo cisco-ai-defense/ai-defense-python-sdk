@@ -1,0 +1,320 @@
+# Copyright 2026 Cisco Systems, Inc. and its affiliates
+# SPDX-License-Identifier: Apache-2.0
+
+"""Adapters from Strands and AgentCore event shapes to ChatInspect messages."""
+
+from __future__ import annotations
+
+import inspect
+import json
+from collections.abc import AsyncIterable, AsyncIterator, Iterable
+from typing import Any, AsyncIterator as TypingAsyncIterator, Dict, Optional, Protocol
+
+from aidefense.pydantic.runtime.ai_defense.inspection.v1.inspection_pydantic import (
+    MessageContent,
+    Role,
+    ToolFunction,
+)
+
+from .exceptions import StreamProtocolError
+from .models import CanonicalMessage, StreamDirection, StreamEvent, ToolCall
+
+
+def _message(
+    role: str,
+    content: str = "",
+    *,
+    tool_calls: tuple = (),
+    tool_call_id: str = "",
+) -> CanonicalMessage:
+    try:
+        canonical_role = Role(role)
+    except ValueError as exc:
+        raise StreamProtocolError(f"unsupported ChatInspect role: {role!r}") from exc
+    return CanonicalMessage(
+        role=canonical_role,
+        content=MessageContent(text=content),
+        tool_calls=list(tool_calls),
+        tool_call_id=tool_call_id,
+    )
+
+
+async def as_async_iterable(events: Any) -> AsyncIterator[Any]:
+    """Normalize Strands, AgentCore, sync iterables, and awaitable responses."""
+
+    if inspect.isawaitable(events):
+        events = await events
+    if hasattr(events, "__aiter__"):
+        try:
+            async for event in events:
+                yield event
+        finally:
+            close = getattr(events, "aclose", None)
+            if close is not None:
+                await close()
+        return
+    if hasattr(events, "__iter__") and not isinstance(events, (str, bytes, dict)):
+        try:
+            for event in events:
+                yield event
+        finally:
+            close = getattr(events, "close", None)
+            if close is not None:
+                close()
+        return
+    raise StreamProtocolError(
+        "Strands/AgentCore response must be an async iterable, iterable, or awaitable iterable"
+    )
+
+
+class EventStreamAdapter(Protocol):
+    """Extension point for LLM vendors and agent frameworks."""
+
+    source: str
+
+    def adapt(self, events: Any) -> TypingAsyncIterator[StreamEvent]:
+        """Convert native events while retaining each application event."""
+        ...
+
+
+def _mapping(value: Any) -> Optional[Dict[str, Any]]:
+    if isinstance(value, dict):
+        return value
+    if hasattr(value, "model_dump"):
+        dumped = value.model_dump()
+        return dumped if isinstance(dumped, dict) else None
+    if hasattr(value, "to_dict"):
+        dumped = value.to_dict()
+        return dumped if isinstance(dumped, dict) else None
+    return None
+
+
+def _text_content(content: Any) -> str:
+    if isinstance(content, str):
+        return content
+    if not isinstance(content, list):
+        return ""
+    parts = []
+    for item in content:
+        data = _mapping(item)
+        if data and isinstance(data.get("text"), str):
+            parts.append(data["text"])
+    return "".join(parts)
+
+
+def _complete_message(
+    message: Dict[str, Any], default_role: str
+) -> Optional[CanonicalMessage]:
+    role = str(message.get("role") or default_role)
+    content = message.get("content")
+    text = _text_content(content)
+    if text:
+        return _message(role=role, content=text)
+    if isinstance(content, list):
+        results = []
+        call_id = ""
+        for item in content:
+            data = _mapping(item) or {}
+            result = _mapping(data.get("toolResult"))
+            if result:
+                call_id = call_id or str(result.get("toolUseId", ""))
+                value = _text_content(result.get("content"))
+                if value:
+                    results.append(value)
+        if results:
+            return _message(role="tool", content="".join(results), tool_call_id=call_id)
+    return None
+
+
+class StrandsEventAdapter:
+    """Convert Strands/Bedrock streaming events without requiring Strands imports."""
+
+    def __init__(
+        self,
+        *,
+        message_id: str,
+        direction: StreamDirection = StreamDirection.RESPONSE,
+        source: str = "strands",
+        max_tool_argument_chars: int = 8192,
+    ) -> None:
+        if not message_id:
+            raise StreamProtocolError("message_id must not be empty")
+        self.message_id = message_id
+        self.direction = direction
+        self.source = source
+        if max_tool_argument_chars < 1:
+            raise StreamProtocolError("max_tool_argument_chars must be positive")
+        self.max_tool_argument_chars = max_tool_argument_chars
+        self._role = "assistant" if direction is StreamDirection.RESPONSE else "user"
+        self._tools: Dict[int, Dict[str, str]] = {}
+        self._streamed_text = False
+
+    async def adapt(self, events: Any) -> AsyncIterator[StreamEvent]:
+        async for original in as_async_iterable(events):
+            yield self.convert(original)
+
+    def convert(self, original: Any) -> StreamEvent:
+        data = _mapping(original)
+        if data is None:
+            if isinstance(original, bytes):
+                try:
+                    original = original.decode("utf-8")
+                except UnicodeDecodeError as exc:
+                    raise StreamProtocolError(
+                        "AgentCore emitted non-UTF-8 content"
+                    ) from exc
+            if isinstance(original, str):
+                self._streamed_text = True
+                return self._event(original, _message(self._role, original))
+            raise StreamProtocolError(
+                f"unsupported Strands event type: {type(original).__name__}"
+            )
+
+        # Some AgentCore runtimes wrap Bedrock events in an `event` member.
+        event = _mapping(data.get("event")) or data
+        message_start = _mapping(event.get("messageStart"))
+        if message_start and isinstance(message_start.get("role"), str):
+            self._role = message_start["role"]
+
+        delta_event = _mapping(event.get("contentBlockDelta"))
+        if delta_event:
+            delta = _mapping(delta_event.get("delta")) or {}
+            text = delta.get("text")
+            if isinstance(text, str) and text:
+                self._streamed_text = True
+                return self._event(original, _message(self._role, text))
+            tool_delta = _mapping(delta.get("toolUse"))
+            if tool_delta:
+                index = int(delta_event.get("contentBlockIndex", 0))
+                state = self._tools.setdefault(
+                    index, {"id": "", "name": "", "arguments": ""}
+                )
+                value = tool_delta.get("input", "")
+                if isinstance(value, str):
+                    state["arguments"] += value
+                elif value is not None:
+                    state["arguments"] += json.dumps(value, separators=(",", ":"))
+                if len(state["arguments"]) > self.max_tool_argument_chars:
+                    self._tools.pop(index, None)
+                    raise StreamProtocolError(
+                        "Strands tool arguments exceed the configured token limit"
+                    )
+
+        start_event = _mapping(event.get("contentBlockStart"))
+        if start_event:
+            start = _mapping(start_event.get("start")) or {}
+            tool = _mapping(start.get("toolUse"))
+            if tool:
+                index = int(start_event.get("contentBlockIndex", 0))
+                if index not in self._tools and len(self._tools) >= 128:
+                    raise StreamProtocolError("too many unfinished Strands tool calls")
+                self._tools[index] = {
+                    "id": str(tool.get("toolUseId", "")),
+                    "name": str(tool.get("name", "")),
+                    "arguments": "",
+                }
+
+        stop_event = _mapping(event.get("contentBlockStop"))
+        if stop_event:
+            index = int(stop_event.get("contentBlockIndex", 0))
+            tool = self._tools.pop(index, None)
+            if tool is not None:
+                if not tool["name"] and tool["arguments"]:
+                    # Preserve inspection coverage when structured extraction
+                    # would reject a nameless call on the server.
+                    return self._event(
+                        original,
+                        _message(role="assistant", content=tool["arguments"]),
+                    )
+                call = ToolCall(
+                    id=tool["id"],
+                    type="function",
+                    function=ToolFunction(
+                        name=tool["name"], arguments_json=tool["arguments"]
+                    ),
+                )
+                return self._event(
+                    original,
+                    _message(role="assistant", tool_calls=(call,)),
+                )
+
+        # Strands Agent.stream_async commonly emits token text in `data`.
+        text = data.get("data")
+        if isinstance(text, str) and text:
+            self._streamed_text = True
+            return self._event(original, _message(self._role, text))
+
+        # A complete Strands message is useful for non-streaming AgentCore
+        # responses, but is skipped after deltas to avoid inspecting it twice.
+        message = _mapping(data.get("message"))
+        if message and not self._streamed_text:
+            canonical = _complete_message(message, self._role)
+            if canonical is not None:
+                return self._event(original, canonical)
+
+        return self._event(original, None)
+
+    def _event(
+        self, application_event: Any, message: Optional[CanonicalMessage]
+    ) -> StreamEvent:
+        return StreamEvent(
+            application_event=application_event,
+            message=message,
+            direction=self.direction,
+            message_id=self.message_id,
+        )
+
+
+async def agentcore_events(body: Any) -> AsyncIterator[Any]:
+    """Extract events from AgentCore Runtime response and invocation shapes."""
+
+    if inspect.isawaitable(body):
+        body = await body
+    data = _mapping(body)
+    if data is not None:
+        for key in ("response", "payload", "body", "eventStream", "stream"):
+            if key in data:
+                body = data[key]
+                break
+    if hasattr(body, "read") and not hasattr(body, "__iter__"):
+        body = body.read()
+        if inspect.isawaitable(body):
+            body = await body
+    if isinstance(body, bytes):
+        body = body.decode("utf-8")
+    if isinstance(body, str):
+        try:
+            decoded = json.loads(body)
+        except json.JSONDecodeError:
+            yield body
+            return
+        if isinstance(decoded, dict):
+            for key in ("result", "response", "completion", "content", "text"):
+                if isinstance(decoded.get(key), str):
+                    yield decoded[key]
+                    return
+        yield body
+        return
+    async for event in as_async_iterable(body):
+        data = _mapping(event)
+        if data is not None:
+            chunk = _mapping(data.get("chunk"))
+            if chunk is not None and "bytes" in chunk:
+                event = chunk["bytes"]
+        if isinstance(event, bytes):
+            try:
+                event = event.decode("utf-8")
+            except UnicodeDecodeError as exc:
+                raise StreamProtocolError(
+                    "AgentCore emitted non-UTF-8 content"
+                ) from exc
+        if isinstance(event, str):
+            stripped = event.strip()
+            if stripped:
+                try:
+                    decoded = json.loads(stripped)
+                except json.JSONDecodeError:
+                    pass
+                else:
+                    event = decoded
+        yield event

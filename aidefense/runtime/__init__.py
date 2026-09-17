@@ -44,3 +44,26 @@ from .mcp_models import (
     MCPInspectError,
 )
 from .utils import to_base64_bytes
+from .event_stream import (
+    CanonicalMessage,
+    EventStreamClient,
+    EventStreamConfig,
+    EventStreamError,
+    EventStreamAdapter,
+    ReasonCode,
+    SourceRange,
+    StrandsEventAdapter,
+    StreamBackpressureError,
+    StreamCancelledError,
+    StreamConfigurationError,
+    StreamConnectionError,
+    StreamContext,
+    StreamDecision,
+    StreamDirection,
+    StreamEvent,
+    StreamObserver,
+    StreamProtocolError,
+    StreamTimeoutError,
+    ToolCall,
+    UnsafeContentError,
+)
