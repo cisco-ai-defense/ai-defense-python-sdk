@@ -1,9 +1,9 @@
-from aidefense.runtime.event_stream._generated.google.api import annotations_pb2 as _annotations_pb2
-from aidefense.runtime.event_stream._generated.validate import validate_pb2 as _validate_pb2
+from aidefense.pydantic.runtime.google.api import annotations_pb2 as _annotations_pb2
+from aidefense.pydantic.runtime.validate import validate_pb2 as _validate_pb2
 from google.protobuf import timestamp_pb2 as _timestamp_pb2
 from google.protobuf import struct_pb2 as _struct_pb2
 from google.protobuf import wrappers_pb2 as _wrappers_pb2
-from aidefense.runtime.event_stream._generated.protoc_gen_openapiv2.options import annotations_pb2 as _annotations_pb2_1
+from aidefense.pydantic.runtime.protoc_gen_openapiv2.options import annotations_pb2 as _annotations_pb2_1
 from google.protobuf.internal import containers as _containers
 from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
 from google.protobuf import descriptor as _descriptor

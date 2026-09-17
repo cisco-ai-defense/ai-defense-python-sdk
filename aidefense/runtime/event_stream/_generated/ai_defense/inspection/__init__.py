@@ -1,1 +1,0 @@
-"""Generated inspection protobuf namespace."""

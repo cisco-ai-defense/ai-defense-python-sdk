@@ -1,1 +1,1 @@
-"""Pydantic runtime models generated from AI Defense protobuf schemas."""
+"""AI Defense runtime schemas, with Pydantic models as the public model layer."""

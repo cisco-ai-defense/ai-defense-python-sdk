@@ -1,5 +1,5 @@
 from google.protobuf import descriptor_pb2 as _descriptor_pb2
-from aidefense.runtime.event_stream._generated.protoc_gen_openapiv2.options import openapiv2_pb2 as _openapiv2_pb2
+from aidefense.pydantic.runtime.protoc_gen_openapiv2.options import openapiv2_pb2 as _openapiv2_pb2
 from google.protobuf import descriptor as _descriptor
 from typing import ClassVar as _ClassVar
 

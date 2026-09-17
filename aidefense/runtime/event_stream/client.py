@@ -25,7 +25,7 @@ from aidefense.pydantic.runtime.ai_defense.inspection.v1 import (
 from aidefense.pydantic.runtime.ai_defense.inspection_grpc.v1 import (
     inspection_grpc_pydantic as runtime_stream,
 )
-from aidefense.runtime.event_stream._generated.ai_defense.inspection_grpc.v1 import (
+from aidefense.pydantic.runtime.ai_defense.inspection_grpc.v1 import (
     inspection_grpc_pb2 as stream_api,
 )
 from aidefense.runtime.models import InspectionConfig

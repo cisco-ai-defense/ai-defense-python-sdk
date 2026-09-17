@@ -1,5 +1,5 @@
-from aidefense.runtime.event_stream._generated.validate import validate_pb2 as _validate_pb2
-from aidefense.runtime.event_stream._generated.ai_defense.inspection.v1 import inspection_pb2 as _inspection_pb2
+from aidefense.pydantic.runtime.validate import validate_pb2 as _validate_pb2
+from aidefense.pydantic.runtime.ai_defense.inspection.v1 import inspection_pb2 as _inspection_pb2
 from google.protobuf.internal import containers as _containers
 from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
 from google.protobuf import descriptor as _descriptor

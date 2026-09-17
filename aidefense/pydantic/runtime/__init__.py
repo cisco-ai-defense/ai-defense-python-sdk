@@ -1,1 +1,1 @@
-"""Generated runtime protobuf models used by the streaming SDK clients."""
+"""Canonical generated runtime models and private protobuf wire codecs."""
