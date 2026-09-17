@@ -23,6 +23,7 @@ from .models import (
     StreamDecision,
     StreamDirection,
     StreamEvent,
+    StreamInspectionResult,
     ToolCall,
 )
 from .observability import ReasonCode, StreamObserver
@@ -44,6 +45,7 @@ __all__ = [
     "StreamDecision",
     "StreamDirection",
     "StreamEvent",
+    "StreamInspectionResult",
     "StreamObserver",
     "StreamProtocolError",
     "StreamTimeoutError",

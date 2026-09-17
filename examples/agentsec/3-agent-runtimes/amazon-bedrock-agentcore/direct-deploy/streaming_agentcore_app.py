@@ -29,7 +29,7 @@ inspection = EventStreamClient.from_env(
     overlap_tokens=32,
     max_pending_batches=16,
     idle_timeout=30,
-    absolute_timeout=300,
+    absolute_timeout=1800,
 )
 
 

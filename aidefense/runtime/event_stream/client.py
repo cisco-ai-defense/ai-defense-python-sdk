@@ -6,12 +6,23 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import logging
 import math
 import time
 import uuid
 from dataclasses import dataclass, replace
-from typing import Any, AsyncIterator, Callable, Dict, List, Optional, Tuple
+from typing import (
+    Any,
+    AsyncIterator,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 import grpc  # type: ignore[import-untyped]
 from google.protobuf.json_format import (  # type: ignore[import-untyped]
@@ -50,6 +61,7 @@ from .models import (
     StreamDecision,
     StreamDirection,
     StreamEvent,
+    StreamInspectionResult,
 )
 from .observability import ReasonCode, StreamObserver
 
@@ -58,6 +70,58 @@ API_KEY_HEADER = "x-cisco-ai-defense-api-key"
 REQUEST_ID_HEADER = "x-aidefense-request-id"
 _END = object()
 _ACK = object()
+_SENT = object()
+
+
+def _action_name(action: str) -> str:
+    """Normalize generated enum strings such as ``Action.Block``."""
+
+    return action.rsplit(".", 1)[-1].lower()
+
+
+def _with_redacted_text(application_event: Any, text: str) -> Optional[Any]:
+    """Preserve a common vendor event shape while replacing only its text."""
+
+    if isinstance(application_event, bytes):
+        return text.encode("utf-8")
+    if isinstance(application_event, str):
+        return text
+    if not isinstance(application_event, dict):
+        return None
+
+    updated = dict(application_event)
+    wrapped = updated.get("event")
+    if isinstance(wrapped, dict):
+        redacted_wrapped = _with_redacted_text(wrapped, text)
+        if redacted_wrapped is None:
+            return None
+        updated["event"] = redacted_wrapped
+        return updated
+
+    delta_event = updated.get("contentBlockDelta")
+    if isinstance(delta_event, dict):
+        updated_delta_event = dict(delta_event)
+        delta = updated_delta_event.get("delta")
+        if isinstance(delta, dict) and isinstance(delta.get("text"), str):
+            updated_delta = dict(delta)
+            updated_delta["text"] = text
+            updated_delta_event["delta"] = updated_delta
+            updated["contentBlockDelta"] = updated_delta_event
+            return updated
+
+    for key in ("data", "text", "result", "response", "completion", "content"):
+        if isinstance(updated.get(key), str):
+            updated[key] = text
+            return updated
+    return None
+
+
+@dataclass
+class _DirectionBarrier:
+    """Hold a later direction until all earlier-direction frames are safe."""
+
+    direction: StreamDirection
+    released: asyncio.Event
 
 
 @dataclass
@@ -81,12 +145,20 @@ class _Batch:
     def has_content(self) -> bool:
         return any(event.message is not None for event in self.events)
 
+    @property
+    def direction_barrier(self) -> Optional[_DirectionBarrier]:
+        if len(self.events) != 1:
+            return None
+        candidate = self.events[0].application_event
+        return candidate if isinstance(candidate, _DirectionBarrier) else None
+
 
 @dataclass
 class _Pending:
     sequence: int
     application_events: List[Any]
     ranges: Tuple[SourceRange, ...]
+    direction: StreamDirection
 
 
 def _token_count(message: Optional[CanonicalMessage]) -> int:
@@ -99,6 +171,85 @@ def _token_count(message: Optional[CanonicalMessage]) -> int:
         if call.function is not None
     )
     return max(1, math.ceil(size / 4)) if size else max(1, len(message.tool_calls))
+
+
+def _overlap_identity(message: CanonicalMessage) -> Tuple[Any, ...]:
+    """Keep overlap within one compatible role/tool message identity."""
+
+    tool_calls = tuple(
+        (
+            call.id_,
+            call.type_,
+            call.function.name if call.function is not None else "",
+            call.function.arguments_json if call.function is not None else "",
+        )
+        for call in message.tool_calls
+    )
+    function_call = (
+        (
+            message.function_call.name,
+            message.function_call.arguments,
+        )
+        if message.function_call is not None
+        else None
+    )
+    return (
+        message.role,
+        message.tool_call_id,
+        message.name,
+        tool_calls,
+        function_call,
+    )
+
+
+def _prompt_messages(
+    prompt: Union[str, Sequence[CanonicalMessage], Sequence[Dict[str, Any]]],
+) -> Tuple[CanonicalMessage, ...]:
+    """Normalize a string or canonical conversation without logging its content."""
+
+    if isinstance(prompt, str):
+        if not prompt:
+            raise StreamProtocolError("AgentCore prompt must be a non-empty string")
+        return (
+            CanonicalMessage(
+                role=runtime_chat.Role.user,
+                content=runtime_chat.MessageContent(text=prompt),
+            ),
+        )
+    if not isinstance(prompt, Sequence) or isinstance(prompt, (bytes, bytearray)):
+        raise StreamProtocolError(
+            "AgentCore prompt must be a string or canonical message sequence"
+        )
+    if not prompt:
+        raise StreamProtocolError("AgentCore conversation must not be empty")
+
+    messages = []
+    for value in prompt:
+        try:
+            if isinstance(value, CanonicalMessage):
+                message = value.model_copy(deep=True)
+            elif isinstance(value, dict):
+                data = dict(value)
+                if isinstance(data.get("content"), str):
+                    data["content"] = {"text": data["content"]}
+                message = CanonicalMessage.model_validate(data)
+            else:
+                raise TypeError
+        except (TypeError, ValueError) as exc:
+            raise StreamProtocolError(
+                "AgentCore conversation contains an invalid canonical message"
+            ) from exc
+        if message.role in (None, runtime_chat.Role.invalid_role):
+            raise StreamProtocolError(
+                "AgentCore conversation messages must have a valid role"
+            )
+        messages.append(message)
+
+    if messages[-1].role != runtime_chat.Role.user:
+        raise StreamProtocolError(
+            "AgentCore prompt conversation must end with a user message"
+        )
+    return tuple(messages)
 
 
 def _boundary(batch: _Batch, event: StreamEvent) -> bool:
@@ -215,6 +366,13 @@ async def _batches(
                 break
 
             event = item
+            if isinstance(event.application_event, _DirectionBarrier):
+                if current is not None:
+                    yield current
+                    current = None
+                    batch_deadline = None
+                yield _Batch([event], 0)
+                continue
             tokens = _token_count(event.message)
             if current is None:
                 current = _Batch([event], tokens)
@@ -229,11 +387,24 @@ async def _batches(
                 current = _Batch([event], tokens)
                 batch_deadline = time.monotonic() + config.batch_interval
                 continue
-            if _boundary(current, event) or (
+            # Preserve a complete request-side conversation in one frame when
+            # limits permit, but never coalesce separate streamed response
+            # events. Each response chunk receives its own server decision and
+            # is released independently.
+            separate_response_event = (
                 current.has_content
+                and current.direction is StreamDirection.RESPONSE
                 and event.message is not None
-                and current.token_count + tokens
-                > config.token_limit - config.overlap_tokens
+            )
+            if (
+                separate_response_event
+                or _boundary(current, event)
+                or (
+                    current.has_content
+                    and event.message is not None
+                    and current.token_count + tokens
+                    > config.token_limit - config.overlap_tokens
+                )
             ):
                 yield current
                 current = _Batch([event], tokens)
@@ -255,6 +426,7 @@ class EventStreamClient:
         config: EventStreamConfig,
         *,
         observer: Optional[StreamObserver] = None,
+        on_decision: Optional[Callable[[StreamInspectionResult], Any]] = None,
         channel_factory: Optional[Callable[..., Any]] = None,
         stub_factory: Callable[[Any], Any] = InspectionServiceStub,
     ) -> None:
@@ -267,6 +439,7 @@ class EventStreamClient:
             self.observer.event(ReasonCode.CONFIGURATION_INVALID, level=logging.ERROR)
             raise
         self.config = config
+        self._on_decision = on_decision
         self._channel_factory = channel_factory
         self._stub_factory = stub_factory
 
@@ -275,6 +448,7 @@ class EventStreamClient:
         cls,
         *,
         observer: Optional[StreamObserver] = None,
+        on_decision: Optional[Callable[[StreamInspectionResult], Any]] = None,
         **overrides: Any,
     ) -> "EventStreamClient":
         """Build a client from secure runtime environment configuration."""
@@ -287,7 +461,11 @@ class EventStreamClient:
                 ReasonCode.CONFIGURATION_INVALID, level=logging.ERROR
             )
             raise
-        return cls(config, observer=resolved_observer)
+        return cls(
+            config,
+            observer=resolved_observer,
+            on_decision=on_decision,
+        )
 
     async def inspect_strands(
         self,
@@ -341,7 +519,11 @@ class EventStreamClient:
 
     async def inspect_agentcore(
         self,
-        prompt: str,
+        prompt: Union[
+            str,
+            Sequence[CanonicalMessage],
+            Sequence[Dict[str, Any]],
+        ],
         response: Any,
         *,
         context: StreamContext,
@@ -349,10 +531,17 @@ class EventStreamClient:
         source: str = "strands-agentcore",
         inspection_config: Optional[InspectionConfig] = None,
     ) -> AsyncIterator[Any]:
-        """Inspect one AgentCore invocation (prompt and streamed response)."""
+        """Inspect a prompt before lazily invoking or consuming its AgentCore response.
 
-        if not isinstance(prompt, str) or not prompt:
-            raise StreamProtocolError("AgentCore prompt must be a non-empty string")
+        ``prompt`` may be text or the complete canonical conversation through
+        its latest user message. Conversation messages are sent in one request
+        event whenever configured limits permit. ``response`` may be an
+        invocation result, awaitable, or zero-argument callable. Use a callable
+        to ensure the model is not invoked until the complete prompt has been
+        acknowledged as safe.
+        """
+
+        prompt_messages = _prompt_messages(prompt)
         identifier = message_id or str(uuid.uuid4())
         adapter = StrandsEventAdapter(
             message_id=identifier,
@@ -365,15 +554,26 @@ class EventStreamClient:
         )
 
         async def conversation() -> AsyncIterator[StreamEvent]:
+            prompt_barrier = _DirectionBarrier(
+                direction=StreamDirection.REQUEST,
+                released=asyncio.Event(),
+            )
+            for message in prompt_messages:
+                yield StreamEvent(
+                    application_event=None,
+                    message=message,
+                    direction=StreamDirection.REQUEST,
+                    message_id=identifier,
+                )
             yield StreamEvent(
-                application_event=None,
-                message=CanonicalMessage(
-                    role=runtime_chat.Role.user,
-                    content=runtime_chat.MessageContent(text=prompt),
-                ),
+                application_event=prompt_barrier,
+                message=None,
                 direction=StreamDirection.REQUEST,
                 message_id=identifier,
             )
+            # Do not invoke or consume the model response until every prompt
+            # frame has received a safe acknowledgement.
+            await prompt_barrier.released.wait()
             async for item in adapter.adapt(agentcore_events(response)):
                 yield item
 
@@ -404,17 +604,22 @@ class EventStreamClient:
         tasks: List[asyncio.Task] = []
         output: asyncio.Queue = asyncio.Queue(maxsize=self.config.input_queue_size)
         pending: Dict[int, _Pending] = {}
+        direction_barriers: List[_DirectionBarrier] = []
         pending_lock = asyncio.Lock()
         capacity = asyncio.Semaphore(self.config.max_pending_batches)
         sequence_lock = asyncio.Lock()
         next_sequence = 0
         offsets: Dict[Tuple[str, StreamDirection], int] = {}
-        overlap: Dict[Tuple[str, StreamDirection], str] = {}
+        overlap: Dict[Tuple[str, StreamDirection], Tuple[Tuple[Any, ...], str]] = {}
         terminal = asyncio.Event()
         half_close_started = asyncio.Event()
         started = time.monotonic()
         outcome = "failure"
         active_stream_counted = False
+        # A Block acknowledgement is a server-owned terminal condition. Once
+        # it arrives the orchestrator closes the RPC, so cleanup must not race
+        # it by issuing a client cancellation.
+        server_blocked = False
         stream_correlation_id = uuid.uuid4().hex
 
         def observed(**attributes: Any) -> Dict[str, Any]:
@@ -451,6 +656,22 @@ class EventStreamClient:
                 leading_controls: List[StreamEvent] = []
                 try:
                     async for batch in _batches(events, self.config):
+                        barrier = batch.direction_barrier
+                        if barrier is not None:
+                            if previous is None:
+                                raise StreamProtocolError(
+                                    "direction barrier has no preceding content"
+                                )
+                            event_count, byte_count = await send(
+                                previous,
+                                False,
+                                sent_bytes,
+                                direction_barrier=barrier,
+                            )
+                            sent_events += event_count
+                            sent_bytes += byte_count
+                            previous = None
+                            continue
                         if not batch.has_content:
                             if previous is not None:
                                 previous.events.extend(batch.events)
@@ -483,7 +704,11 @@ class EventStreamClient:
                     call.cancel()
 
             async def send(
-                batch: _Batch, is_final: bool, already_sent_bytes: int
+                batch: _Batch,
+                is_final: bool,
+                already_sent_bytes: int,
+                *,
+                direction_barrier: Optional[_DirectionBarrier] = None,
             ) -> Tuple[int, int]:
                 if capacity.locked():
                     self.observer.event(
@@ -511,7 +736,9 @@ class EventStreamClient:
                     # write() returns. Otherwise a very fast acknowledgement
                     # could release capacity before a failed write cleans up.
                     async with pending_lock:
-                        pending[seq] = _Pending(seq, retained, ranges)
+                        pending[seq] = _Pending(seq, retained, ranges, batch.direction)
+                        if direction_barrier is not None:
+                            direction_barriers.append(direction_barrier)
                         with self.observer.span(
                             "aidefense.stream.send",
                             observed(sequence=seq, direction=batch.direction.value),
@@ -520,15 +747,25 @@ class EventStreamClient:
                 except BaseException:
                     async with pending_lock:
                         pending.pop(seq, None)
+                        if direction_barrier is not None:
+                            try:
+                                direction_barriers.remove(direction_barrier)
+                            except ValueError:
+                                pass
                     capacity.release()
                     raise
                 self.observer.event(
                     ReasonCode.BATCH_SENT,
                     attributes=observed(sequence=seq, direction=batch.direction.value),
                 )
+                # Wake the consumer so idle_timeout starts when a frame is
+                # actually awaiting acknowledgement, not while an upstream
+                # model is still producing its next chunk.
+                await output.put(_SENT)
                 return 1, frame_bytes
 
             async def reader() -> None:
+                nonlocal server_blocked
                 try:
                     async for result in call:
                         runtime_result = runtime_stream.InspectionResult.model_validate(
@@ -561,6 +798,15 @@ class EventStreamClient:
                             ready = [pending.pop(key) for key in ready_keys]
                         for _ in ready:
                             capacity.release()
+                        inspection_result = StreamInspectionResult(
+                            decision=decision,
+                            through_sequences=tuple(item.sequence for item in ready),
+                            directions=tuple(item.direction for item in ready),
+                        )
+                        if self._on_decision is not None:
+                            callback_result = self._on_decision(inspection_result)
+                            if inspect.isawaitable(callback_result):
+                                await callback_result
                         with self.observer.span(
                             "aidefense.stream.acknowledgement",
                             observed(through_sequence=ack),
@@ -569,7 +815,10 @@ class EventStreamClient:
                                 ReasonCode.ACK_RECEIVED,
                                 attributes=observed(through_sequence=ack),
                             )
-                        if not decision.is_safe:
+                        action = _action_name(decision.action)
+                        if action == "block" or (
+                            not decision.is_safe and action not in {"allow", "redact"}
+                        ):
                             with self.observer.span(
                                 "aidefense.stream.block",
                                 observed(through_sequence=ack),
@@ -579,14 +828,29 @@ class EventStreamClient:
                                     level=logging.WARNING,
                                     attributes=observed(through_sequence=ack),
                                 )
+                            server_blocked = True
                             raise UnsafeContentError(
                                 "AI Defense blocked streamed content before release",
                                 decision=decision,
-                                sequences=tuple(item.sequence for item in ready),
+                                sequences=inspection_result.through_sequences,
+                                directions=inspection_result.directions,
                             )
+                        async with pending_lock:
+                            for barrier in tuple(direction_barriers):
+                                if any(
+                                    item.direction is barrier.direction
+                                    for item in pending.values()
+                                ):
+                                    continue
+                                direction_barriers.remove(barrier)
+                                barrier.released.set()
                         with self.observer.span(
                             "aidefense.stream.decision",
-                            observed(through_sequence=ack, is_safe=True),
+                            observed(
+                                through_sequence=ack,
+                                is_safe=decision.is_safe,
+                                action=decision.action,
+                            ),
                         ):
                             self.observer.event(
                                 ReasonCode.DECISION_ALLOW,
@@ -596,7 +860,19 @@ class EventStreamClient:
                         for item in ready:
                             for application_event in item.application_events:
                                 if application_event is not None:
-                                    await output.put(application_event)
+                                    if action == "redact":
+                                        if decision.redacted_content:
+                                            redacted_event = _with_redacted_text(
+                                                application_event,
+                                                decision.redacted_content,
+                                            )
+                                            if redacted_event is not None:
+                                                await output.put(redacted_event)
+                                    else:
+                                        # Monitor policies report a violation
+                                        # but intentionally allow the original
+                                        # application event to continue.
+                                        await output.put(application_event)
                     async with pending_lock:
                         if not half_close_started.is_set() and not terminal.is_set():
                             raise StreamProtocolError(
@@ -613,7 +889,8 @@ class EventStreamClient:
                     if not terminal.is_set():
                         await output.put(self._map_error(exc))
                     terminal.set()
-                    call.cancel()
+                    if not server_blocked:
+                        call.cancel()
 
             tasks = [
                 asyncio.create_task(writer(), name="aidefense-stream-writer"),
@@ -625,19 +902,29 @@ class EventStreamClient:
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
                     raise StreamTimeoutError("event stream absolute timeout expired")
+                async with pending_lock:
+                    waiting_for_ack = bool(pending)
+                wait_timeout = (
+                    min(self.config.idle_timeout, remaining)
+                    if waiting_for_ack
+                    else remaining
+                )
                 try:
-                    item = await asyncio.wait_for(
-                        output.get(), timeout=min(self.config.idle_timeout, remaining)
-                    )
+                    item = await asyncio.wait_for(output.get(), timeout=wait_timeout)
                 except asyncio.TimeoutError as exc:
+                    if not waiting_for_ack:
+                        raise StreamTimeoutError(
+                            "event stream absolute timeout expired",
+                            cause=exc,
+                        ) from exc
                     raise StreamTimeoutError(
-                        "event stream produced no acknowledgement before idle timeout",
+                        "event stream frame was not acknowledged before idle timeout",
                         cause=exc,
                     ) from exc
                 if item is _END:
                     outcome = "completed"
                     break
-                if item is _ACK:
+                if item is _ACK or item is _SENT:
                     continue
                 if isinstance(item, BaseException):
                     raise item
@@ -681,7 +968,7 @@ class EventStreamClient:
             raise self._map_error(exc) from exc
         finally:
             terminal.set()
-            if call is not None:
+            if call is not None and not server_blocked:
                 call.cancel()
             for task in tasks:
                 if not task.done():
@@ -739,16 +1026,17 @@ class EventStreamClient:
         source: str,
         is_final: bool,
         offsets: Dict[Tuple[str, StreamDirection], int],
-        overlap: Dict[Tuple[str, StreamDirection], str],
+        overlap: Dict[Tuple[str, StreamDirection], Tuple[Tuple[Any, ...], str]],
     ) -> Tuple[Any, List[Any], Tuple[SourceRange, ...]]:
         key = (batch.message_id, batch.direction)
         offset = offsets.get(key, 0)
         messages: List[CanonicalMessage] = []
         ranges = []
-        canonical_new_text = ""
         retained = []
-        prefix = overlap.get(key, "")
+        previous_identity, prefix = overlap.get(key, ((), ""))
         prefix_used = False
+        overlap_identity: Tuple[Any, ...] = ()
+        overlap_text = ""
 
         for event in batch.events:
             retained.append(event.application_event)
@@ -760,14 +1048,22 @@ class EventStreamClient:
                 if message.content is not None and message.content.text is not None
                 else ""
             )
+            identity = _overlap_identity(message)
             if content:
                 source_range = SourceRange(offset, offset + len(content))
                 ranges.append(source_range)
                 offset = source_range.end
-                canonical_new_text += content
-                if prefix and not prefix_used:
+                if prefix and not prefix_used and identity == previous_identity:
                     content = prefix + content
-                    prefix_used = True
+                prefix_used = True
+                if identity == overlap_identity:
+                    overlap_text += content
+                else:
+                    overlap_identity = identity
+                    overlap_text = content
+            elif identity != overlap_identity:
+                overlap_identity = identity
+                overlap_text = ""
             messages.append(
                 message.model_copy(
                     update={"content": runtime_chat.MessageContent(text=content)}
@@ -779,9 +1075,9 @@ class EventStreamClient:
         offsets[key] = offset
         if self.config.overlap_tokens:
             char_limit = self.config.overlap_tokens * 4
-            overlap[key] = (prefix + canonical_new_text)[-char_limit:]
+            overlap[key] = (overlap_identity, overlap_text[-char_limit:])
         else:
-            overlap[key] = ""
+            overlap[key] = ((), "")
 
         direction = (
             runtime_stream.Direction.DIRECTION_REQUEST
@@ -810,6 +1106,7 @@ class EventStreamClient:
             event_id=response.event_id,
             classifications=tuple(str(value) for value in response.classifications),
             rules=tuple(rule.rule_name for rule in response.rules),
+            redacted_content=response.redacted_content,
         )
 
     @staticmethod
@@ -822,15 +1119,40 @@ class EventStreamClient:
             return StreamTimeoutError("event stream timed out", cause=exc)
         if isinstance(exc, grpc.aio.AioRpcError):
             code = exc.code()
+            details = " ".join((exc.details() or "").split())
+            if len(details) > 512:
+                details = f"{details[:509]}..."
             if code == grpc.StatusCode.CANCELLED:
                 return StreamCancelledError(
                     "server cancelled the event stream", cause=exc
                 )
             if code == grpc.StatusCode.DEADLINE_EXCEEDED:
                 return StreamTimeoutError("server deadline expired", cause=exc)
-            return StreamConnectionError(
-                f"event stream RPC failed with status {code.name}", cause=exc
-            )
+            if code in (
+                grpc.StatusCode.INVALID_ARGUMENT,
+                grpc.StatusCode.FAILED_PRECONDITION,
+            ):
+                message = f"event stream request was rejected with {code.name}"
+                if details:
+                    message = f"{message}: {details}"
+                return StreamProtocolError(message, cause=exc)
+            if code == grpc.StatusCode.RESOURCE_EXHAUSTED:
+                message = "event stream exceeded a server capacity limit"
+                if details:
+                    message = f"{message}: {details}"
+                return StreamBackpressureError(message, cause=exc)
+            if code in (
+                grpc.StatusCode.UNAUTHENTICATED,
+                grpc.StatusCode.PERMISSION_DENIED,
+            ):
+                message = f"event stream authorization failed with {code.name}"
+                if details:
+                    message = f"{message}: {details}"
+                return StreamConnectionError(message, cause=exc)
+            message = f"event stream RPC failed with status {code.name}"
+            if details:
+                message = f"{message}: {details}"
+            return StreamConnectionError(message, cause=exc)
         return StreamConnectionError("event stream connection failed", cause=exc)
 
 

@@ -74,6 +74,16 @@ class StreamDecision:
     event_id: str = ""
     classifications: Tuple[str, ...] = ()
     rules: Tuple[str, ...] = ()
+    redacted_content: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class StreamInspectionResult:
+    """One ordered server acknowledgement with its client-known origin."""
+
+    decision: StreamDecision
+    through_sequences: Tuple[int, ...]
+    directions: Tuple[StreamDirection, ...]
 
 
 @dataclass(frozen=True)

@@ -51,9 +51,14 @@ Then wrap the native Strands asynchronous event stream:
        # Unsafe events never reach this line.
        yield safe_event
 
-``inspect_agentcore`` accepts an async Strands stream, a normal iterable, an
-awaitable returning either form, a boto3 AgentCore response containing
-``response`` or ``payload``, and AgentCore ``chunk.bytes`` events.
+``inspect_agentcore`` accepts either prompt text or the complete canonical
+conversation through its latest ``user`` message. If the conversation fits the
+configured token and event limits, all prompt-side messages are sent together
+in one request event and produce one prompt decision. The response may be an
+async Strands stream, a normal iterable, an awaitable returning either form, a
+zero-argument invocation callable, a boto3 AgentCore response containing
+``response`` or ``payload``, or AgentCore ``chunk.bytes`` events. A callable is
+invoked only after the complete prompt-side conversation is acknowledged safe.
 
 Framework-neutral adapters
 --------------------------
@@ -64,6 +69,11 @@ decisions do not depend on Strands. A vendor integration implements the
 generated Pydantic ChatInspect ``Message`` model. The original native event is
 retained in ``application_event`` and is what the client yields after a safe
 decision.
+
+Request-side canonical messages are combined into one conversation event when
+the configured limits permit. Separate response-side application events are
+never coalesced: every streamed response chunk is inspected and acknowledged
+independently before that original chunk is yielded.
 
 .. code-block:: python
 
@@ -131,7 +141,12 @@ resume server state.
 
 Failures are fail closed and typed:
 
-- ``UnsafeContentError``: content was blocked and was not yielded.
+- ``UnsafeContentError``: an explicit ``Block`` action stopped the stream and
+  the content was not yielded.
+- Monitor/Allow violations continue with the original application event.
+  ``Redact`` continues with the server's ``redacted_content``; if the server
+  supplies no replacement, that chunk is dropped without terminating later
+  stream inspection.
 - ``StreamTimeoutError``: idle or absolute deadline expired.
 - ``StreamCancelledError``: the remote RPC was cancelled.
 - ``StreamConfigurationError``: local validation failed before transmission.

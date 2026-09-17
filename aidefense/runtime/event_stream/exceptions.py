@@ -27,10 +27,18 @@ class UnsafeContentError(EventStreamError):
 
     reason_code = "CONTENT_UNSAFE"
 
-    def __init__(self, message: str, *, decision: object, sequences: tuple):
+    def __init__(
+        self,
+        message: str,
+        *,
+        decision: object,
+        sequences: tuple,
+        directions: tuple = (),
+    ):
         super().__init__(message)
         self.decision = decision
         self.sequences = sequences
+        self.directions = directions
 
 
 class StreamTimeoutError(EventStreamError, TimeoutError):

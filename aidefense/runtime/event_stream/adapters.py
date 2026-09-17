@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import inspect
 import json
 from collections.abc import AsyncIterable, AsyncIterator, Iterable
@@ -18,6 +19,33 @@ from aidefense.pydantic.runtime.ai_defense.inspection.v1.inspection_pydantic imp
 
 from .exceptions import StreamProtocolError
 from .models import CanonicalMessage, StreamDirection, StreamEvent, ToolCall
+
+
+_SKIP_EVENT = object()
+_ITERATOR_END = object()
+
+
+def _next_or_end(iterator: Any) -> Any:
+    try:
+        return next(iterator)
+    except StopIteration:
+        return _ITERATOR_END
+
+
+async def _agentcore_sse_lines(body: Any) -> AsyncIterator[Any]:
+    """Read boto3's blocking StreamingBody without blocking the asyncio loop."""
+
+    iterator = iter(body.iter_lines(chunk_size=1024))
+    try:
+        while True:
+            line = await asyncio.to_thread(_next_or_end, iterator)
+            if line is _ITERATOR_END:
+                return
+            yield line
+    finally:
+        close = getattr(body, "close", None)
+        if close is not None:
+            await asyncio.to_thread(close)
 
 
 def _message(
@@ -247,6 +275,8 @@ class StrandsEventAdapter:
         # A complete Strands message is useful for non-streaming AgentCore
         # responses, but is skipped after deltas to avoid inspecting it twice.
         message = _mapping(data.get("message"))
+        if message is None and "role" in data and "content" in data:
+            message = data
         if message and not self._streamed_text:
             canonical = _complete_message(message, self._role)
             if canonical is not None:
@@ -268,18 +298,27 @@ class StrandsEventAdapter:
 async def agentcore_events(body: Any) -> AsyncIterator[Any]:
     """Extract events from AgentCore Runtime response and invocation shapes."""
 
+    if callable(body):
+        body = body()
     if inspect.isawaitable(body):
         body = await body
     data = _mapping(body)
+    is_sse = False
     if data is not None:
+        content_type = data.get("contentType") or data.get("content_type") or ""
+        is_sse = "text/event-stream" in str(content_type).lower()
         for key in ("response", "payload", "body", "eventStream", "stream"):
             if key in data:
                 body = data[key]
                 break
-    if hasattr(body, "read") and not hasattr(body, "__iter__"):
-        body = body.read()
+    if is_sse and hasattr(body, "iter_lines"):
+        body = _agentcore_sse_lines(body)
+    if not is_sse and hasattr(body, "read"):
+        body = await asyncio.to_thread(body.read)
         if inspect.isawaitable(body):
             body = await body
+    if is_sse and isinstance(body, (str, bytes)):
+        body = body.splitlines()
     if isinstance(body, bytes):
         body = body.decode("utf-8")
     if isinstance(body, str):
@@ -290,10 +329,11 @@ async def agentcore_events(body: Any) -> AsyncIterator[Any]:
             return
         if isinstance(decoded, dict):
             for key in ("result", "response", "completion", "content", "text"):
-                if isinstance(decoded.get(key), str):
-                    yield decoded[key]
+                value = decoded.get(key)
+                if isinstance(value, str) or _mapping(value) is not None:
+                    yield value
                     return
-        yield body
+        yield decoded
         return
     async for event in as_async_iterable(body):
         data = _mapping(event)
@@ -310,7 +350,11 @@ async def agentcore_events(body: Any) -> AsyncIterator[Any]:
                 ) from exc
         if isinstance(event, str):
             stripped = event.strip()
-            if stripped:
+            if is_sse:
+                event = _decode_sse_line(stripped)
+                if event is _SKIP_EVENT:
+                    continue
+            elif stripped:
                 try:
                     decoded = json.loads(stripped)
                 except json.JSONDecodeError:
@@ -318,3 +362,31 @@ async def agentcore_events(body: Any) -> AsyncIterator[Any]:
                 else:
                     event = decoded
         yield event
+
+
+def _decode_sse_line(line: str) -> Any:
+    """Decode one AgentCore SSE data line without exposing envelope text."""
+
+    if not line or line.startswith(":"):
+        return _SKIP_EVENT
+    if line.startswith(("event:", "id:", "retry:")):
+        return _SKIP_EVENT
+    if line.startswith("data:"):
+        line = line[5:].lstrip()
+    if not line or line == "[DONE]":
+        return _SKIP_EVENT
+    try:
+        decoded = json.loads(line)
+    except json.JSONDecodeError:
+        # BedrockAgentCoreApp falls back to ``repr`` for native Strands
+        # convenience events containing Agent/Trace objects. The same model
+        # delta has already arrived as a JSON-serializable Bedrock protocol
+        # event, so retaining this Python-dict representation would inspect
+        # and release every token twice. It is not a portable application
+        # event and cannot be reconstructed safely.
+        if line.startswith(("{'", "[{'")):
+            return _SKIP_EVENT
+        return line
+    if isinstance(decoded, str) and decoded.startswith(("{'", "[{'")):
+        return _SKIP_EVENT
+    return decoded

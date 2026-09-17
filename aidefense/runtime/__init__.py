@@ -61,6 +61,7 @@ from .event_stream import (
     StreamDecision,
     StreamDirection,
     StreamEvent,
+    StreamInspectionResult,
     StreamObserver,
     StreamProtocolError,
     StreamTimeoutError,
