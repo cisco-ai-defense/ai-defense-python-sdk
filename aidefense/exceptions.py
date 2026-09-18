@@ -54,6 +54,15 @@ class ValidationError(SDKError):
         super().__init__(message, status_code)
 
 
+class ScanTimeoutError(SDKError):
+    """Raised when scan polling expires while the server-side scan continues."""
+
+    def __init__(self, message: str, scan_id: str, timeout_seconds: float):
+        super().__init__(message)
+        self.scan_id = scan_id
+        self.timeout_seconds = timeout_seconds
+
+
 class ApiError(SDKError):
     """
     Exception for API errors.

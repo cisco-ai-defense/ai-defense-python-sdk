@@ -21,7 +21,7 @@ Convenient imports for all major SDK components.
 
 from .runtime import *
 from .config import Config, AsyncConfig
-from .exceptions import ValidationError, ApiError, SDKError
+from .exceptions import ValidationError, ApiError, SDKError, ScanTimeoutError
 from .modelscan import ModelScanClient
 
 # Import management API components

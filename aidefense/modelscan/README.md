@@ -5,6 +5,7 @@ The AI Defense ModelScan module provides comprehensive security scanning capabil
 ## Features
 
 - **File Scanning**: Scan individual model files for security threats and malicious code
+- **Multipart File Uploads**: Stream large model files directly to object storage with bounded parallelism, per-part retries, and cleanup on failure
 - **Repository Scanning**: Scan entire model repositories from platforms like HuggingFace
 - **Multiple Scan Approaches**: High-level client for convenience or granular control for custom workflows
 - **Comprehensive Results**: Detailed threat detection and analysis results
@@ -47,6 +48,51 @@ if result.status == ScanStatus.COMPLETED:
             print(f"ℹ️  {file_info.name} status: {file_info.status}")
 elif result.status == ScanStatus.FAILED:
     print("❌ Scan failed")
+```
+
+`scan_file()` uses multipart upload by default. The service selects the part size, the SDK requests
+presigned URLs in batches of at most 32, and up to 10 parts are uploaded concurrently. A console
+progress bar is shown by default and can be disabled with `show_progress=False`. Applications can use
+`progress_callback` to receive `(uploaded_bytes, total_bytes)` updates instead. Concurrency can be
+reduced for constrained systems without changing the multipart contract:
+
+```python
+result = client.scan_file("/path/to/large-model.safetensors", max_concurrency=4)
+```
+
+For multipart uploads, the SDK validates that the file exists and is not empty, then relies on the
+service to enforce the configured maximum file size when the scan object is created. The legacy
+single-PUT upload path continues to enforce its 5 GiB client-side limit.
+
+Each worker streams only its assigned file range, so the SDK does not load the entire model—or one full
+part per worker—into memory. The SDK keeps a bounded two-batch window of presigned URLs and queues the
+next batch before the current batch drains, preventing slow parts at a batch boundary from idling the
+worker pool. If any part fails after its retry budget is exhausted, the SDK aborts the multipart upload
+before propagating the error.
+
+Once upload completes, `scan_file()` shows a spinner while it polls the scan status. Disable it with
+`show_status_spinner=False`; this does not affect polling or the upload progress bar.
+
+After upload, `scan_file()` waits up to 10 minutes by default for analysis to reach a terminal state.
+This polling timeout can be changed with `scan_timeout_seconds`. If it expires, the SDK raises
+`ScanTimeoutError` without canceling or deleting the scan. The exception includes `scan_id`, which can
+be passed to `get_scan()` to retrieve the result later.
+
+The SDK's separate per-request network timeout defaults to 30 seconds and can be configured with
+`Config(timeout=...)`. It applies to individual API and upload requests; it is not an overall multipart
+upload deadline.
+
+```python
+from aidefense import ScanTimeoutError
+from aidefense.modelscan.models import GetScanStatusRequest
+
+try:
+    result = client.scan_file(
+        "/path/to/large-model.safetensors",
+        scan_timeout_seconds=600,
+    )
+except ScanTimeoutError as error:
+    result = client.get_scan(error.scan_id, GetScanStatusRequest())
 ```
 
 ### Repository Scanning with ModelScanClient
@@ -141,7 +187,7 @@ print(f"📝 Registered scan with ID: {scan_id}")
 try:
     # Step 2: Upload the file
     file_path = Path("/path/to/model.pkl")
-    success = client.upload_file(scan_id, file_path)
+    success = client.upload_file(scan_id, file_path, max_concurrency=10)
     if success:
         print(f"📤 Successfully uploaded {file_path.name}")
     
