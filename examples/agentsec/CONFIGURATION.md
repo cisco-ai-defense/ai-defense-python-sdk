@@ -121,7 +121,7 @@ auto-selected gateway for that provider.
 | `gateway_url` | string | URL | *(required)* | The AI Defense gateway URL to proxy LLM requests through. |
 | `gateway_api_key` | string | | `null` | API key sent in the `api-key` header. Required when `auth_mode` is `"api_key"`. Typically a `${VAR}` reference. |
 | `auth_mode` | string | `"api_key"`, `"aws_sigv4"`, `"google_adc"` | `"api_key"` | Authentication mode for the gateway. See below for details. |
-| `provider` | string | `"openai"`, `"azure_openai"`, `"vertexai"`, `"bedrock"`, `"google_genai"`, `"cohere"`, `"mistral"` | *(none)* | LLM provider this gateway serves. Used for auto-matching patched clients to their default gateway. |
+| `provider` | string | `"openai"`, `"azure_openai"`, `"vertexai"`, `"bedrock"`, `"google_genai"`, `"cohere"`, `"mistral"`, `"anthropic"` | *(none)* | LLM provider this gateway serves. Used for auto-matching patched clients to their default gateway. |
 | `default` | bool | | `false` | If `true`, this is the auto-selected gateway for its `provider`. Only one gateway per provider should be marked default. |
 | `gateway_model` | string | | `null` | Model name override. When set, the gateway request uses this model name instead of the one from the client. |
 | `fail_open` | bool | | *(inherits from `llm_defaults`)* | Per-gateway override. |
@@ -340,6 +340,8 @@ and fill in the values.
 | `COHERE_1_GATEWAY_URL` | Cohere gateway URL | `https://your-cohere-gateway-url` | `${COHERE_1_GATEWAY_URL}` in `cohere-1.gateway_url` |
 | `MISTRAL_API_KEY` | Mistral AI API key | *(empty)* | `${MISTRAL_API_KEY}` in `mistral-1.gateway_api_key` |
 | `MISTRAL_1_GATEWAY_URL` | Mistral AI gateway URL | `https://your-mistral-gateway-url` | `${MISTRAL_1_GATEWAY_URL}` in `mistral-1.gateway_url` |
+| `ANTHROPIC_API_KEY` | Anthropic API key | *(empty)* | `${ANTHROPIC_API_KEY}` in `anthropic-1.gateway_api_key` |
+| `ANTHROPIC_1_GATEWAY_URL` | Anthropic gateway URL | `https://your-anthropic-gateway-url` | `${ANTHROPIC_1_GATEWAY_URL}` in `anthropic-1.gateway_url` |
 
 ### AWS Bedrock (Global)
 
@@ -469,7 +471,7 @@ agentsec.protect(
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `patch_clients` | `bool` | `True` | Whether to auto-patch LLM client libraries (OpenAI, Bedrock, Vertex AI, Cohere, Mistral, LiteLLM, MCP). Set to `False` to manage patching manually. |
+| `patch_clients` | `bool` | `True` | Whether to auto-patch LLM client libraries (OpenAI, Bedrock, Vertex AI, Cohere, Mistral, Anthropic, LiteLLM, MCP). Set to `False` to manage patching manually. |
 | `auto_dotenv` | `bool` | `True` | Automatically load the nearest `.env` file via `python-dotenv` before parsing the YAML config. Disable if you manage env vars yourself. |
 | `config` | `str` | `None` | Path to an `agentsec.yaml` configuration file. If `None`, only kwargs and hardcoded defaults are used. |
 | `llm_integration_mode` | `str` | `None` | `"api"` or `"gateway"`. Overrides the YAML value. When `None`, the YAML value is used (or default `"api"`). |
@@ -523,4 +525,3 @@ The full precedence for logging settings is:
 ```
 AGENTSEC_LOG_* env var  >  protect() kwarg  >  agentsec.yaml logging section  >  hardcoded default
 ```
-

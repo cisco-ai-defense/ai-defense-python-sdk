@@ -47,7 +47,7 @@ The SDK enables you to detect security, privacy, and safety risks in real time, 
 
 ## Features
 
-- **Agent Runtime SDK**: Auto-patch LLM clients (OpenAI, Azure OpenAI, Bedrock, Vertex AI, Cohere, Mistral, Google GenAI, LiteLLM) and MCP clients with just 2 lines of code. Supports API mode (inspection) and Gateway mode (proxy).
+- **Agent Runtime SDK**: Auto-patch LLM clients (OpenAI, Azure OpenAI, Bedrock, Vertex AI, Cohere, Mistral, Anthropic, Google GenAI, LiteLLM) and MCP clients with just 2 lines of code. Supports API mode (inspection) and Gateway mode (proxy).
 - **Chat Inspection**: Analyze chat prompts, responses, or full conversations for risks.
 - **HTTP Inspection**: Inspect HTTP requests and responses, including support for `requests.Request`, `requests.PreparedRequest`, and `requests.Response` objects.
 - **MCP Inspection**: Inspect Model Context Protocol (MCP) JSON-RPC 2.0 messages for security, privacy, and safety violations in AI agent tool calls, resource access, and responses.
@@ -264,7 +264,7 @@ print(resp.task_id)
 
 - `runtime/agentsec/__init__.py` — Main entry point with `protect()` function
 - `runtime/agentsec/config_file.py` — Configuration loading from `agentsec.yaml` with `${VAR}` substitution
-- `runtime/agentsec/patchers/` — Auto-patching for LLM clients (OpenAI, Azure OpenAI, Bedrock, Vertex AI, Cohere, Mistral, Google GenAI, LiteLLM, MCP)
+- `runtime/agentsec/patchers/` — Auto-patching for LLM clients (OpenAI, Azure OpenAI, Bedrock, Vertex AI, Cohere, Mistral, Anthropic, Google GenAI, LiteLLM, MCP)
 - `runtime/agentsec/inspectors/` — API and Gateway mode inspectors for LLM and MCP
 - `runtime/agentsec/decision.py` — Decision model for inspection results
 - `runtime/agentsec/exceptions.py` — SecurityPolicyError for blocked requests
@@ -437,6 +437,7 @@ except SecurityPolicyError as e:
 | **Google GenAI** | `google-genai` | `generate_content()`, `generate_content_async()` |
 | **Cohere** | `cohere` | `V2Client.chat()`, `V2Client.chat_stream()`, `AsyncV2Client.chat()`, `AsyncV2Client.chat_stream()` |
 | **Mistral AI** | `mistralai` | `Chat.complete()`, `Chat.stream()`, `Chat.complete_async()`, `Chat.stream_async()` |
+| **Anthropic** | `anthropic` | `messages.create()`, `messages.stream()`, async equivalents |
 | **LiteLLM** | `litellm` | `completion()`, `acompletion()` |
 | **MCP** | `mcp` | `ClientSession.call_tool()`, `ClientSession.list_tools()` |
 

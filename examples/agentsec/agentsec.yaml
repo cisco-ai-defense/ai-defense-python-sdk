@@ -136,6 +136,13 @@ gateway_mode:
       provider: mistral
       default: true
 
+    anthropic-1:
+      gateway_url: ${ANTHROPIC_1_GATEWAY_URL}
+      gateway_api_key: ${ANTHROPIC_API_KEY}
+      auth_mode: api_key
+      provider: anthropic
+      default: true
+
     # -- Additional named gateways (selected via agentsec.gateway("name")) ----
     bedrock-2:
       gateway_url: ${BEDROCK_2_GATEWAY_URL}

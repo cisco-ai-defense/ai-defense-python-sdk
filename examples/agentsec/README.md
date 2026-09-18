@@ -2,7 +2,7 @@
 
 **agentsec** accelerates your integration with **Cisco AI Defense** when building AI applications using:
 
-- **Chat Completions** - Direct LLM calls (OpenAI, Azure, Bedrock, Vertex AI, Cohere, Mistral, LiteLLM)
+- **Chat Completions** - Direct LLM calls (OpenAI, Azure, Bedrock, Vertex AI, Cohere, Mistral, Anthropic, LiteLLM)
 - **Agentic Frameworks** - LangChain, LangGraph, CrewAI, AutoGen, Strands, OpenAI Agents SDK
 - **Agentic Runtimes (PaaS)** - AWS Bedrock AgentCore, GCP Vertex AI Agent Engine, Microsoft Azure AI Foundry
 
@@ -66,6 +66,7 @@ Before running any example you need credentials for **Cisco AI Defense** and at 
 | **GCP Vertex AI** | `gcloud auth application-default login` | See `.env.example` GCP section |
 | **Cohere** | [dashboard.cohere.com/api-keys](https://dashboard.cohere.com/api-keys) | `COHERE_API_KEY` |
 | **Mistral AI** | [console.mistral.ai](https://console.mistral.ai) — API Keys page | `MISTRAL_API_KEY` |
+| **Anthropic** | [console.anthropic.com](https://console.anthropic.com/settings/keys) — API Keys page | `ANTHROPIC_API_KEY` |
 
 > **Minimum for a first run (API mode + OpenAI):** You only need three values in `.env`:
 > `AI_DEFENSE_API_MODE_LLM_API_KEY`, `AI_DEFENSE_API_MODE_LLM_ENDPOINT`, and `OPENAI_API_KEY`.
@@ -199,6 +200,7 @@ For the complete list of every environment variable, every `agentsec.yaml` param
 | `1-simple/skip_inspection_example.py` | API or Gateway | OpenAI | - |
 | `1-simple/cohere_example.py` | API or Gateway | Cohere | - |
 | `1-simple/mistral_example.py` | API or Gateway | Mistral AI | - |
+| `1-simple/anthropic_example.py` | API or Gateway | Anthropic | Native Messages API |
 | `1-simple/simple_strands_bedrock.py` | API or Gateway | Bedrock | - |
 | `1-simple/mcp_example.py` | API or Gateway | OpenAI + MCP | MCP server URL |
 | `1-simple/multi_gateway_example.py` | API or Gateway | Bedrock (x2) + MCP (x2) | Named gateways, multi-MCP |
@@ -258,6 +260,7 @@ agentsec automatically patches these LLM client libraries:
 | **Google GenAI** | `google-genai` | `generate_content()`, `generate_content_async()` (falls back to `vertexai` gateway — see note below) |
 | **Cohere** | `cohere` | `V2Client.chat()`, `V2Client.chat_stream()`, `AsyncV2Client.chat()`, `AsyncV2Client.chat_stream()` |
 | **Mistral AI** | `mistralai` | `Chat.complete()`, `Chat.stream()`, `Chat.complete_async()`, `Chat.stream_async()` |
+| **Anthropic** | `anthropic` | `messages.create()`, `messages.stream()`, async equivalents |
 | **LiteLLM** | `litellm` | `completion()`, `acompletion()` (catches provider calls that bypass native SDKs, e.g. CrewAI + Vertex AI) |
 
 > **Google GenAI vs. Vertex AI**: Both SDKs target the same Google backend and use the same Vertex AI REST gateway format. From a developer's perspective they are interchangeable for agentsec purposes. If you only configure a `vertexai` gateway in `agentsec.yaml`, the `google-genai` patcher will automatically fall back to it — no separate `google_genai` gateway entry is needed.
@@ -666,6 +669,7 @@ Standalone examples demonstrating core agentsec features without agent framework
 | `openai_example.py` | OpenAI client with automatic inspection | ✅ | ✅ |
 | `cohere_example.py` | Cohere v2 client with automatic inspection | ✅ | ✅ |
 | `mistral_example.py` | Mistral AI client with automatic inspection | ✅ | ✅ |
+| `anthropic_example.py` | Anthropic Messages client with automatic inspection | ✅ | ✅ |
 | `streaming_example.py` | Streaming responses with chunk inspection | ✅ | ✅ |
 | `mcp_example.py` | MCP tool call inspection (pre & post) | ✅ | ✅ |
 | `gateway_mode_example.py` | Gateway mode configuration | ✅ | ✅ |
@@ -696,6 +700,45 @@ poetry run python multi_gateway_example.py
 cd /path/to/ai-defense-python-sdk
 ./scripts/run-integration-tests.sh --simple
 ```
+
+### Anthropic end-to-end validation
+
+The native Anthropic live tests are opt-in and never read credentials from
+source files. Install the optional provider SDK, export the credentials in the
+shell or CI secret store, and run API mode and gateway mode in separate pytest
+processes:
+
+```bash
+pip install anthropic
+
+export ANTHROPIC_API_KEY="..."
+export ANTHROPIC_MODEL="claude-sonnet-4-20250514"
+export AI_DEFENSE_API_MODE_LLM_ENDPOINT="https://..."
+export AI_DEFENSE_API_MODE_LLM_API_KEY="..."
+
+RUN_ANTHROPIC_E2E=1 ANTHROPIC_E2E_MODE=api \
+  pytest -q aidefense/tests/agentsec/integration/test_anthropic_live.py
+```
+
+For gateway mode, use a gateway credential rather than the inspection API
+credential and run a fresh process:
+
+```bash
+export ANTHROPIC_GATEWAY_URL="https://..."
+export ANTHROPIC_GATEWAY_API_KEY="..."
+
+RUN_ANTHROPIC_E2E=1 ANTHROPIC_E2E_MODE=gateway \
+  pytest -q aidefense/tests/agentsec/integration/test_anthropic_live.py
+```
+
+The suite verifies patched-client registration, sync and async
+``messages.create()``, raw streaming events, and the high-level
+``messages.stream()`` helper. Keep the live tests in monitor mode initially;
+after the happy path is green, repeat with an enforce-mode fixture and a
+known policy-triggering prompt to verify blocking behavior. The gateway
+streaming path currently preserves Anthropic's stream interface over the
+gateway response; true gateway SSE validation should be added when the
+gateway endpoint exposes native Anthropic SSE forwarding.
 
 ---
 

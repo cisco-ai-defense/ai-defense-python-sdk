@@ -151,6 +151,7 @@ def _apply_patches(api_mode_llm: Optional[str], api_mode_mcp: Optional[str]) -> 
         patch_google_genai,
         patch_cohere,
         patch_mistral,
+        patch_anthropic,
         patch_litellm,
         patch_azure_ai_inference,
     )
@@ -170,6 +171,7 @@ def _apply_patches(api_mode_llm: Optional[str], api_mode_mcp: Optional[str]) -> 
         patch_google_genai()
         patch_cohere()
         patch_mistral()
+        patch_anthropic()
         patch_litellm()
         patch_azure_ai_inference()
 

@@ -77,10 +77,10 @@ def reset_all_patcher_inspectors() -> None:
 
     from . import (
         openai, bedrock, cohere, mistral, vertexai,
-        google_genai, azure_ai_inference, litellm, mcp,
+        google_genai, azure_ai_inference, litellm, anthropic, mcp,
     )
     for mod in (openai, bedrock, cohere, mistral, vertexai,
-                google_genai, azure_ai_inference, litellm, mcp):
+                google_genai, azure_ai_inference, litellm, anthropic, mcp):
         if hasattr(mod, "_reset_inspector"):
             mod._reset_inspector()
 
@@ -93,6 +93,7 @@ from .vertexai import patch_vertexai
 from .google_genai import patch_google_genai
 from .cohere import patch_cohere
 from .mistral import patch_mistral
+from .anthropic import patch_anthropic
 from .litellm import patch_litellm
 from .azure_ai_inference import patch_azure_ai_inference
 
@@ -109,8 +110,8 @@ __all__ = [
     "patch_google_genai",
     "patch_cohere",
     "patch_mistral",
+    "patch_anthropic",
     "patch_litellm",
     "patch_azure_ai_inference",
 ]
-
 
