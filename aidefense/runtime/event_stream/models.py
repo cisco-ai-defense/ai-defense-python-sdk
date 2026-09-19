@@ -11,9 +11,17 @@ from enum import Enum
 from typing import Any, Optional, Tuple
 
 from aidefense.pydantic.runtime.ai_defense.inspection.v1.inspection_pydantic import (
+    FunctionCall as CanonicalFunctionCall,
     Message as CanonicalMessage,
-    ToolCall,
+    MessageContent as CanonicalMessageContent,
+    Role as CanonicalRole,
+    ToolCall as CanonicalToolCall,
+    ToolDefinition as CanonicalToolDefinition,
+    ToolFunction as CanonicalToolFunction,
 )
+
+# Preview compatibility; new integrations should prefer the canonical name.
+ToolCall = CanonicalToolCall
 
 from .exceptions import StreamConfigurationError
 
@@ -56,10 +64,10 @@ class SourceRange:
 
 @dataclass(frozen=True)
 class StreamEvent:
-    """One application event and the canonical content derived from it."""
+    """One wire event and its caller-owned canonical conversation payload."""
 
     application_event: Any
-    message: Optional[CanonicalMessage]
+    messages: Tuple[CanonicalMessage, ...]
     direction: StreamDirection
     message_id: str
     source_range: Optional[SourceRange] = None
@@ -79,7 +87,7 @@ class StreamDecision:
 
 @dataclass(frozen=True)
 class StreamInspectionResult:
-    """One ordered server acknowledgement with its client-known origin."""
+    """One decision and every locally pending sequence it cumulatively covers."""
 
     decision: StreamDecision
     through_sequences: Tuple[int, ...]
@@ -88,20 +96,18 @@ class StreamInspectionResult:
 
 @dataclass(frozen=True)
 class EventStreamConfig:
-    """Validated connection, batching, timeout, and backpressure settings."""
+    """Validated transport, timeout, and bounded buffering settings."""
 
     endpoint: str
     api_key: str = field(repr=False)
-    use_tls: bool = True
+    tls: bool = True
     root_certificates: Optional[bytes] = field(default=None, repr=False)
-    batch_interval: float = 0.05
-    token_limit: int = 512
-    overlap_tokens: int = 32
+    client_certificate: Optional[bytes] = field(default=None, repr=False)
+    client_private_key: Optional[bytes] = field(default=None, repr=False)
+    tls_server_name: Optional[str] = None
     idle_timeout: float = 30.0
     absolute_timeout: float = 300.0
-    max_pending_batches: int = 32
-    input_queue_size: int = 128
-    max_events_per_frame: int = 256
+    max_pending_events: int = 32
     max_stream_events: int = 4096
     max_stream_bytes: int = 8 * 1024 * 1024
     metadata: Tuple[Tuple[str, str], ...] = ()
@@ -109,6 +115,7 @@ class EventStreamConfig:
     API_KEY_ENV = "AI_DEFENSE_EVENT_STREAM_API_KEY"
     FALLBACK_API_KEY_ENV = "AI_DEFENSE_API_MODE_LLM_API_KEY"
     ENDPOINT_ENV = "AI_DEFENSE_EVENT_STREAM_ENDPOINT"
+    TLS_ENV = "AI_DEFENSE_EVENT_STREAM_TLS"
 
     def __post_init__(self) -> None:
         self.validate()
@@ -123,6 +130,12 @@ class EventStreamConfig:
             "api_key",
             os.getenv(cls.API_KEY_ENV) or os.getenv(cls.FALLBACK_API_KEY_ENV, ""),
         )
+        tls_value = os.getenv(cls.TLS_ENV)
+        if "tls" not in values and tls_value is not None:
+            normalized = tls_value.strip().lower()
+            if normalized not in {"true", "false", "1", "0", "yes", "no"}:
+                raise StreamConfigurationError(f"{cls.TLS_ENV} must be true or false")
+            values["tls"] = normalized in {"true", "1", "yes"}
         return cls(**values)
 
     def validate(self) -> None:
@@ -132,29 +145,33 @@ class EventStreamConfig:
             raise StreamConfigurationError(
                 f"api_key is required; set {self.API_KEY_ENV} in secure runtime configuration"
             )
-        if self.batch_interval <= 0:
-            raise StreamConfigurationError("batch_interval must be greater than zero")
-        if self.token_limit < 1:
-            raise StreamConfigurationError("token_limit must be at least 1")
-        if self.overlap_tokens < 0 or self.overlap_tokens >= self.token_limit:
+        if (self.client_certificate is None) != (self.client_private_key is None):
             raise StreamConfigurationError(
-                "overlap_tokens must be non-negative and smaller than token_limit"
+                "client_certificate and client_private_key must be configured together"
             )
+        if not self.tls and any(
+            value is not None
+            for value in (
+                self.root_certificates,
+                self.client_certificate,
+                self.client_private_key,
+                self.tls_server_name,
+            )
+        ):
+            raise StreamConfigurationError(
+                "TLS certificate and server-name settings require tls=True"
+            )
+        if self.tls_server_name is not None and not self.tls_server_name.strip():
+            raise StreamConfigurationError("tls_server_name must not be empty")
         if self.idle_timeout <= 0 or self.absolute_timeout <= 0:
             raise StreamConfigurationError("timeouts must be greater than zero")
         if self.absolute_timeout < self.idle_timeout:
             raise StreamConfigurationError(
                 "absolute_timeout must be greater than or equal to idle_timeout"
             )
-        if not 1 <= self.max_pending_batches <= self.max_stream_events:
+        if not 1 <= self.max_pending_events <= self.max_stream_events:
             raise StreamConfigurationError(
-                "max_pending_batches must be between 1 and max_stream_events"
-            )
-        if self.input_queue_size < 1:
-            raise StreamConfigurationError("input_queue_size must be at least 1")
-        if not 1 <= self.max_events_per_frame <= 256:
-            raise StreamConfigurationError(
-                "max_events_per_frame must be between 1 and the server limit of 256"
+                "max_pending_events must be between 1 and max_stream_events"
             )
         if not 1 <= self.max_stream_events <= 4096:
             raise StreamConfigurationError(

@@ -18,19 +18,21 @@ if ROOT_DIR not in sys.path:
 
 from bedrock_agentcore import BedrockAgentCoreApp
 
-from aidefense.runtime import EventStreamClient, StreamContext
+from aidefense.runtime import (
+    EventStreamClient,
+    StrandsBedrockAdapter,
+    StreamContext,
+)
 from _shared import get_agent
 
 
 app = BedrockAgentCoreApp()
 inspection = EventStreamClient.from_env(
-    batch_interval=0.05,
-    token_limit=512,
-    overlap_tokens=32,
-    max_pending_batches=16,
+    max_pending_events=32,
     idle_timeout=30,
     absolute_timeout=1800,
 )
+adapter = StrandsBedrockAdapter()
 
 
 def _safe_text(event):
@@ -58,10 +60,10 @@ async def invoke(payload: dict):
         actor_id="strands-agentcore",
     )
 
-    response_events = get_agent().stream_async(prompt)
-    async for safe_event in inspection.inspect_agentcore(
-        prompt,
-        response_events,
+    async for safe_event in inspection.inspect(
+        lambda: get_agent().stream_async(prompt),
+        request=prompt,
+        adapter=adapter,
         context=context,
     ):
         text = _safe_text(safe_event)

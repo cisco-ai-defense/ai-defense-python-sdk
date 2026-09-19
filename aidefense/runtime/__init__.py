@@ -52,6 +52,8 @@ from .event_stream import (
     EventStreamAdapter,
     ReasonCode,
     SourceRange,
+    StrandsAgentCoreAdapter,
+    StrandsBedrockAdapter,
     StrandsEventAdapter,
     StreamBackpressureError,
     StreamCancelledError,

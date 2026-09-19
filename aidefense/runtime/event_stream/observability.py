@@ -13,7 +13,7 @@ from typing import Any, ContextManager, Dict, Mapping, Optional
 
 class ReasonCode(str, Enum):
     STREAM_STARTED = "STREAM_STARTED"
-    BATCH_SENT = "BATCH_SENT"
+    EVENT_SENT = "EVENT_SENT"
     ACK_RECEIVED = "ACK_RECEIVED"
     DECISION_ALLOW = "DECISION_ALLOW"
     DECISION_BLOCK = "DECISION_BLOCK"

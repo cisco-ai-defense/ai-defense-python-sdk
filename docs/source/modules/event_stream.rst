@@ -1,167 +1,183 @@
 Bidirectional Event Stream Inspection
 =====================================
 
-The event-stream client protects incremental LLM and agent output without
-requiring applications to construct protobuf frames. It retains application
-events locally and releases them only after the server acknowledges their
-sequence with a safe ``InspectResponse``. The protocol does not return
-``released_events``; release and blocking are SDK responsibilities.
+Create one ``EventStreamClient`` for the application and reuse it for every LLM
+invocation. Each ``inspect`` call opens an independent gRPC stream, so the same
+client and adapter are safe for sequential and concurrent API calls. Stream
+state, sequence numbers, message IDs, pending content, and parser state are
+isolated per invocation.
 
-Quick start with Strands and AgentCore
---------------------------------------
+The SDK sends each response input as its own gRPC event. It does not group
+chunks, split tokens, create overlap, or accumulate model output. The service
+may inspect several events internally and return one cumulative acknowledgement;
+the SDK releases every covered application event in sequence order.
 
-Store the connection key in the runtime's secret configuration, rather than in
-source code or an invocation payload:
+Configuration
+-------------
+
+Store the connection key in runtime secret configuration and construct the
+client once:
 
 .. code-block:: console
 
    export AI_DEFENSE_EVENT_STREAM_ENDPOINT="inspect.example.cisco.com:443"
    export AI_DEFENSE_EVENT_STREAM_API_KEY="..."
+   export AI_DEFENSE_EVENT_STREAM_TLS="true"
 
-Then wrap the native Strands asynchronous event stream:
+.. code-block:: python
+
+   from aidefense.runtime import EventStreamClient
+
+   inspection = EventStreamClient.from_env(
+       idle_timeout=30,
+       absolute_timeout=1800,
+       max_pending_events=32,
+   )
+
+TLS is enabled by default. A private CA or mutual TLS can be configured with
+``root_certificates``, ``client_certificate``, and ``client_private_key`` byte
+values. ``tls_server_name`` supports a dial target that differs from the
+certificate name. Set ``tls=False`` only for a trusted local endpoint.
+
+Minimal Strands and Bedrock integration
+---------------------------------------
+
+Adapters are reusable and contain no cross-request parser state. Passing the
+model invocation as a callable ensures it is not called until the prompt has
+received an allowed decision.
 
 .. code-block:: python
 
    import uuid
 
-   from aidefense.runtime import EventStreamClient, StreamContext
-
-   client = EventStreamClient.from_env(
-       batch_interval=0.05,
-       token_limit=512,
-       overlap_tokens=32,
-       idle_timeout=30,
-       absolute_timeout=300,
-       max_pending_batches=16,
+   from aidefense.runtime import (
+       StrandsBedrockAdapter,
+       StreamContext,
    )
 
-   context = StreamContext(
-       session_id=str(uuid.uuid4()),
-       request_id=str(uuid.uuid4()),
-       conversation_id=str(uuid.uuid4()),
-       actor_id="agentcore-runtime",
-   )
+   strands = StrandsBedrockAdapter()
 
-   native_events = agent.stream_async(prompt)
-   async for safe_event in client.inspect_agentcore(
-       prompt,
-       native_events,
-       context=context,
-   ):
-       # Unsafe events never reach this line.
-       yield safe_event
+   async def protected_response(agent, prompt):
+       context = StreamContext(
+           session_id=str(uuid.uuid4()),
+           request_id=str(uuid.uuid4()),
+           conversation_id=str(uuid.uuid4()),
+       )
+       async for approved in inspection.inspect(
+           lambda: agent.stream_async(prompt),
+           request=prompt,
+           adapter=strands,
+           context=context,
+       ):
+           yield approved
 
-``inspect_agentcore`` accepts either prompt text or the complete canonical
-conversation through its latest ``user`` message. If the conversation fits the
-configured token and event limits, all prompt-side messages are sent together
-in one request event and produce one prompt decision. The response may be an
-async Strands stream, a normal iterable, an awaitable returning either form, a
-zero-argument invocation callable, a boto3 AgentCore response containing
-``response`` or ``payload``, or AgentCore ``chunk.bytes`` events. A callable is
-invoked only after the complete prompt-side conversation is acknowledged safe.
-
-Framework-neutral adapters
---------------------------
-
-Transport, batching, overlap, backpressure, acknowledgement handling, and
-decisions do not depend on Strands. A vendor integration implements the
-``EventStreamAdapter`` protocol and emits ``StreamEvent`` values containing the
-generated Pydantic ChatInspect ``Message`` model. The original native event is
-retained in ``application_event`` and is what the client yields after a safe
-decision.
-
-Request-side canonical messages are combined into one conversation event when
-the configured limits permit. Separate response-side application events are
-never coalesced: every streamed response chunk is inspected and acknowledged
-independently before that original chunk is yielded.
+``request`` can be plain text, canonical Pydantic messages, or ordinary message
+dictionaries. A complete conversation is sent as one caller-owned request
+event and inspected before the response source is consumed:
 
 .. code-block:: python
 
-   from aidefense.runtime import CanonicalMessage, StreamDirection, StreamEvent
+   conversation = [
+       {"role": "system", "content": "Be concise."},
+       {"role": "user", "content": "Explain machine learning."},
+   ]
+
+   async for approved in inspection.inspect(
+       lambda: agent.stream_async(conversation),
+       request=conversation,
+       adapter=strands,
+       context=context,
+   ):
+       yield approved
+
+Strands AgentCore Runtime integration
+-------------------------------------
+
+``StrandsAgentCoreAdapter`` accepts the boto3 invocation callable or response
+directly. It unwraps the AgentCore response body and SSE envelopes before
+converting Strands/Bedrock events.
+
+.. code-block:: python
+
+   from aidefense.runtime import StrandsAgentCoreAdapter
+
+   agentcore = StrandsAgentCoreAdapter()
+
+   async for approved in inspection.inspect(
+       lambda: boto3_client.invoke_agent_runtime(**request_args),
+       request=prompt,
+       adapter=agentcore,
+       context=context,
+   ):
+       yield approved
+
+Custom frameworks and models
+----------------------------
+
+A custom adapter implements one small protocol and can be reused across calls:
+
+.. code-block:: python
+
+   from aidefense.runtime.event_stream import iter_events
 
    class VendorAdapter:
        source = "vendor-name"
 
-       def __init__(self, message_id):
-           self.message_id = message_id
-
-       async def adapt(self, events):
-           async for event in events:
-               text = event.delta_text
+       async def adapt(self, events, *, message_id, direction):
+           async for event in iter_events(events):
                yield StreamEvent(
                    application_event=event,
-                   message=CanonicalMessage(
+                   messages=(CanonicalMessage(
                        role="assistant",
-                       content={"text": text},
-                   ),
-                   direction=StreamDirection.RESPONSE,
-                   message_id=self.message_id,
+                       content={"text": event.delta_text},
+                   ),),
+                   direction=direction,
+                   message_id=message_id,
                )
 
-   async for safe_event in client.inspect(
+   async for approved in inspection.inspect(
        vendor_events,
-       adapter=VendorAdapter(message_id),
+       request=prompt,
+       adapter=VendorAdapter(),
        context=context,
    ):
-       yield safe_event
+       yield approved
 
-Configuration and limits
-------------------------
+Advanced applications can omit ``adapter`` and provide the complete ordered
+``StreamEvent`` request/response sequence themselves. This is also where a
+caller can implement custom batching or overlap before handing events to the
+SDK.
 
-``EventStreamConfig`` validates all values before opening a channel. The SDK
-honors the server's current limits of 256 events per frame, 4,096 retained
-events, and 8 MiB retained data. ``token_limit`` controls the inspection window
-size and ``overlap_tokens`` controls client-generated overlap. Default token
-counting uses a deterministic four-character approximation so it does not add
-a tokenizer dependency. Canonical half-open ``SourceRange`` values describe
-new content only; overlap is never emitted twice to the application.
+Public models and protocol access
+---------------------------------
 
-``input_queue_size`` bounds framework input waiting for batching, while
-``max_pending_batches`` bounds sent content waiting for acknowledgement. Both
-queues apply backpressure rather than growing without limit.
+Normal integrations do not import protobuf classes. The public SDK exports
+``CanonicalMessage``, ``CanonicalMessageContent``, ``CanonicalRole``, tool
+models, ``StreamEvent``, ``StreamContext``, and decision models. These are
+validated Pydantic/runtime types with stable SDK names.
 
-Lifecycle and failure behavior
-------------------------------
+Advanced integrations that need the underlying contract can import validated
+Pydantic protocol models from ``aidefense.runtime.event_stream.protocol``.
+Generated ``*_pb2`` modules remain an internal transport detail, allowing the
+SDK to change serialization without forcing customer integration changes.
 
-The first frame is generated from ``StreamContext``. Sequence numbers increase
-across request and response directions, and are allocated by one stream writer.
-The SDK uses the same generated message ID for the request and response of an
-``inspect_agentcore`` call unless the caller supplies one.
+Limits, decisions, and lifecycle
+--------------------------------
 
-When the input ends, the SDK marks the last event final and half-closes the send
-side. It continues reading until all sent sequences are acknowledged. On normal
-completion, block, timeout, connection failure, caller cancellation, or source
-failure, worker tasks and the gRPC channel are closed. Cancelling the consuming
-task preserves ``asyncio.CancelledError``; remote cancellation raises
-``StreamCancelledError``.
+``max_pending_events`` bounds content awaiting acknowledgement and applies
+backpressure instead of allowing unbounded memory growth. It must be large
+enough for the service inspection window because one server result can cover
+multiple sent events. ``max_stream_events`` and ``max_stream_bytes`` enforce
+the server limits of 4,096 events and 8 MiB.
 
-Server conversation state exists only for one ``InspectEventStream`` RPC.
-Reusing ``conversation_id`` in another API call correlates records but does not
-resume server state.
+Monitor/Allow releases original events. Redact releases the server replacement;
+when one decision covers several sequences, the replacement is emitted once.
+Block raises ``UnsafeContentError`` and never releases covered content.
 
-Failures are fail closed and typed:
-
-- ``UnsafeContentError``: an explicit ``Block`` action stopped the stream and
-  the content was not yielded.
-- Monitor/Allow violations continue with the original application event.
-  ``Redact`` continues with the server's ``redacted_content``; if the server
-  supplies no replacement, that chunk is dropped without terminating later
-  stream inspection.
-- ``StreamTimeoutError``: idle or absolute deadline expired.
-- ``StreamCancelledError``: the remote RPC was cancelled.
-- ``StreamConfigurationError``: local validation failed before transmission.
-- ``StreamConnectionError``: channel or RPC transport failed.
-- ``StreamProtocolError``: acknowledgement or event semantics were invalid.
-
-Observability
--------------
-
-Pass a ``StreamObserver`` with an OpenTelemetry-compatible tracer and a metrics
-sink. Spans cover send, acknowledgement, decision, block, timeout, and
-cancellation. Metrics callbacks receive active-stream changes, latency, stable
-reason codes for decisions/backpressure/configuration/terminal outcomes, and a
-random per-stream correlation ID. Logs never include prompts, model output,
-credentials, or raw session/conversation/request IDs.
+On completion, block, timeout, connection failure, cancellation, or source
+failure, per-call worker tasks, source iterators, and the call's gRPC channel
+are closed. The reusable client keeps no conversation state between calls.
+Reusing ``conversation_id`` correlates records but does not resume server state.
 
 API reference
 -------------

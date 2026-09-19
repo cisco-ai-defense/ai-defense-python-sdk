@@ -3,7 +3,14 @@
 
 """High-level bidirectional streaming inspection API."""
 
-from .adapters import EventStreamAdapter, StrandsEventAdapter, agentcore_events
+from .adapters import (
+    EventStreamAdapter,
+    StrandsAgentCoreAdapter,
+    StrandsBedrockAdapter,
+    StrandsEventAdapter,
+    agentcore_events,
+    iter_events,
+)
 from .client import EventStreamClient
 from .exceptions import (
     EventStreamError,
@@ -16,7 +23,13 @@ from .exceptions import (
     UnsafeContentError,
 )
 from .models import (
+    CanonicalFunctionCall,
     CanonicalMessage,
+    CanonicalMessageContent,
+    CanonicalRole,
+    CanonicalToolDefinition,
+    CanonicalToolFunction,
+    CanonicalToolCall,
     EventStreamConfig,
     SourceRange,
     StreamContext,
@@ -29,13 +42,21 @@ from .models import (
 from .observability import ReasonCode, StreamObserver
 
 __all__ = [
+    "CanonicalFunctionCall",
     "CanonicalMessage",
+    "CanonicalMessageContent",
+    "CanonicalRole",
+    "CanonicalToolDefinition",
+    "CanonicalToolFunction",
+    "CanonicalToolCall",
     "EventStreamClient",
     "EventStreamConfig",
     "EventStreamError",
     "EventStreamAdapter",
     "ReasonCode",
     "SourceRange",
+    "StrandsAgentCoreAdapter",
+    "StrandsBedrockAdapter",
     "StrandsEventAdapter",
     "StreamBackpressureError",
     "StreamCancelledError",
@@ -52,4 +73,5 @@ __all__ = [
     "ToolCall",
     "UnsafeContentError",
     "agentcore_events",
+    "iter_events",
 ]

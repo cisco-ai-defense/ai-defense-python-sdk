@@ -70,6 +70,8 @@ def _message(
 async def as_async_iterable(events: Any) -> AsyncIterator[Any]:
     """Normalize Strands, AgentCore, sync iterables, and awaitable responses."""
 
+    if callable(events):
+        events = events()
     if inspect.isawaitable(events):
         events = await events
     if hasattr(events, "__aiter__"):
@@ -91,8 +93,13 @@ async def as_async_iterable(events: Any) -> AsyncIterator[Any]:
                 close()
         return
     raise StreamProtocolError(
-        "Strands/AgentCore response must be an async iterable, iterable, or awaitable iterable"
+        "event source must be callable, awaitable, async iterable, or iterable"
     )
+
+
+# Stable public helper for custom adapters. Keep the original internal name for
+# compatibility with integrations built during the preview.
+iter_events = as_async_iterable
 
 
 class EventStreamAdapter(Protocol):
@@ -100,7 +107,13 @@ class EventStreamAdapter(Protocol):
 
     source: str
 
-    def adapt(self, events: Any) -> TypingAsyncIterator[StreamEvent]:
+    def adapt(
+        self,
+        events: Any,
+        *,
+        message_id: Optional[str] = None,
+        direction: StreamDirection = StreamDirection.RESPONSE,
+    ) -> TypingAsyncIterator[StreamEvent]:
         """Convert native events while retaining each application event."""
         ...
 
@@ -160,12 +173,12 @@ class StrandsEventAdapter:
     def __init__(
         self,
         *,
-        message_id: str,
+        message_id: Optional[str] = None,
         direction: StreamDirection = StreamDirection.RESPONSE,
         source: str = "strands",
         max_tool_argument_chars: int = 8192,
     ) -> None:
-        if not message_id:
+        if message_id == "":
             raise StreamProtocolError("message_id must not be empty")
         self.message_id = message_id
         self.direction = direction
@@ -177,9 +190,32 @@ class StrandsEventAdapter:
         self._tools: Dict[int, Dict[str, str]] = {}
         self._streamed_text = False
 
-    async def adapt(self, events: Any) -> AsyncIterator[StreamEvent]:
+    async def adapt(
+        self,
+        events: Any,
+        *,
+        message_id: Optional[str] = None,
+        direction: Optional[StreamDirection] = None,
+    ) -> AsyncIterator[StreamEvent]:
+        resolved_message_id = message_id or self.message_id
+        if not resolved_message_id:
+            raise StreamProtocolError("message_id must not be empty")
+        resolved_direction = direction or self.direction
+        # Parsing state belongs to one invocation. A configured adapter can be
+        # safely reused by concurrent EventStreamClient calls.
+        parser = StrandsEventAdapter(
+            message_id=resolved_message_id,
+            direction=resolved_direction,
+            source=self.source,
+            max_tool_argument_chars=self.max_tool_argument_chars,
+        )
         async for original in as_async_iterable(events):
-            yield self.convert(original)
+            converted = parser.convert(original)
+            # Lifecycle envelopes do not contain inspectable application
+            # content. Keep the transport API canonical and do not manufacture
+            # empty gRPC events for them.
+            if converted.messages:
+                yield converted
 
     def convert(self, original: Any) -> StreamEvent:
         data = _mapping(original)
@@ -225,7 +261,7 @@ class StrandsEventAdapter:
                 if len(state["arguments"]) > self.max_tool_argument_chars:
                     self._tools.pop(index, None)
                     raise StreamProtocolError(
-                        "Strands tool arguments exceed the configured token limit"
+                        "Strands tool arguments exceed the configured size limit"
                     )
 
         start_event = _mapping(event.get("contentBlockStart"))
@@ -287,9 +323,11 @@ class StrandsEventAdapter:
     def _event(
         self, application_event: Any, message: Optional[CanonicalMessage]
     ) -> StreamEvent:
+        if self.message_id is None:
+            raise StreamProtocolError("message_id must not be empty")
         return StreamEvent(
             application_event=application_event,
-            message=message,
+            messages=() if message is None else (message,),
             direction=self.direction,
             message_id=self.message_id,
         )
@@ -390,3 +428,37 @@ def _decode_sse_line(line: str) -> Any:
     if isinstance(decoded, str) and decoded.startswith(("{'", "[{'")):
         return _SKIP_EVENT
     return decoded
+
+
+class StrandsBedrockAdapter(StrandsEventAdapter):
+    """Reusable adapter for native Strands/Bedrock response events."""
+
+    def __init__(self, *, max_tool_argument_chars: int = 8192) -> None:
+        super().__init__(
+            source="strands-bedrock",
+            max_tool_argument_chars=max_tool_argument_chars,
+        )
+
+
+class StrandsAgentCoreAdapter(StrandsEventAdapter):
+    """Reusable adapter for boto3 Bedrock AgentCore Runtime responses."""
+
+    def __init__(self, *, max_tool_argument_chars: int = 8192) -> None:
+        super().__init__(
+            source="strands-agentcore",
+            max_tool_argument_chars=max_tool_argument_chars,
+        )
+
+    async def adapt(
+        self,
+        events: Any,
+        *,
+        message_id: Optional[str] = None,
+        direction: Optional[StreamDirection] = None,
+    ) -> AsyncIterator[StreamEvent]:
+        async for converted in super().adapt(
+            agentcore_events(events),
+            message_id=message_id,
+            direction=direction,
+        ):
+            yield converted

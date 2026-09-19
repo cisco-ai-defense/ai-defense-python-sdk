@@ -1,12 +1,14 @@
 # Copyright 2026 Cisco Systems, Inc. and its affiliates
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 import threading
 
 import pytest
 
 from aidefense.runtime.event_stream import (
     StreamDirection,
+    StrandsAgentCoreAdapter,
     StrandsEventAdapter,
     agentcore_events,
 )
@@ -42,8 +44,8 @@ async def test_strands_text_and_tool_events_become_canonical_messages():
 
     converted = [item async for item in adapter.adapt(events)]
 
-    assert converted[1].message.content.text == "hello"
-    call = converted[-1].message.tool_calls[0]
+    assert converted[0].messages[0].content.text == "hello"
+    call = converted[-1].messages[0].tool_calls[0]
     assert (call.id_, call.function.name, call.function.arguments_json) == (
         "call-1",
         "lookup",
@@ -58,7 +60,39 @@ async def test_strands_data_chunks_are_supported_without_strands_dependency():
     converted = [
         item async for item in adapter.adapt([{"data": "one"}, {"data": "two"}])
     ]
-    assert [item.message.content.text for item in converted] == ["one", "two"]
+    assert [item.messages[0].content.text for item in converted] == ["one", "two"]
+
+
+@pytest.mark.asyncio
+async def test_adapter_is_reusable_across_concurrent_invocations():
+    adapter = StrandsEventAdapter()
+
+    async def convert(message_id, text):
+        return [
+            item
+            async for item in adapter.adapt([{"data": text}], message_id=message_id)
+        ]
+
+    first, second = await asyncio.gather(
+        convert("message-1", "one"),
+        convert("message-2", "two"),
+    )
+
+    assert first[0].message_id == "message-1"
+    assert first[0].messages[0].content.text == "one"
+    assert second[0].message_id == "message-2"
+    assert second[0].messages[0].content.text == "two"
+
+
+@pytest.mark.asyncio
+async def test_strands_agentcore_adapter_accepts_runtime_response_directly():
+    adapter = StrandsAgentCoreAdapter()
+    response = {"response": [{"chunk": {"bytes": b'{"data":"hello"}'}}]}
+
+    converted = [item async for item in adapter.adapt(response, message_id="message-1")]
+
+    assert converted[0].application_event == {"data": "hello"}
+    assert converted[0].messages[0].content.text == "hello"
 
 
 @pytest.mark.asyncio
@@ -80,7 +114,7 @@ async def test_agentcore_result_message_is_unwrapped_and_canonicalized():
     ]
 
     assert events == [{"role": "assistant", "content": [{"text": "hello"}]}]
-    assert converted[0].message.content.text == "hello"
+    assert converted[0].messages[0].content.text == "hello"
 
 
 @pytest.mark.asyncio
@@ -125,4 +159,4 @@ async def test_agentcore_sse_response_is_yielded_as_stream_events():
 def test_adapter_emits_pydantic_runtime_messages():
     converted = StrandsEventAdapter(message_id="message-1").convert({"data": "hello"})
 
-    assert converted.message.model_dump()["content"]["text"] == "hello"
+    assert converted.messages[0].model_dump()["content"]["text"] == "hello"
