@@ -63,6 +63,16 @@ def test_config_with_logger_params():
     assert config.logger.level == logging.DEBUG
 
 
+def test_config_with_observability_hooks():
+    tracer = object()
+    metrics = object()
+
+    config = Config(tracer=tracer, metrics=metrics)
+
+    assert config.tracer is tracer
+    assert config.metrics is metrics
+
+
 def test_config_with_retry_config():
     retry_conf = {"total": 7, "backoff_factor": 2.0, "status_forcelist": [500, 502]}
     config = Config(retry_config=retry_conf)

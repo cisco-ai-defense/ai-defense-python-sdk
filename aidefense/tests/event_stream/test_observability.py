@@ -12,6 +12,7 @@ from aidefense.runtime.event_stream import (
     StreamConfigurationError,
     StreamObserver,
 )
+from aidefense.config import Config
 
 
 class Metrics:
@@ -70,3 +71,75 @@ def test_observer_failures_never_change_inspection_control_flow():
     observer.event(ReasonCode.STREAM_STARTED, attributes={"sequence": 1})
     observer.active_streams(1)
     observer.latency(0.1, "completed")
+
+
+def test_debug_lifecycle_records_do_not_change_metric_volume(caplog):
+    logger = logging.getLogger("aidefense-test-debug-lifecycle")
+    logger.setLevel(logging.DEBUG)
+    metrics = Metrics()
+    observer = StreamObserver(logger=logger, metrics=metrics)
+
+    with caplog.at_level(logging.DEBUG, logger=logger.name):
+        observer.debug(
+            ReasonCode.RESULT_PARSED,
+            attributes={
+                "stream_correlation_id": "sdk-generated",
+                "through_sequence": 4,
+                "sequence_count": 3,
+            },
+        )
+        observer.debug(
+            ReasonCode.CLEANUP_COMPLETED,
+            attributes={
+                "stream_correlation_id": "sdk-generated",
+                "outcome": "completed",
+            },
+        )
+
+    assert ReasonCode.RESULT_PARSED.value in caplog.text
+    assert ReasonCode.CLEANUP_COMPLETED.value in caplog.text
+    assert metrics.events == []
+
+
+def test_shared_config_supplies_logger_tracer_and_metrics(caplog):
+    Config._instances = {}
+    logger = logging.getLogger("aidefense-test-event-stream")
+    logger.setLevel(logging.DEBUG)
+    metrics = Metrics()
+    tracer = Tracer()
+    try:
+        config = Config(
+            runtime_base_url="https://inspect.example",
+            logger=logger,
+            tracer=tracer,
+            metrics=metrics,
+        )
+
+        with caplog.at_level(logging.DEBUG, logger=logger.name):
+            client = EventStreamClient(api_key="secret", config=config)
+            client.observer.event(
+                ReasonCode.STREAM_STARTED,
+                attributes={"stream_correlation_id": "sdk-generated"},
+            )
+            with client.observer.span(
+                "aidefense.stream.test", {"stream_correlation_id": "sdk-generated"}
+            ):
+                pass
+
+        assert ReasonCode.STREAM_CONFIGURED.value in caplog.text
+        assert ReasonCode.STREAM_STARTED.value in caplog.text
+        assert metrics.events == [
+            (
+                ReasonCode.STREAM_STARTED.value,
+                {"stream_correlation_id": "sdk-generated"},
+            )
+        ]
+        assert tracer.spans == [
+            (
+                "aidefense.stream.test",
+                {"stream_correlation_id": "sdk-generated"},
+            )
+        ]
+        assert "secret" not in caplog.text
+    finally:
+        Config._instances = {}

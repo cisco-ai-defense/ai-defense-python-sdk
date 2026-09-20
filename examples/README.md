@@ -39,6 +39,8 @@ examples/
 │       ├── chat_inspect_mistral.py
 │       ├── chat_inspect_openai.py
 │       └── chat_inspect_vertex_ai.py
+├── event_stream/                # Bidirectional streaming inspection
+│   └── custom_provider.py       # Framework-neutral adapter example
 ├── http/                        # HTTP inspection examples
 │   ├── http_inspect_http_api.py
 │   ├── http_inspect_multiple_clients.py
@@ -159,6 +161,20 @@ These examples use `ChatInspectionClient` to inspect chat prompts, responses, an
 | Vertex AI | [chat_inspect_vertex_ai.py](./chat/providers/chat_inspect_vertex_ai.py) |
 | Amazon Bedrock | [chat_inspect_bedrock.py](./chat/providers/chat_inspect_bedrock.py) |
 | Mistral AI | [chat_inspect_mistral.py](./chat/providers/chat_inspect_mistral.py) |
+
+## Bidirectional Event Stream Example
+
+The [framework-neutral example](./event_stream/custom_provider.py) shows how
+any async model or framework can use the event-stream API without Strands or
+protobufs. Implement one adapter that maps each native response chunk to a
+`StreamEvent`; the SDK handles sequencing, prompt gating, acknowledgements,
+backpressure, decisions, and cleanup.
+
+```bash
+export AI_DEFENSE_API_KEY="..."
+export AI_DEFENSE_RUNTIME_URL="https://your-runtime-endpoint"
+python examples/event_stream/custom_provider.py
+```
 
 ## HTTP Inspection Examples
 

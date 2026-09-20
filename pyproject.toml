@@ -21,6 +21,7 @@ classifiers = [
     "Intended Audience :: Developers"
 ]
 packages = [{include = "aidefense"}]
+include = ["aidefense/runtime/event_stream/README.md"]
 
 [tool.poetry.dependencies]
 aiohttp = "^3.13.2"

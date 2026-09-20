@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import math
 import os
 from dataclasses import dataclass, field
 from enum import Enum
@@ -44,8 +45,11 @@ class StreamContext:
 
     def validate(self) -> None:
         for name in ("session_id", "request_id", "conversation_id"):
-            if not getattr(self, name).strip():
+            value = getattr(self, name)
+            if not isinstance(value, str) or not value.strip():
                 raise StreamConfigurationError(f"{name} must not be empty")
+        if not isinstance(self.actor_id, str):
+            raise StreamConfigurationError("actor_id must be a string")
 
 
 @dataclass(frozen=True)
@@ -56,7 +60,14 @@ class SourceRange:
     end: int
 
     def __post_init__(self) -> None:
-        if self.start < 0 or self.end < self.start:
+        if (
+            not isinstance(self.start, int)
+            or isinstance(self.start, bool)
+            or not isinstance(self.end, int)
+            or isinstance(self.end, bool)
+            or self.start < 0
+            or self.end < self.start
+        ):
             raise StreamConfigurationError(
                 "source range must satisfy 0 <= start <= end"
             )
@@ -96,7 +107,13 @@ class StreamInspectionResult:
 
 @dataclass(frozen=True)
 class EventStreamConfig:
-    """Validated transport, timeout, and bounded buffering settings."""
+    """Validated transport, timeout, and bounded buffering settings.
+
+    Leave all certificate fields unset for public server-authenticated TLS.
+    ``root_certificates`` accepts a PEM CA bundle for private trust. Enterprise
+    endpoints that require mutual TLS additionally use a PEM client certificate
+    chain and its PEM private key.
+    """
 
     endpoint: str
     api_key: str = field(repr=False)
@@ -139,16 +156,29 @@ class EventStreamConfig:
         return cls(**values)
 
     def validate(self) -> None:
-        if not self.endpoint.strip():
+        if not isinstance(self.endpoint, str) or not self.endpoint.strip():
             raise StreamConfigurationError("endpoint must not be empty")
-        if not self.api_key.strip():
+        if not isinstance(self.api_key, str) or not self.api_key.strip():
             raise StreamConfigurationError(
                 f"api_key is required; set {self.API_KEY_ENV} in secure runtime configuration"
             )
+        if not isinstance(self.tls, bool):
+            raise StreamConfigurationError("tls must be a boolean")
         if (self.client_certificate is None) != (self.client_private_key is None):
             raise StreamConfigurationError(
                 "client_certificate and client_private_key must be configured together"
             )
+        for field_name, certificate_value in (
+            ("root_certificates", self.root_certificates),
+            ("client_certificate", self.client_certificate),
+            ("client_private_key", self.client_private_key),
+        ):
+            if certificate_value is not None and (
+                not isinstance(certificate_value, bytes) or not certificate_value
+            ):
+                raise StreamConfigurationError(
+                    f"{field_name} must be non-empty PEM bytes"
+                )
         if not self.tls and any(
             value is not None
             for value in (
@@ -161,14 +191,33 @@ class EventStreamConfig:
             raise StreamConfigurationError(
                 "TLS certificate and server-name settings require tls=True"
             )
-        if self.tls_server_name is not None and not self.tls_server_name.strip():
-            raise StreamConfigurationError("tls_server_name must not be empty")
+        if self.tls_server_name is not None and (
+            not isinstance(self.tls_server_name, str)
+            or not self.tls_server_name.strip()
+        ):
+            raise StreamConfigurationError("tls_server_name must be a non-empty string")
+        if any(
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not math.isfinite(value)
+            for value in (self.idle_timeout, self.absolute_timeout)
+        ):
+            raise StreamConfigurationError("timeouts must be finite numbers")
         if self.idle_timeout <= 0 or self.absolute_timeout <= 0:
             raise StreamConfigurationError("timeouts must be greater than zero")
         if self.absolute_timeout < self.idle_timeout:
             raise StreamConfigurationError(
                 "absolute_timeout must be greater than or equal to idle_timeout"
             )
+        if any(
+            not isinstance(value, int) or isinstance(value, bool)
+            for value in (
+                self.max_pending_events,
+                self.max_stream_events,
+                self.max_stream_bytes,
+            )
+        ):
+            raise StreamConfigurationError("stream limits must be integers")
         if not 1 <= self.max_pending_events <= self.max_stream_events:
             raise StreamConfigurationError(
                 "max_pending_events must be between 1 and max_stream_events"
@@ -185,7 +234,20 @@ class EventStreamConfig:
             "x-cisco-ai-defense-api-key",
             "x-aidefense-request-id",
         }
-        for key, value in self.metadata:
+        if not isinstance(self.metadata, tuple):
+            raise StreamConfigurationError(
+                "metadata must be a tuple of key/value pairs"
+            )
+        for entry in self.metadata:
+            if not isinstance(entry, tuple) or len(entry) != 2:
+                raise StreamConfigurationError(
+                    "metadata must contain key/value string pairs"
+                )
+            key, value = entry
+            if not isinstance(key, str) or not isinstance(value, str):
+                raise StreamConfigurationError(
+                    "metadata must contain key/value string pairs"
+                )
             if key.lower() in reserved:
                 raise StreamConfigurationError(
                     f"metadata key {key!r} is managed by the SDK"

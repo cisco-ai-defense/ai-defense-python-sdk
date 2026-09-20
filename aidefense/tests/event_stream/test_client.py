@@ -2,11 +2,17 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
+import gc
+import logging
+import threading
 from types import SimpleNamespace
+import weakref
 
 import grpc
 import pytest
 
+from aidefense.config import Config
 from aidefense.pydantic.runtime.ai_defense.inspection.v1 import (
     inspection_pb2 as inspect_api,
 )
@@ -17,6 +23,7 @@ from aidefense.runtime.event_stream import (
     CanonicalMessage,
     EventStreamClient,
     EventStreamConfig,
+    ReasonCode,
     StreamBackpressureError,
     StreamConfigurationError,
     StreamConnectionError,
@@ -25,6 +32,7 @@ from aidefense.runtime.event_stream import (
     StreamEvent,
     StreamProtocolError,
     StreamTimeoutError,
+    StreamObserver,
     StrandsBedrockAdapter,
     UnsafeContentError,
 )
@@ -115,7 +123,27 @@ class FakeCall:
         return value
 
 
-def harness(*, config=None, call=None, on_decision=None):
+class FlowControlledCall(FakeCall):
+    """Simulate a write that completes only after its acknowledgement is handled."""
+
+    def __init__(self):
+        super().__init__()
+        self.acknowledgement_processed = asyncio.Event()
+
+    async def write(self, frame):
+        await super().write(frame)
+        if frame.HasField("events") and frame.events.events[0].sequence == 1:
+            await self.acknowledgement_processed.wait()
+
+
+class MalformedResultCall(FakeCall):
+    async def write(self, frame):
+        self.writes.append(frame)
+        if frame.HasField("events"):
+            await self.queue.put(object())
+
+
+def harness(*, config=None, call=None, on_decision=None, observer=None):
     channel = FakeChannel()
     call = call or FakeCall()
     stub = SimpleNamespace(InspectEventStream=lambda **_: call)
@@ -127,11 +155,75 @@ def harness(*, config=None, call=None, on_decision=None):
             idle_timeout=1,
             absolute_timeout=2,
         ),
+        observer=observer,
         on_decision=on_decision,
         channel_factory=lambda _: channel,
         stub_factory=lambda _: stub,
     )
     return client, call, channel
+
+
+@pytest.mark.asyncio
+async def test_debug_logs_cover_stream_lifecycle_without_content(caplog):
+    logger = logging.getLogger("aidefense-test-stream-lifecycle")
+    logger.setLevel(logging.DEBUG)
+    client, _, _ = harness(observer=StreamObserver(logger=logger))
+
+    with caplog.at_level(logging.DEBUG, logger=logger.name):
+        assert await collect(
+            client.inspect(
+                invocation("private-response-marker"),
+                context=context(),
+                source="vendor",
+            )
+        ) == [{"data": "private-response-marker"}]
+
+    for reason in (
+        ReasonCode.CHANNEL_OPENING,
+        ReasonCode.CHANNEL_READY,
+        ReasonCode.WORKERS_STARTED,
+        ReasonCode.REQUEST_GATE_WAIT,
+        ReasonCode.REQUEST_GATE_OPEN,
+        ReasonCode.RESULT_PARSED,
+        ReasonCode.EVENTS_RELEASED,
+        ReasonCode.CLEANUP_STARTED,
+        ReasonCode.CLEANUP_COMPLETED,
+    ):
+        assert reason.value in caplog.text
+    assert "private-response-marker" not in caplog.text
+
+
+def test_client_accepts_chat_inspect_style_api_key_and_config():
+    Config._instances = {}
+    try:
+        runtime_config = Config(
+            runtime_base_url="https://inspect.example",
+            timeout=1800,
+        )
+
+        client = EventStreamClient(api_key="secret", config=runtime_config)
+
+        assert client.config.api_key == "secret"
+        assert client.config.endpoint == "inspect.example:443"
+        assert client.config.tls is True
+        assert client.config.idle_timeout == 30
+        assert client.config.absolute_timeout == 1800
+    finally:
+        Config._instances = {}
+
+
+def test_chat_inspect_style_custom_http_url_disables_tls():
+    Config._instances = {}
+    try:
+        client = EventStreamClient(
+            api_key="secret",
+            config=Config(runtime_base_url="http://localhost:50051", timeout=60),
+        )
+
+        assert client.config.endpoint == "localhost:50051"
+        assert client.config.tls is False
+    finally:
+        Config._instances = {}
 
 
 def context():
@@ -240,6 +332,124 @@ async def test_one_client_and_adapter_support_concurrent_api_calls():
         if frame.HasField("events")
     }
     assert len(message_ids) == 2
+
+
+@pytest.mark.asyncio
+async def test_flow_controlled_write_does_not_deadlock_acknowledgement_reader():
+    call = FlowControlledCall()
+
+    def acknowledgement_processed(_result):
+        call.acknowledgement_processed.set()
+
+    client, _, _ = harness(call=call, on_decision=acknowledgement_processed)
+
+    assert await asyncio.wait_for(
+        collect(
+            client.inspect(invocation("response"), context=context(), source="vendor")
+        ),
+        timeout=0.5,
+    ) == [{"data": "response"}]
+
+
+def test_one_client_and_adapter_support_calls_from_multiple_threads():
+    channels = []
+    channels_lock = threading.Lock()
+
+    def channel_factory(_config):
+        channel = FakeChannel()
+        channel.call = FakeCall()
+        with channels_lock:
+            channels.append(channel)
+        return channel
+
+    client = EventStreamClient(
+        EventStreamConfig(
+            endpoint="localhost:443",
+            api_key="secret",
+            idle_timeout=1,
+            absolute_timeout=2,
+        ),
+        channel_factory=channel_factory,
+        stub_factory=lambda channel: SimpleNamespace(
+            InspectEventStream=lambda **_: channel.call
+        ),
+    )
+    adapter = StrandsBedrockAdapter()
+
+    def invoke(index):
+        async def run():
+            return await collect(
+                client.inspect(
+                    lambda: [{"data": f"answer-{index}"}],
+                    request=f"prompt-{index}",
+                    adapter=adapter,
+                    context=StreamContext(
+                        session_id=f"session-{index}",
+                        request_id=f"request-{index}",
+                        conversation_id=f"conversation-{index}",
+                    ),
+                )
+            )
+
+        return asyncio.run(run())
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        results = list(executor.map(invoke, range(32)))
+
+    assert results == [[{"data": f"answer-{index}"}] for index in range(32)]
+    assert len(channels) == 32
+    assert all(channel.closed for channel in channels)
+
+
+@pytest.mark.asyncio
+async def test_completed_sessions_release_channels_and_worker_tasks():
+    channel_refs = []
+
+    def channel_factory(_config):
+        channel = FakeChannel()
+        channel.call = FakeCall()
+        channel_refs.append(weakref.ref(channel))
+        return channel
+
+    client = EventStreamClient(
+        EventStreamConfig(
+            endpoint="localhost:443",
+            api_key="secret",
+            idle_timeout=1,
+            absolute_timeout=2,
+        ),
+        channel_factory=channel_factory,
+        stub_factory=lambda channel: SimpleNamespace(
+            InspectEventStream=lambda **_: channel.call
+        ),
+    )
+    adapter = StrandsBedrockAdapter()
+
+    for index in range(100):
+        assert await collect(
+            client.inspect(
+                lambda: [{"data": f"answer-{index}"}],
+                request=f"prompt-{index}",
+                adapter=adapter,
+                context=StreamContext(
+                    session_id=f"session-{index}",
+                    request_id=f"request-{index}",
+                    conversation_id=f"conversation-{index}",
+                ),
+            )
+        ) == [{"data": f"answer-{index}"}]
+
+    await asyncio.sleep(0)
+    gc.collect()
+
+    assert all(reference() is None for reference in channel_refs)
+    assert not [
+        task
+        for task in asyncio.all_tasks()
+        if task is not asyncio.current_task()
+        and task.get_name().startswith("aidefense-stream-")
+        and not task.done()
+    ]
 
 
 @pytest.mark.asyncio
@@ -545,6 +755,88 @@ async def test_cancellation_closes_source_call_and_channel_without_orphan_tasks(
 
 
 @pytest.mark.asyncio
+async def test_explicit_generator_close_releases_source_call_and_channel():
+    source_closed = asyncio.Event()
+    client, call, channel = harness()
+
+    async def events():
+        try:
+            yield event("prompt", StreamDirection.REQUEST, application_event=None)
+            while True:
+                yield event("chunk", StreamDirection.RESPONSE)
+                await asyncio.sleep(0)
+        finally:
+            source_closed.set()
+
+    stream = client.inspect(events(), context=context(), source="vendor")
+    assert await stream.__anext__() == {"data": "chunk"}
+    await stream.aclose()
+
+    await asyncio.wait_for(source_closed.wait(), timeout=0.2)
+    assert call.cancelled is True
+    assert channel.closed is True
+
+
+@pytest.mark.asyncio
+async def test_channel_factory_failure_is_a_typed_connection_error():
+    def fail_channel(_config):
+        raise RuntimeError("TLS setup failed")
+
+    client = EventStreamClient(
+        EventStreamConfig(endpoint="localhost:443", api_key="secret"),
+        channel_factory=fail_channel,
+    )
+
+    with pytest.raises(StreamConnectionError, match="connection failed"):
+        await collect(
+            client.inspect(invocation("response"), context=context(), source="vendor")
+        )
+
+
+@pytest.mark.asyncio
+async def test_hanging_channel_cleanup_is_bounded_and_observable(monkeypatch):
+    from aidefense.runtime.event_stream import _session as session_module
+
+    class Metrics:
+        def __init__(self):
+            self.events = []
+
+        def record(self, reason, attributes):
+            self.events.append((reason, attributes))
+
+    class HangingChannel(FakeChannel):
+        async def close(self):
+            await asyncio.Event().wait()
+
+    channel = HangingChannel()
+    call = FakeCall()
+    stub = SimpleNamespace(InspectEventStream=lambda **_: call)
+    metrics = Metrics()
+    client = EventStreamClient(
+        EventStreamConfig(
+            endpoint="localhost:443",
+            api_key="secret",
+            idle_timeout=1,
+            absolute_timeout=2,
+        ),
+        observer=StreamObserver(metrics=metrics),
+        channel_factory=lambda _: channel,
+        stub_factory=lambda _: stub,
+    )
+    monkeypatch.setattr(session_module, "_CLEANUP_TIMEOUT_SECONDS", 0.01)
+
+    assert await asyncio.wait_for(
+        collect(
+            client.inspect(invocation("response"), context=context(), source="vendor")
+        ),
+        timeout=0.2,
+    ) == [{"data": "response"}]
+    assert any(
+        reason == ReasonCode.CLEANUP_FAILED.value for reason, _ in metrics.events
+    )
+
+
+@pytest.mark.asyncio
 async def test_stream_requires_request_and_response_content():
     client, _, _ = harness()
 
@@ -565,6 +857,12 @@ def test_tls_configuration_is_validated():
             api_key="secret",
             client_certificate=b"certificate",
         )
+    with pytest.raises(StreamConfigurationError, match="non-empty PEM bytes"):
+        EventStreamConfig(
+            endpoint="localhost:443",
+            api_key="secret",
+            root_certificates=b"",
+        )
     with pytest.raises(StreamConfigurationError, match="require tls=True"):
         EventStreamConfig(
             endpoint="localhost:443",
@@ -574,7 +872,26 @@ def test_tls_configuration_is_validated():
         )
 
 
-def test_tls_channel_supports_custom_ca_mtls_and_server_name(monkeypatch):
+@pytest.mark.parametrize(
+    ("override", "message"),
+    [
+        ({"endpoint": None}, "endpoint must not be empty"),
+        ({"api_key": None}, "api_key is required"),
+        ({"tls": "true"}, "tls must be a boolean"),
+        ({"idle_timeout": float("nan")}, "timeouts must be finite"),
+        ({"max_pending_events": 1.5}, "stream limits must be integers"),
+        ({"metadata": [("x-test", "value")]}, "metadata must be a tuple"),
+        ({"metadata": (("missing-value",),)}, "key/value string pairs"),
+    ],
+)
+def test_invalid_runtime_configuration_raises_typed_error(override, message):
+    values = {"endpoint": "localhost:443", "api_key": "secret", **override}
+
+    with pytest.raises(StreamConfigurationError, match=message):
+        EventStreamConfig(**values)
+
+
+def test_tls_channel_supports_custom_ca_and_server_name(monkeypatch):
     credentials = object()
     secure_channel = object()
     captured = {}
@@ -594,8 +911,6 @@ def test_tls_channel_supports_custom_ca_mtls_and_server_name(monkeypatch):
             endpoint="inspect.example:443",
             api_key="secret",
             root_certificates=b"root",
-            client_certificate=b"certificate",
-            client_private_key=b"private-key",
             tls_server_name="inspect.internal",
         )
     )
@@ -603,12 +918,51 @@ def test_tls_channel_supports_custom_ca_mtls_and_server_name(monkeypatch):
     assert client._open_channel() is secure_channel
     assert captured["credentials"] == {
         "root_certificates": b"root",
-        "private_key": b"private-key",
-        "certificate_chain": b"certificate",
+        "private_key": None,
+        "certificate_chain": None,
     }
     assert ("grpc.ssl_target_name_override", "inspect.internal") in captured["channel"][
         2
     ]
+
+
+def test_tls_channel_supports_optional_enterprise_mtls(monkeypatch):
+    credentials = object()
+    captured = {}
+
+    def fake_credentials(**kwargs):
+        captured.update(kwargs)
+        return credentials
+
+    monkeypatch.setattr(grpc, "ssl_channel_credentials", fake_credentials)
+    monkeypatch.setattr(grpc.aio, "secure_channel", lambda *_args, **_kwargs: object())
+    client = EventStreamClient(
+        EventStreamConfig(
+            endpoint="private.inspect.example:443",
+            api_key="secret",
+            root_certificates=b"enterprise-ca-bundle",
+            client_certificate=b"client-certificate-chain",
+            client_private_key=b"client-private-key",
+        )
+    )
+
+    client._open_channel()
+
+    assert captured == {
+        "root_certificates": b"enterprise-ca-bundle",
+        "private_key": b"client-private-key",
+        "certificate_chain": b"client-certificate-chain",
+    }
+
+
+@pytest.mark.asyncio
+async def test_malformed_server_result_is_a_protocol_failure():
+    client, _, _ = harness(call=MalformedResultCall())
+
+    with pytest.raises(StreamProtocolError, match="malformed inspection result"):
+        await collect(
+            client.inspect(invocation("response"), context=context(), source="vendor")
+        )
 
 
 def test_tls_can_be_disabled_from_environment(monkeypatch):

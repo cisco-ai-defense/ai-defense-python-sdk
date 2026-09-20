@@ -45,6 +45,8 @@ from .mcp_models import (
 )
 from .utils import to_base64_bytes
 from .event_stream import (
+    CanonicalMessageContent,
+    CanonicalRole,
     CanonicalMessage,
     EventStreamClient,
     EventStreamConfig,
@@ -69,4 +71,5 @@ from .event_stream import (
     StreamTimeoutError,
     ToolCall,
     UnsafeContentError,
+    iter_events,
 )

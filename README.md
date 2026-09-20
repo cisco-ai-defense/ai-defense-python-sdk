@@ -13,6 +13,7 @@ Integrate AI-powered security, privacy, and safety inspections into your Python 
 - [Quickstart](#quickstart)
   - [Agent Runtime SDK (Recommended)](#agent-runtime-sdk-recommended)
   - [Inspection API](#inspection-api)
+  - [Bidirectional Event Stream](#bidirectional-event-stream)
   - [Model Scanning API](#model-scanning-api)
     - [AIBOM API](#aibom-api)
   - [Management API](#management-api)
@@ -169,6 +170,84 @@ client = ChatInspectionClient(api_key="YOUR_INSPECTION_API_KEY")
 result = client.inspect_prompt("How do I hack a server?")
 print(result.classifications, result.is_safe)
 ```
+
+### Bidirectional Event Stream
+
+Use the event-stream client when model output arrives incrementally and must
+not reach the application before inspection. It works with any framework; a
+small adapter converts vendor chunks into canonical SDK messages. Customers do
+not construct protobuf frames.
+
+```python
+import os
+import uuid
+
+from aidefense import Config
+from aidefense.runtime import (
+    CanonicalMessage,
+    EventStreamClient,
+    StreamContext,
+    StreamEvent,
+    iter_events,
+)
+
+class TextAdapter:
+    source = "my-provider"
+
+    async def adapt(self, events, *, message_id, direction):
+        async for chunk in iter_events(events):
+            yield StreamEvent(
+                application_event=chunk,
+                messages=(CanonicalMessage(
+                    role="assistant",
+                    content={"text": chunk},
+                ),),
+                direction=direction,
+                message_id=message_id,
+            )
+
+inspection = EventStreamClient(
+    api_key=os.environ["AI_DEFENSE_API_KEY"],
+    config=Config(
+        runtime_base_url=os.environ["AI_DEFENSE_RUNTIME_URL"],
+        timeout=1800,
+    ),
+)
+
+context = StreamContext(
+    session_id=str(uuid.uuid4()),
+    request_id=str(uuid.uuid4()),
+    conversation_id=str(uuid.uuid4()),
+)
+
+async for safe_chunk in inspection.inspect(
+    lambda: provider.stream(prompt),
+    request=prompt,
+    adapter=TextAdapter(),
+    context=context,
+):
+    yield safe_chunk
+```
+
+Pass the provider invocation as a callable: the SDK inspects the complete
+request conversation before invoking the model. Allow/Monitor yields original
+chunks, Redact yields replacement content, and Block raises
+`UnsafeContentError` without releasing the blocked chunk. One server result may
+acknowledge multiple sequence IDs; the SDK releases exactly those chunks in
+original order.
+
+TLS is enabled by using an `https://` runtime URL. For public endpoints, leave
+certificate settings unset and gRPC uses its default trust roots. For a private
+enterprise CA, construct `EventStreamConfig` with a PEM CA bundle in
+`root_certificates`. If the enterprise endpoint requires mutual TLS, also set
+the per-client `client_certificate` chain and `client_private_key`; mTLS is
+optional and is never required for ordinary users. Supplying custom roots
+replaces the default root set, so use a combined PEM bundle when both private
+and public issuers must be trusted.
+
+See the [event-stream package README](aidefense/runtime/event_stream/README.md),
+[complete event-stream guide](docs/source/modules/event_stream.rst), and
+[framework-neutral example](examples/event_stream/custom_provider.py).
 
 ### Model Scanning API
 
