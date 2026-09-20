@@ -234,6 +234,25 @@ def context():
     )
 
 
+def test_event_frame_serializes_all_server_required_fields():
+    """Guard against emitting an envelope whose nested event has default fields."""
+
+    wire = EventStreamClient._event_frame(
+        event("prompt", StreamDirection.REQUEST, message_id="message-1"),
+        sequence=1,
+        source="strands-agentcore",
+        is_final=False,
+    )
+    round_trip = stream_api.InspectionEvent.FromString(wire.SerializeToString())
+
+    assert round_trip.message_id == "message-1"
+    assert round_trip.sequence == 1
+    assert round_trip.source == "strands-agentcore"
+    assert round_trip.direction == stream_api.DIRECTION_REQUEST
+    assert round_trip.WhichOneof("payload") == "conversation"
+    assert len(round_trip.conversation.messages) == 1
+
+
 def event(text, direction, *, application_event=_UNSET, message_id="message-1"):
     role = "user" if direction is StreamDirection.REQUEST else "assistant"
     return StreamEvent(
