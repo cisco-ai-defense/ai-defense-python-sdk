@@ -41,6 +41,12 @@ def test_http_inspect_vertex_ai_api_workflow(capsys):
     }
     http_client = HttpInspectionClient(api_key=dummy_api_key)
 
+    # Mock google.auth.default and credentials
+    fake_credentials = MagicMock()
+    fake_credentials.token = "dummy-token"
+    fake_credentials.refresh.return_value = None
+    fake_auth_default = (fake_credentials, "fake-project")
+
     with patch.object(
         HttpInspectionClient, "inspect", return_value=MagicMock(is_safe=True)
     ), patch.object(
@@ -55,7 +61,13 @@ def test_http_inspect_vertex_ai_api_workflow(capsys):
         HttpInspectionClient,
         "inspect_response_from_http_library",
         return_value=MagicMock(is_safe=True),
-    ), patch("requests.post") as mock_post:
+    ), patch(
+        "requests.post"
+    ) as mock_post, patch(
+        "google.auth.default", return_value=fake_auth_default
+    ), patch(
+        "google.auth.transport.requests.Request"
+    ):
         mock_resp = MagicMock()
         mock_resp.content = b"fake-response-content"
         mock_resp.status_code = 200

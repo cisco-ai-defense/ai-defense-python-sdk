@@ -37,10 +37,11 @@ def test_chat_inspect_vertex_ai_workflow(capsys):
     }
     fake_vertex_response.raise_for_status.return_value = None
 
-    # The HTTP call is mocked, so this unit test does not require the optional
-    # google-auth dependency or Application Default Credentials.
+    # Mock google.auth.default and credentials
     fake_credentials = MagicMock()
     fake_credentials.token = "fake-google-token"
+    fake_credentials.refresh.return_value = None
+    fake_auth_default = (fake_credentials, "fake-project")
 
     with patch.object(
         ChatInspectionClient, "inspect_prompt", return_value=MagicMock(is_safe=True)
@@ -50,7 +51,13 @@ def test_chat_inspect_vertex_ai_workflow(capsys):
         ChatInspectionClient,
         "inspect_conversation",
         return_value=MagicMock(is_safe=True),
-    ), patch("requests.post", return_value=fake_vertex_response):
+    ), patch(
+        "requests.post", return_value=fake_vertex_response
+    ), patch(
+        "google.auth.default", return_value=fake_auth_default
+    ), patch(
+        "google.auth.transport.requests.Request"
+    ):
 
         # --- Inspect the user prompt ---
         prompt_result = client.inspect_prompt(user_prompt)
@@ -61,6 +68,8 @@ def test_chat_inspect_vertex_ai_workflow(capsys):
 
         # --- Call Vertex AI API (mocked) ---
         import requests
+        import google.auth
+        import google.auth.transport.requests
 
         VERTEX_API_URL = "https://us-central1-aiplatform.googleapis.com/v1/projects/fake-project/locations/us-central1/publishers/google/models/gemini-1.0-pro:predict"
         vertex_headers = {
