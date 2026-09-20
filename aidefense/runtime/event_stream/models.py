@@ -87,7 +87,7 @@ class StreamDecision:
 
 @dataclass(frozen=True)
 class StreamInspectionResult:
-    """One decision and every locally pending sequence it cumulatively covers."""
+    """One decision and the explicit set of sequence IDs it acknowledges."""
 
     decision: StreamDecision
     through_sequences: Tuple[int, ...]

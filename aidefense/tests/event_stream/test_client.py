@@ -52,6 +52,7 @@ class FakeCall:
         unsafe_action=inspect_api.Block,
         redacted_content="",
         batch_responses=False,
+        response_batches=None,
     ):
         self.writes = []
         self.cancelled = False
@@ -61,6 +62,7 @@ class FakeCall:
         self.unsafe_action = unsafe_action
         self.redacted_content = redacted_content
         self.batch_responses = batch_responses
+        self.response_batches = response_batches
         self.response_sequences = []
 
     async def write(self, frame):
@@ -72,25 +74,28 @@ class FakeCall:
             self.response_sequences.append(event.sequence)
             if not event.is_final:
                 return
-            # One cumulative server result can cover several individually sent
-            # events without echoing every sequence number.
-            sequences = [self.response_sequences[-1]]
+            # One server result can explicitly acknowledge several
+            # individually sent events.
+            batches = self.response_batches or [self.response_sequences]
         else:
-            sequences = [event.sequence]
+            batches = [[event.sequence]]
         safe = self.decision(event)
-        await self.queue.put(
-            stream_api.InspectionResult(
-                through_sequences=sequences,
-                inspect_response=inspect_api.InspectResponse(
-                    is_safe=safe,
-                    action=inspect_api.Allow if safe else self.unsafe_action,
-                    redacted_content="" if safe else self.redacted_content,
-                    rules=(
-                        [] if safe else [inspect_api.RuleObject(rule_name="test-rule")]
+        for sequences in batches:
+            await self.queue.put(
+                stream_api.InspectionResult(
+                    through_sequences=sequences,
+                    inspect_response=inspect_api.InspectResponse(
+                        is_safe=safe,
+                        action=inspect_api.Allow if safe else self.unsafe_action,
+                        redacted_content="" if safe else self.redacted_content,
+                        rules=(
+                            []
+                            if safe
+                            else [inspect_api.RuleObject(rule_name="test-rule")]
+                        ),
                     ),
-                ),
+                )
             )
-        )
 
     async def done_writing(self):
         await self.queue.put(self.END)
@@ -290,6 +295,31 @@ async def test_one_server_result_releases_all_covered_sequences_in_order():
         StreamDirection.RESPONSE,
         StreamDirection.RESPONSE,
     )
+
+
+@pytest.mark.asyncio
+async def test_sparse_bulk_acknowledgements_release_only_listed_sequences_in_order():
+    decisions = []
+    call = FakeCall(
+        batch_responses=True,
+        response_batches=[[2, 4], [3]],
+    )
+    client, _, _ = harness(call=call, on_decision=decisions.append)
+
+    released = await collect(
+        client.inspect(
+            invocation("one", "two", "three"),
+            context=context(),
+            source="vendor",
+        )
+    )
+
+    assert released == [{"data": "one"}, {"data": "two"}, {"data": "three"}]
+    assert [result.through_sequences for result in decisions] == [
+        (1,),
+        (2, 4),
+        (3,),
+    ]
 
 
 @pytest.mark.asyncio

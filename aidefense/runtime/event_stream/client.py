@@ -167,13 +167,20 @@ class _Pending:
     sent_at: float
 
 
+@dataclass
+class _Approved:
+    """Application values approved for one sequence, possibly intentionally empty."""
+
+    outputs: Tuple[Any, ...]
+
+
 class EventStreamClient:
     """Send canonical events and release application events after inspection.
 
     The SDK sends exactly one ``InspectionEvent`` per input ``StreamEvent``.
     It does not group content, split tokens, or create overlap. The service may
-    acknowledge multiple sent events in one result; all covered local events
-    are then released in sequence order.
+    acknowledge a set of sent events in one result; exactly those local events
+    are decided, while application content is still released in sequence order.
     """
 
     def __init__(
@@ -280,6 +287,7 @@ class EventStreamClient:
             maxsize=max(4, self.config.max_pending_events)
         )
         pending: Dict[int, _Pending] = {}
+        approved: Dict[int, _Approved] = {}
         pending_lock = asyncio.Lock()
         capacity = asyncio.Semaphore(self.config.max_pending_events)
         request_drained = asyncio.Event()
@@ -438,22 +446,25 @@ class EventStreamClient:
 
             async def reader() -> None:
                 nonlocal server_blocked
-                last_ack = 0
+                next_release_sequence = 1
                 try:
                     async for result in call:
                         runtime_result = runtime_stream.InspectionResult.model_validate(
                             MessageToDict(result, preserving_proto_field_name=True)
                         )
-                        through = tuple(runtime_result.through_sequences)
+                        through = tuple(
+                            int(sequence)
+                            for sequence in runtime_result.through_sequences
+                        )
                         if not through:
                             raise StreamProtocolError(
                                 "server acknowledgement has no through_sequences"
                             )
-                        acknowledgement = max(through)
-                        if acknowledgement <= last_ack:
+                        if len(set(through)) != len(through):
                             raise StreamProtocolError(
-                                "server acknowledgement did not advance the stream"
+                                "server acknowledgement contains duplicate sequences"
                             )
+                        highest_sequence = max(through)
                         if runtime_result.inspect_response is None:
                             raise StreamProtocolError(
                                 "server acknowledgement has no inspect_response"
@@ -461,25 +472,27 @@ class EventStreamClient:
                         decision = self._decision(runtime_result.inspect_response)
 
                         async with pending_lock:
-                            if acknowledgement > sent_sequence:
+                            if any(sequence > sent_sequence for sequence in through):
                                 raise StreamProtocolError(
                                     "server acknowledged a sequence that was not sent"
                                 )
-                            ready_keys = sorted(
-                                key for key in pending if key <= acknowledgement
-                            )
-                            if not ready_keys:
+                            ready_keys = sorted(through)
+                            missing = [
+                                sequence
+                                for sequence in ready_keys
+                                if sequence not in pending
+                            ]
+                            if missing:
                                 raise StreamProtocolError(
-                                    "server acknowledgement did not cover pending content"
+                                    "server acknowledged a sequence that is not pending"
                                 )
                             ready = [pending.pop(key) for key in ready_keys]
-                        last_ack = acknowledgement
                         for _ in ready:
                             capacity.release()
 
                         inspection_result = StreamInspectionResult(
                             decision=decision,
-                            through_sequences=tuple(item.sequence for item in ready),
+                            through_sequences=tuple(ready_keys),
                             directions=tuple(item.direction for item in ready),
                         )
                         if self._on_decision is not None:
@@ -489,11 +502,17 @@ class EventStreamClient:
 
                         with self.observer.span(
                             "aidefense.stream.acknowledgement",
-                            observed(through_sequence=acknowledgement),
+                            observed(
+                                through_sequence=highest_sequence,
+                                sequence_count=len(ready_keys),
+                            ),
                         ):
                             self.observer.event(
                                 ReasonCode.ACK_RECEIVED,
-                                attributes=observed(through_sequence=acknowledgement),
+                                attributes=observed(
+                                    through_sequence=highest_sequence,
+                                    sequence_count=len(ready_keys),
+                                ),
                             )
 
                         action = _action_name(decision.action)
@@ -502,13 +521,13 @@ class EventStreamClient:
                         ):
                             with self.observer.span(
                                 "aidefense.stream.block",
-                                observed(through_sequence=acknowledgement),
+                                observed(through_sequence=highest_sequence),
                             ):
                                 self.observer.event(
                                     ReasonCode.DECISION_BLOCK,
                                     level=logging.WARNING,
                                     attributes=observed(
-                                        through_sequence=acknowledgement
+                                        through_sequence=highest_sequence
                                     ),
                                 )
                             server_blocked = True
@@ -531,20 +550,24 @@ class EventStreamClient:
                         with self.observer.span(
                             "aidefense.stream.decision",
                             observed(
-                                through_sequence=acknowledgement,
+                                through_sequence=highest_sequence,
                                 is_safe=decision.is_safe,
                                 action=decision.action,
                             ),
                         ):
                             self.observer.event(
                                 ReasonCode.DECISION_ALLOW,
-                                attributes=observed(through_sequence=acknowledgement),
+                                attributes=observed(through_sequence=highest_sequence),
                             )
                         await output.put(_ACK)
                         if action == "redact":
+                            for item in ready:
+                                approved[item.sequence] = _Approved(outputs=())
                             if decision.redacted_content:
                                 # A batched decision contains one replacement,
-                                # so emit it once using the latest covered shape.
+                                # so attach it once to the latest acknowledged
+                                # shape. Earlier sequence gaps still prevent it
+                                # from being emitted out of application order.
                                 originals = [
                                     item.application_event
                                     for item in ready
@@ -555,11 +578,28 @@ class EventStreamClient:
                                         originals[-1], decision.redacted_content
                                     )
                                     if redacted is not None:
-                                        await output.put(redacted)
+                                        approved[ready[-1].sequence] = _Approved(
+                                            outputs=(redacted,)
+                                        )
                         else:
                             for item in ready:
-                                if item.application_event is not None:
-                                    await output.put(item.application_event)
+                                outputs = (
+                                    ()
+                                    if item.application_event is None
+                                    else (item.application_event,)
+                                )
+                                approved[item.sequence] = _Approved(outputs=outputs)
+
+                        # Acknowledgement IDs are an explicit set, not a
+                        # cumulative max watermark. Hold a later approved item
+                        # until every earlier sequence has also been decided so
+                        # sparse or out-of-order bulk responses cannot reorder
+                        # model chunks in the application.
+                        while next_release_sequence in approved:
+                            released = approved.pop(next_release_sequence)
+                            next_release_sequence += 1
+                            for application_event in released.outputs:
+                                await output.put(application_event)
 
                     async with pending_lock:
                         if not half_close_started.is_set() and not terminal.is_set():
@@ -570,9 +610,9 @@ class EventStreamClient:
                             raise StreamProtocolError(
                                 "stream closed with unacknowledged content"
                             )
-                        if sent_sequence and last_ack < sent_sequence:
+                        if approved and not terminal.is_set():
                             raise StreamProtocolError(
-                                "server closed before acknowledging the final sequence"
+                                "stream closed before acknowledged content could be released"
                             )
                     if not terminal.is_set():
                         await output.put(_END)
