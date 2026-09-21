@@ -46,6 +46,7 @@ from .exceptions import (
     StreamConfigurationError,
     StreamConnectionError,
     StreamProtocolError,
+    StreamSourceError,
     StreamTimeoutError,
 )
 from .models import (
@@ -310,12 +311,24 @@ class EventStreamClient:
                     direction=StreamDirection.REQUEST,
                     message_id=identifier,
                 )
-                async for converted in adapter.adapt(
-                    native_events,
-                    message_id=identifier,
-                    direction=StreamDirection.RESPONSE,
-                ):
-                    yield converted
+                try:
+                    async for converted in adapter.adapt(
+                        native_events,
+                        message_id=identifier,
+                        direction=StreamDirection.RESPONSE,
+                    ):
+                        yield converted
+                except EventStreamError:
+                    raise
+                except Exception as exc:
+                    # Provider/framework failures happen inside the writer
+                    # worker. Preserve that boundary instead of reporting an
+                    # unrelated gRPC connection failure to the application.
+                    raise StreamSourceError(
+                        f"{resolved_source} event source failed "
+                        f"({type(exc).__name__})",
+                        cause=exc,
+                    ) from exc
 
             events = canonical_events()
         else:

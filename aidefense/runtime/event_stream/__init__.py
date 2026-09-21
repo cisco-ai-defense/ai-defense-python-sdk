@@ -19,6 +19,7 @@ from .exceptions import (
     StreamConfigurationError,
     StreamConnectionError,
     StreamProtocolError,
+    StreamSourceError,
     StreamTimeoutError,
     UnsafeContentError,
 )
@@ -69,6 +70,7 @@ __all__ = [
     "StreamInspectionResult",
     "StreamObserver",
     "StreamProtocolError",
+    "StreamSourceError",
     "StreamTimeoutError",
     "ToolCall",
     "UnsafeContentError",

@@ -315,7 +315,7 @@ When diagnosing a stream:
   cleanup remains bounded.
 
 Failures are typed as ``UnsafeContentError``, ``StreamTimeoutError``,
-``StreamCancelledError``, ``StreamConnectionError``, ``StreamProtocolError``,
+``StreamCancelledError``, ``StreamConnectionError``, ``StreamSourceError``, ``StreamProtocolError``,
 ``StreamBackpressureError``, or ``StreamConfigurationError`` so applications
 can handle terminal outcomes without parsing error strings.
 

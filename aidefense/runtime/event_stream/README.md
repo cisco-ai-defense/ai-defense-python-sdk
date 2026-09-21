@@ -362,13 +362,16 @@ Catch typed errors instead of parsing messages:
 - `StreamTimeoutError`
 - `StreamCancelledError`
 - `StreamConnectionError`
+- `StreamSourceError`
 - `StreamProtocolError`
 - `StreamBackpressureError`
 - `StreamConfigurationError`
 
 Configuration is validated before content is sent. gRPC authentication and
 permission failures are connection errors; invalid stream frames and malformed
-server acknowledgements are protocol errors.
+server acknowledgements are protocol errors. Framework/model-provider failures
+raised while producing response events are source errors and retain the original
+exception in `cause`.
 
 See the [full SDK guide](../../../docs/source/modules/event_stream.rst) and the
 [framework-neutral example](../../../examples/event_stream/custom_provider.py).

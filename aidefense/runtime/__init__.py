@@ -68,6 +68,7 @@ from .event_stream import (
     StreamInspectionResult,
     StreamObserver,
     StreamProtocolError,
+    StreamSourceError,
     StreamTimeoutError,
     ToolCall,
     UnsafeContentError,

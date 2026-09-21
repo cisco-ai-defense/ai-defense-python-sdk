@@ -59,6 +59,12 @@ class StreamConnectionError(EventStreamError, ConnectionError):
     reason_code = "CONNECTION_FAILURE"
 
 
+class StreamSourceError(EventStreamError, RuntimeError):
+    """The application/framework event source failed while producing content."""
+
+    reason_code = "SOURCE_FAILURE"
+
+
 class StreamProtocolError(EventStreamError):
     """The server returned an invalid or inconsistent acknowledgement."""
 

@@ -31,6 +31,7 @@ from aidefense.runtime.event_stream import (
     StreamDirection,
     StreamEvent,
     StreamProtocolError,
+    StreamSourceError,
     StreamTimeoutError,
     StreamObserver,
     StrandsBedrockAdapter,
@@ -644,6 +645,33 @@ async def test_high_level_adapter_does_not_call_model_when_prompt_is_blocked():
         )
 
     assert invoked is False
+
+
+@pytest.mark.asyncio
+async def test_high_level_adapter_reports_provider_failure_as_source_error():
+    client, call, channel = harness()
+    provider_error = RuntimeError("bedrock unavailable")
+
+    async def response():
+        raise provider_error
+        yield  # pragma: no cover - keeps this an async generator
+
+    with pytest.raises(
+        StreamSourceError, match="strands-bedrock event source failed"
+    ) as error:
+        await collect(
+            client.inspect(
+                response,
+                request="safe prompt",
+                adapter=StrandsBedrockAdapter(),
+                context=context(),
+            )
+        )
+
+    assert error.value.reason_code == "SOURCE_FAILURE"
+    assert error.value.cause is provider_error
+    assert call.cancelled is True
+    assert channel.closed is True
 
 
 @pytest.mark.asyncio
