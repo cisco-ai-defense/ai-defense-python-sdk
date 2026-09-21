@@ -93,7 +93,7 @@ sequenceDiagram
 | Component | Main responsibility |
 | --- | --- |
 | `EventStreamClient` in [`client.py`](client.py) | Reusable configuration, public input validation, adapter wiring, protobuf conversion helpers, channel creation, and typed gRPC error mapping. It stores no per-call sequence or conversation state. |
-| Framework adapter in [`adapters.py`](adapters.py) | Lazily converts native Strands, Bedrock, AgentCore, or custom framework chunks into canonical `StreamEvent` values while preserving the original `application_event`. |
+| Framework adapter in [`adapters.py`](adapters.py) | Lazily converts native Strands, Bedrock, AgentCore, or custom framework chunks into canonical `StreamEvent` values while preserving the original `application_event`. Strands iteration uses a one-item backpressured producer so its telemetry context creates, consumes, and closes in one task. |
 | `_StreamSession` in [`_session.py`](_session.py) | Owns one RPC and all mutable per-call state: channel, call, sequence counters, limits, pending events, approved events, queue, semaphore, locks, tasks, deadlines, and terminal outcome. |
 | Writer worker | Validates event order, assigns sequences, applies backpressure, sends one wire event per `StreamEvent`, marks the final response, and half-closes the client side. |
 | Reader worker | Parses server results, validates acknowledged sequence IDs, invokes the optional decision callback, applies actions, and releases only a contiguous approved prefix. |
@@ -226,6 +226,11 @@ Included adapters support Strands, Bedrock, and AgentCore. Pass the provider
 invocation as a callable so the SDK does not invoke the model until the prompt
 decision allows it:
 
+Current Strands releases expose each text token as both a raw model event and a
+typed convenience event. The Strands adapters collapse only an exact adjacent
+raw/typed pair, so each model token is inspected and yielded once. Raw-only
+streams and genuinely different adjacent chunks remain unchanged.
+
 ```python
 import uuid
 
@@ -331,8 +336,11 @@ config = Config(
 
 Debug logs use stable reason codes for channel setup, worker startup, request
 gating, result parsing, ordered release, worker failure, half-close, and cleanup.
-Operational events additionally cover send, acknowledgement, decisions,
-backpressure, timeout, cancellation, failure, and completion.
+Routine and high-volume events (`STREAM_STARTED`, `EVENT_SENT`, `ACK_RECEIVED`,
+`DECISION_ALLOW`, `BACKPRESSURE_WAIT`, and `STREAM_COMPLETED`) log only at DEBUG
+to avoid noisy customer logs, while their metrics and spans remain enabled.
+Blocks, timeout, cancellation, cleanup problems, and failures retain their
+normal warning/error visibility.
 
 Useful fields include the SDK-generated `stream_correlation_id`, sequence and
 event counts, action, safe/unsafe state, TLS mode, timeout values, pending count,

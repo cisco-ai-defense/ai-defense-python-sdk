@@ -289,9 +289,12 @@ Lifecycle debug reason codes include:
 * ``WORKER_FAILED`` for a typed reader or writer failure; and
 * ``CLEANUP_STARTED`` and ``CLEANUP_COMPLETED`` for resource shutdown.
 
-Operational events include ``EVENT_SENT``, ``ACK_RECEIVED``,
-``DECISION_ALLOW``, ``DECISION_BLOCK``, ``BACKPRESSURE_WAIT``, terminal stream
-outcomes, and ``CLEANUP_FAILED``. Debug-only records do not call
+Routine and high-volume events (``STREAM_STARTED``, ``EVENT_SENT``,
+``ACK_RECEIVED``, ``DECISION_ALLOW``, ``BACKPRESSURE_WAIT``, and
+``STREAM_COMPLETED``) log only at DEBUG but continue to emit their metrics and
+spans at every log level. ``DECISION_BLOCK``, timeout, cancellation, cleanup
+problems, and failures retain normal warning/error visibility. Lifecycle
+records emitted through the separate debug-only path do not call
 ``metrics.record``, so changing the log level cannot change metric volume.
 Typical attributes are bounded values such as TLS mode, sequence/count,
 pending count, action, timeout, worker name, error reason, and terminal outcome.

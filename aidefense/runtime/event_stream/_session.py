@@ -299,7 +299,11 @@ class _StreamSession:
         self.observer.debug(ReasonCode.START_FRAME_SENT, attributes=self.observed())
         self.observer.active_streams(1)
         self.active_stream_counted = True
-        self.observer.event(ReasonCode.STREAM_STARTED, attributes=self.observed())
+        self.observer.event(
+            ReasonCode.STREAM_STARTED,
+            level=logging.DEBUG,
+            attributes=self.observed(),
+        )
 
     async def send(self, event: StreamEvent, *, is_final: bool) -> None:
         """Reserve capacity, retain content, then write one canonical event.
@@ -312,6 +316,7 @@ class _StreamSession:
         if self.capacity.locked():
             self.observer.event(
                 ReasonCode.BACKPRESSURE_WAIT,
+                level=logging.DEBUG,
                 attributes=self.observed(
                     pending_count=len(self.pending),
                     max_pending_events=self.config.max_pending_events,
@@ -374,6 +379,7 @@ class _StreamSession:
 
         self.observer.event(
             ReasonCode.EVENT_SENT,
+            level=logging.DEBUG,
             attributes=self.observed(
                 sequence=sequence, direction=event.direction.value
             ),
@@ -584,7 +590,14 @@ class _StreamSession:
             sequence_count=count,
         )
         with self.observer.span("aidefense.stream.acknowledgement", attributes):
-            self.observer.event(ReasonCode.ACK_RECEIVED, attributes=attributes)
+            # Acknowledgements are high-volume transport details. Keep the
+            # metric and span at all times, but log them only when the
+            # application explicitly enables DEBUG logging.
+            self.observer.event(
+                ReasonCode.ACK_RECEIVED,
+                level=logging.DEBUG,
+                attributes=attributes,
+            )
 
     def record_block(
         self, sequence: int, action: str, decision: StreamDecision
@@ -612,7 +625,11 @@ class _StreamSession:
             is_safe=decision.is_safe,
         )
         with self.observer.span("aidefense.stream.decision", attributes):
-            self.observer.event(ReasonCode.DECISION_ALLOW, attributes=attributes)
+            self.observer.event(
+                ReasonCode.DECISION_ALLOW,
+                level=logging.DEBUG,
+                attributes=attributes,
+            )
 
     def approve(
         self,
@@ -834,7 +851,11 @@ class _StreamSession:
             self.observer.active_streams(-1)
         self.observer.latency(time.monotonic() - self.started, self.outcome)
         if self.outcome == "completed":
-            self.observer.event(ReasonCode.STREAM_COMPLETED, attributes=self.observed())
+            self.observer.event(
+                ReasonCode.STREAM_COMPLETED,
+                level=logging.DEBUG,
+                attributes=self.observed(),
+            )
 
         self.observer.debug(
             ReasonCode.CLEANUP_COMPLETED,

@@ -311,12 +311,13 @@ class EventStreamClient:
                     direction=StreamDirection.REQUEST,
                     message_id=identifier,
                 )
+                adapted_events = adapter.adapt(
+                    native_events,
+                    message_id=identifier,
+                    direction=StreamDirection.RESPONSE,
+                )
                 try:
-                    async for converted in adapter.adapt(
-                        native_events,
-                        message_id=identifier,
-                        direction=StreamDirection.RESPONSE,
-                    ):
+                    async for converted in adapted_events:
                         yield converted
                 except EventStreamError:
                     raise
@@ -329,6 +330,10 @@ class EventStreamClient:
                         f"({type(exc).__name__})",
                         cause=exc,
                     ) from exc
+                finally:
+                    close = getattr(adapted_events, "aclose", None)
+                    if close is not None:
+                        await close()
 
             events = canonical_events()
         else:

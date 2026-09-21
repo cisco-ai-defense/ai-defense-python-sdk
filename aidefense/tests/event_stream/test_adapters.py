@@ -64,6 +64,71 @@ async def test_strands_data_chunks_are_supported_without_strands_dependency():
 
 
 @pytest.mark.asyncio
+async def test_strands_raw_and_typed_text_pair_is_emitted_once():
+    raw = {
+        "event": {
+            "contentBlockDelta": {
+                "contentBlockIndex": 0,
+                "delta": {"text": "Delhi."},
+            }
+        }
+    }
+    typed = {"data": "Delhi.", "delta": {"text": "Delhi."}}
+
+    converted = [
+        item
+        async for item in StrandsEventAdapter().adapt(
+            [raw, typed], message_id="message-1"
+        )
+    ]
+
+    assert [item.messages[0].content.text for item in converted] == ["Delhi."]
+    assert converted[0].application_event is typed
+
+
+@pytest.mark.asyncio
+async def test_strands_wrapped_raw_text_without_typed_pair_is_preserved():
+    raw = {
+        "event": {
+            "contentBlockDelta": {
+                "contentBlockIndex": 0,
+                "delta": {"text": "raw-only"},
+            }
+        }
+    }
+
+    converted = [
+        item
+        async for item in StrandsEventAdapter().adapt([raw], message_id="message-1")
+    ]
+
+    assert [item.messages[0].content.text for item in converted] == ["raw-only"]
+    assert converted[0].application_event is raw
+
+
+@pytest.mark.asyncio
+async def test_strands_different_adjacent_text_events_are_not_deduplicated():
+    raw = {
+        "event": {
+            "contentBlockDelta": {
+                "contentBlockIndex": 0,
+                "delta": {"text": "one"},
+            }
+        }
+    }
+    typed = {"data": "two", "delta": {"text": "two"}}
+
+    converted = [
+        item
+        async for item in StrandsEventAdapter().adapt(
+            [raw, typed], message_id="message-1"
+        )
+    ]
+
+    assert [item.messages[0].content.text for item in converted] == ["one", "two"]
+
+
+@pytest.mark.asyncio
 async def test_adapter_is_reusable_across_concurrent_invocations():
     adapter = StrandsEventAdapter()
 
@@ -82,6 +147,45 @@ async def test_adapter_is_reusable_across_concurrent_invocations():
     assert first[0].messages[0].content.text == "one"
     assert second[0].message_id == "message-2"
     assert second[0].messages[0].content.text == "two"
+
+
+@pytest.mark.asyncio
+async def test_strands_source_is_created_consumed_and_closed_in_one_task():
+    consumer_task = asyncio.current_task()
+    source_tasks = []
+    closed = asyncio.Event()
+
+    class Source:
+        def __init__(self):
+            self.sent = False
+
+        def __aiter__(self):
+            return self
+
+        async def __anext__(self):
+            source_tasks.append(asyncio.current_task())
+            if not self.sent:
+                self.sent = True
+                return {"data": "one"}
+            await asyncio.Event().wait()
+
+        async def aclose(self):
+            source_tasks.append(asyncio.current_task())
+            closed.set()
+
+    def events():
+        source_tasks.append(asyncio.current_task())
+        return Source()
+
+    stream = StrandsEventAdapter().adapt(events, message_id="message-1")
+    converted = await stream.__anext__()
+    await stream.aclose()
+
+    assert converted.messages[0].content.text == "one"
+    assert closed.is_set()
+    assert source_tasks
+    assert all(task is source_tasks[0] for task in source_tasks)
+    assert source_tasks[0] is not consumer_task
 
 
 @pytest.mark.asyncio

@@ -9,7 +9,14 @@ import asyncio
 import inspect
 import json
 from collections.abc import AsyncIterable, AsyncIterator, Iterable
-from typing import Any, AsyncIterator as TypingAsyncIterator, Dict, Optional, Protocol
+from typing import (
+    Any,
+    AsyncIterator as TypingAsyncIterator,
+    Dict,
+    Optional,
+    Protocol,
+    Tuple,
+)
 
 from aidefense.pydantic.runtime.ai_defense.inspection.v1.inspection_pydantic import (
     MessageContent,
@@ -23,6 +30,9 @@ from .models import CanonicalMessage, StreamDirection, StreamEvent, ToolCall
 
 _SKIP_EVENT = object()
 _ITERATOR_END = object()
+_SOURCE_EVENT = object()
+_SOURCE_ERROR = object()
+_SOURCE_END = object()
 
 
 def _next_or_end(iterator: Any) -> Any:
@@ -97,6 +107,52 @@ async def as_async_iterable(events: Any) -> AsyncIterator[Any]:
     )
 
 
+async def _isolated_async_iterable(events: Any) -> AsyncIterator[Any]:
+    """Consume a framework iterator in one stable async context.
+
+    Strands holds an OpenTelemetry context open across ``stream_async`` yields.
+    If the consumer performs unrelated async work between those yields, an
+    early close can otherwise detach Strands' token from a different context.
+    A one-item queue keeps creation, iteration, and closure in one producer
+    task while retaining strict backpressure and per-event delivery.
+    """
+
+    queue: asyncio.Queue = asyncio.Queue(maxsize=1)
+
+    async def produce() -> None:
+        try:
+            async for event in as_async_iterable(events):
+                await queue.put((_SOURCE_EVENT, event))
+        except asyncio.CancelledError:
+            raise
+        except BaseException as exc:
+            await queue.put((_SOURCE_ERROR, exc))
+        else:
+            await queue.put((_SOURCE_END, None))
+
+    producer = asyncio.create_task(produce(), name="aidefense-framework-event-source")
+    try:
+        while True:
+            kind, value = await queue.get()
+            if kind is _SOURCE_EVENT:
+                yield value
+                continue
+            if kind is _SOURCE_ERROR:
+                if isinstance(value, Exception):
+                    raise value
+                raise StreamProtocolError(
+                    "framework event source terminated unexpectedly", cause=value
+                )
+            return
+    finally:
+        if not producer.done():
+            producer.cancel()
+        try:
+            await producer
+        except asyncio.CancelledError:
+            pass
+
+
 # Stable public helper for custom adapters. Keep the original internal name for
 # compatibility with integrations built during the preview.
 iter_events = as_async_iterable
@@ -141,6 +197,25 @@ def _text_content(content: Any) -> str:
         if data and isinstance(data.get("text"), str):
             parts.append(data["text"])
     return "".join(parts)
+
+
+def _wrapped_text_delta(value: Any) -> Optional[str]:
+    """Return text only for Strands' raw ``{"event": ...}`` token shape."""
+
+    data = _mapping(value)
+    event = _mapping(data.get("event")) if data is not None else None
+    delta_event = _mapping(event.get("contentBlockDelta")) if event else None
+    delta = _mapping(delta_event.get("delta")) if delta_event else None
+    text = delta.get("text") if delta else None
+    return text if isinstance(text, str) and text else None
+
+
+def _typed_text_delta(value: Any) -> Optional[str]:
+    """Return text from Strands' convenience ``{"data": text}`` shape."""
+
+    data = _mapping(value)
+    text = data.get("data") if data is not None else None
+    return text if isinstance(text, str) and text else None
 
 
 def _complete_message(
@@ -209,13 +284,47 @@ class StrandsEventAdapter:
             source=self.source,
             max_tool_argument_chars=self.max_tool_argument_chars,
         )
-        async for original in as_async_iterable(events):
-            converted = parser.convert(original)
-            # Lifecycle envelopes do not contain inspectable application
-            # content. Keep the transport API canonical and do not manufacture
-            # empty gRPC events for them.
-            if converted.messages:
-                yield converted
+        source = _isolated_async_iterable(events)
+        pending_raw_text: Optional[Tuple[str, StreamEvent]] = None
+        try:
+            async for original in source:
+                converted = parser.convert(original)
+                raw_text = _wrapped_text_delta(original)
+                typed_text = _typed_text_delta(original)
+
+                if pending_raw_text is not None:
+                    pending_text, pending_event = pending_raw_text
+                    if typed_text == pending_text:
+                        # Strands emits every native model token twice: first
+                        # as a raw ModelStreamChunkEvent and then as a typed
+                        # TextStreamEvent. Keep the typed event as the
+                        # application value and inspect the token exactly once.
+                        pending_raw_text = None
+                    else:
+                        yield pending_event
+                        pending_raw_text = None
+
+                if raw_text is not None:
+                    # Hold one raw token long enough to see whether Strands
+                    # emits its exact typed counterpart next. Raw-only vendor
+                    # streams are flushed on the next event or at exhaustion.
+                    pending_raw_text = (raw_text, converted)
+                    continue
+
+                # Lifecycle envelopes do not contain inspectable application
+                # content. Keep the transport API canonical and do not
+                # manufacture empty gRPC events for them.
+                if converted.messages:
+                    yield converted
+
+            if pending_raw_text is not None:
+                yield pending_raw_text[1]
+        finally:
+            # Async-generator close does not automatically propagate through a
+            # nested ``async for``. Close the isolated source here so its
+            # producer task owns Strands cleanup instead of the event-loop
+            # finalizer running it later under an unrelated context.
+            await source.aclose()
 
     def convert(self, original: Any) -> StreamEvent:
         data = _mapping(original)
@@ -456,9 +565,13 @@ class StrandsAgentCoreAdapter(StrandsEventAdapter):
         message_id: Optional[str] = None,
         direction: Optional[StreamDirection] = None,
     ) -> AsyncIterator[StreamEvent]:
-        async for converted in super().adapt(
+        source = super().adapt(
             agentcore_events(events),
             message_id=message_id,
             direction=direction,
-        ):
-            yield converted
+        )
+        try:
+            async for converted in source:
+                yield converted
+        finally:
+            await source.aclose()

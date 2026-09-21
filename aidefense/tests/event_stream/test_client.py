@@ -180,18 +180,56 @@ async def test_debug_logs_cover_stream_lifecycle_without_content(caplog):
         ) == [{"data": "private-response-marker"}]
 
     for reason in (
+        ReasonCode.STREAM_STARTED,
+        ReasonCode.EVENT_SENT,
         ReasonCode.CHANNEL_OPENING,
         ReasonCode.CHANNEL_READY,
         ReasonCode.WORKERS_STARTED,
         ReasonCode.REQUEST_GATE_WAIT,
         ReasonCode.REQUEST_GATE_OPEN,
         ReasonCode.RESULT_PARSED,
+        ReasonCode.ACK_RECEIVED,
+        ReasonCode.DECISION_ALLOW,
         ReasonCode.EVENTS_RELEASED,
         ReasonCode.CLEANUP_STARTED,
         ReasonCode.CLEANUP_COMPLETED,
+        ReasonCode.STREAM_COMPLETED,
     ):
         assert reason.value in caplog.text
     assert "private-response-marker" not in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_routine_success_logs_are_debug_only_but_metrics_are_preserved(caplog):
+    logger = logging.getLogger("aidefense-test-stream-info")
+    logger.setLevel(logging.INFO)
+    metric_events = []
+    metrics = SimpleNamespace(
+        record=lambda reason, attributes: metric_events.append((reason, attributes)),
+        active_streams=lambda _delta: None,
+        latency=lambda _seconds, _outcome: None,
+    )
+    client, _, _ = harness(observer=StreamObserver(logger=logger, metrics=metrics))
+
+    with caplog.at_level(logging.INFO, logger=logger.name):
+        await collect(
+            client.inspect(
+                invocation("response"),
+                context=context(),
+                source="vendor",
+            )
+        )
+
+    metric_reasons = [reason for reason, _ in metric_events]
+    for reason in (
+        ReasonCode.STREAM_STARTED,
+        ReasonCode.EVENT_SENT,
+        ReasonCode.ACK_RECEIVED,
+        ReasonCode.DECISION_ALLOW,
+        ReasonCode.STREAM_COMPLETED,
+    ):
+        assert reason.value not in caplog.text
+        assert reason.value in metric_reasons
 
 
 def test_client_accepts_chat_inspect_style_api_key_and_config():
