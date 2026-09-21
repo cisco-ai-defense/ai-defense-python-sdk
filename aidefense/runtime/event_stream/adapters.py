@@ -107,6 +107,17 @@ async def as_async_iterable(events: Any) -> AsyncIterator[Any]:
     )
 
 
+async def _close_async_iterator(iterator: Any) -> None:
+    """Close an owned async iterator when it exposes ``aclose``."""
+
+    close = getattr(iterator, "aclose", None)
+    if close is None:
+        return
+    result = close()
+    if inspect.isawaitable(result):
+        await result
+
+
 async def _isolated_async_iterable(events: Any) -> AsyncIterator[Any]:
     """Consume a framework iterator in one stable async context.
 
@@ -324,7 +335,7 @@ class StrandsEventAdapter:
             # nested ``async for``. Close the isolated source here so its
             # producer task owns Strands cleanup instead of the event-loop
             # finalizer running it later under an unrelated context.
-            await source.aclose()
+            await _close_async_iterator(source)
 
     def convert(self, original: Any) -> StreamEvent:
         data = _mapping(original)
@@ -574,4 +585,4 @@ class StrandsAgentCoreAdapter(StrandsEventAdapter):
             async for converted in source:
                 yield converted
         finally:
-            await source.aclose()
+            await _close_async_iterator(source)
