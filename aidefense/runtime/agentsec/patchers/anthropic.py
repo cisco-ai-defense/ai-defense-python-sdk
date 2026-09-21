@@ -786,20 +786,25 @@ def _wrap_stream(wrapped, instance, args, kwargs):
     return _AnthropicStreamManagerProxy(wrapped(*args, **kwargs), messages, metadata)
 
 
-async def _wrap_stream_async(wrapped, instance, args, kwargs):
+def _wrap_stream_async(wrapped, instance, args, kwargs):
     set_inspection_context(done=False)
     if not _should_inspect():
-        return await wrapped(*args, **kwargs)
+        return wrapped(*args, **kwargs)
     messages = _normalize_kwargs(kwargs)
     metadata = get_inspection_context().metadata
     settings = resolve_gateway_settings("anthropic")
     if settings:
-        response = await _gateway_post_async(dict(kwargs, stream=False), settings)
+        async def request():
+            return await _gateway_post_async(dict(kwargs, stream=False), settings)
+
         return _AnthropicAsyncStreamManagerProxy(
-            _SyntheticAsyncStreamManager(response), messages, metadata
+            _LazySyntheticAsyncStreamManager(request), messages, metadata
         )
-    await _inspect_request_async(messages, metadata)
-    return _AnthropicAsyncStreamManagerProxy(await wrapped(*args, **kwargs), messages, metadata)
+    return _AnthropicAsyncStreamManagerProxy(
+        _InspectedAsyncStreamManager(wrapped(*args, **kwargs), messages, metadata),
+        messages,
+        metadata,
+    )
 
 
 class _SyntheticStream:
@@ -907,6 +912,40 @@ class _SyntheticAsyncStreamManager:
 
     async def __aexit__(self, exc_type, exc, exc_tb):
         return None
+
+
+class _LazySyntheticAsyncStreamManager:
+    """Defer the gateway request until an async stream is entered."""
+
+    def __init__(self, request):
+        self._request = request
+        self._manager = None
+
+    async def __aenter__(self):
+        response = await self._request()
+        self._manager = _SyntheticAsyncStreamManager(response)
+        return await self._manager.__aenter__()
+
+    async def __aexit__(self, exc_type, exc, exc_tb):
+        if self._manager is None:
+            return None
+        return await self._manager.__aexit__(exc_type, exc, exc_tb)
+
+
+class _InspectedAsyncStreamManager:
+    """Run request inspection when the native async stream is entered."""
+
+    def __init__(self, manager, messages, metadata):
+        self._manager = manager
+        self._messages = messages
+        self._metadata = metadata
+
+    async def __aenter__(self):
+        await _inspect_request_async(self._messages, self._metadata)
+        return await self._manager.__aenter__()
+
+    async def __aexit__(self, exc_type, exc, exc_tb):
+        return await self._manager.__aexit__(exc_type, exc, exc_tb)
 
 
 class _SyntheticAsyncMessageStream(_SyntheticAsyncStream):

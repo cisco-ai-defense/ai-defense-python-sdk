@@ -326,8 +326,8 @@ class TestAnthropicInspection:
             async def __aexit__(self, exc_type, exc, exc_tb):
                 return False
 
-        manager = await _wrap_stream_async(
-            AsyncMock(return_value=FakeManager()),
+        manager = _wrap_stream_async(
+            MagicMock(return_value=FakeManager()),
             MagicMock(),
             (),
             {"model": "claude-sonnet", "messages": [{"role": "user", "content": "Hi"}]},
