@@ -19,6 +19,7 @@
 from abc import ABC, abstractmethod
 import logging
 import threading
+from typing import Any
 
 import aiohttp
 import requests
@@ -71,7 +72,9 @@ class BaseConfig(ABC):
 
     def __new__(cls, *args, **kwargs):
         if cls is BaseConfig:
-            raise TypeError("BaseConfig is abstract and cannot be instantiated directly")
+            raise TypeError(
+                "BaseConfig is abstract and cannot be instantiated directly"
+            )
 
         # Singleton constructor for Config. Ensures only one instance is created per subclass.
         # Acquiring a lock is expensive, so we only do it if we need to. Future initializations will be fast.
@@ -107,7 +110,10 @@ class BaseConfig(ABC):
 
         region = self._SHORT_REGION_MAP.get(region, region)
 
-        if region not in self.RUNTIME_REGION_ENDPOINTS or region not in self.MANAGEMENT_REGION_ENDPOINTS:
+        if (
+            region not in self.RUNTIME_REGION_ENDPOINTS
+            or region not in self.MANAGEMENT_REGION_ENDPOINTS
+        ):
             raise ValueError(f"Invalid region: {region}")
 
         self.region = region
@@ -160,17 +166,35 @@ class BaseConfig(ABC):
                 handler.setFormatter(logging.Formatter(log_format))
                 self.logger.addHandler(handler)
 
+    def _set_observability(self, tracer: Any, metrics: Any) -> None:
+        """Store optional, dependency-free observability integrations.
+
+        The SDK deliberately accepts application-owned tracer and metrics
+        objects instead of importing a telemetry vendor. Streaming clients use
+        these hooks when present; HTTP clients continue to use the same logger
+        and are otherwise unaffected.
+        """
+
+        self.tracer = tracer
+        self.metrics = metrics
+
     def _set_retry_config(self, retry_config: dict):
         if not isinstance(retry_config, dict):
             retry_config = {}
 
         self.retry_config = {
             "total": retry_config.get("total", self.DEFAULT_TOTAL),
-            "backoff_factor": retry_config.get("backoff_factor", self.DEFAULT_BACKOFF_FACTOR),
-            "status_forcelist": retry_config.get("status_forcelist", list(self.DEFAULT_STATUS_FORCELIST)),
+            "backoff_factor": retry_config.get(
+                "backoff_factor", self.DEFAULT_BACKOFF_FACTOR
+            ),
+            "status_forcelist": retry_config.get(
+                "status_forcelist", list(self.DEFAULT_STATUS_FORCELIST)
+            ),
             "allowed_methods": retry_config.get("allowed_methods", None),
             "raise_on_status": retry_config.get("raise_on_status", False),
-            "respect_retry_after_header": retry_config.get("respect_retry_after_header", True),
+            "respect_retry_after_header": retry_config.get(
+                "respect_retry_after_header", True
+            ),
         }
 
     def _set_pool_config(self, pool_config: dict):
@@ -178,12 +202,17 @@ class BaseConfig(ABC):
             pool_config = {}
 
         self.pool_config = {
-            "pool_connections": pool_config.get("pool_connections", self.DEFAULT_POOL_CONNECTIONS),
+            "pool_connections": pool_config.get(
+                "pool_connections", self.DEFAULT_POOL_CONNECTIONS
+            ),
             "pool_maxsize": pool_config.get("pool_maxsize", self.DEFAULT_POOL_MAXSIZE),
         }
 
     _INIT_PARAM_NAMES = (
-        "region", "runtime_base_url", "management_base_url", "timeout",
+        "region",
+        "runtime_base_url",
+        "management_base_url",
+        "timeout",
     )
 
     def _warn_if_params_differ(self, *args, **kwargs):
@@ -255,6 +284,8 @@ class Config(BaseConfig):
         timeout (int, optional): Timeout for HTTP requests in seconds. Default is 30.
         logger (logging.Logger, optional): Optional custom logger instance. If not provided, one is created.
         logger_params (dict, optional): Parameters for logger creation (`name`, `level`, `format`).
+        tracer (object, optional): Tracer exposing ``start_as_current_span``. Used by streaming inspection.
+        metrics (object, optional): Metrics sink exposing the event-stream metric callbacks.
         retry_config (dict, optional): Retry configuration dict (e.g., {"total": 3, "backoff_factor": 0.5, "status_forcelist": [...]}).
         connection_pool (requests.adapters.HTTPAdapter, optional): Optional custom HTTPAdapter for connection pooling. Takes precedence over pool_config and defaults.
         pool_config (dict, optional): Parameters for connection pool (`pool_connections`, `pool_maxsize`, `max_retries`). Used if connection_pool is not provided.
@@ -265,6 +296,8 @@ class Config(BaseConfig):
         runtime_base_url (str): Base API URL for the selected region.
         management_base_url (str): Base API URL for the selected region.
         logger (logging.Logger): Logger instance.
+        tracer (object): Optional application-owned tracing integration.
+        metrics (object): Optional application-owned metrics integration.
         retry_config (dict): Retry configuration.
         connection_pool (requests.adapters.HTTPAdapter): HTTP connection pool adapter.
         pool_config (dict): Parameters for connection pool.
@@ -281,6 +314,8 @@ class Config(BaseConfig):
         retry_config: dict = None,
         connection_pool: HTTPAdapter = None,
         pool_config: dict = None,
+        tracer: Any = None,
+        metrics: Any = None,
     ):
         """
         Initialize the configuration with the provided parameters.
@@ -292,6 +327,8 @@ class Config(BaseConfig):
             timeout (int, optional): Timeout for HTTP requests in seconds. Default is 30.
             logger (logging.Logger, optional): Optional custom logger instance.
             logger_params (dict, optional): Parameters for logger creation.
+            tracer (object, optional): Tracer exposing ``start_as_current_span``.
+            metrics (object, optional): Metrics sink used by streaming inspection.
             retry_config (dict, optional): Retry configuration dict.
             connection_pool (HTTPAdapter, optional): Custom HTTPAdapter for connection pooling.
             pool_config (dict, optional): Parameters for connection pool.
@@ -301,6 +338,7 @@ class Config(BaseConfig):
         self._set_runtime_base_url(runtime_base_url)
         self._set_management_base_url(management_base_url)
         self._set_logger(logger, logger_params)
+        self._set_observability(tracer, metrics)
         self._set_retry_config(retry_config)
         self._set_pool_config(pool_config)
 
@@ -311,13 +349,17 @@ class Config(BaseConfig):
             status_forcelist=self.retry_config.get("status_forcelist"),
             allowed_methods=self.retry_config.get("allowed_methods"),
             raise_on_status=self.retry_config.get("raise_on_status"),
-            respect_retry_after_header=self.retry_config.get("respect_retry_after_header"),
+            respect_retry_after_header=self.retry_config.get(
+                "respect_retry_after_header"
+            ),
         )
 
         # --- Connection Pool ---
         if connection_pool:
             if not isinstance(connection_pool, HTTPAdapter):
-                raise TypeError("connection_pool must be an instance of requests.adapters.HTTPAdapter")
+                raise TypeError(
+                    "connection_pool must be an instance of requests.adapters.HTTPAdapter"
+                )
 
             self.connection_pool = connection_pool
         else:
@@ -350,6 +392,8 @@ class AsyncConfig(BaseConfig):
         timeout (int, optional): Timeout for HTTP requests in seconds. Default is 30.
         logger (logging.Logger, optional): Optional custom logger instance.
         logger_params (dict, optional): Parameters for logger creation.
+        tracer (object, optional): Tracer exposing ``start_as_current_span``. Used by streaming inspection.
+        metrics (object, optional): Metrics sink exposing the event-stream metric callbacks.
         retry_config (dict, optional): Retry configuration dict.
         connection_pool (aiohttp.TCPConnector, optional): Custom TCPConnector for connection pooling. Takes precedence over pool_config and defaults.
         pool_config (dict, optional): Parameters for connection pool.
@@ -360,6 +404,8 @@ class AsyncConfig(BaseConfig):
         runtime_base_url (str): Base API URL for the selected region.
         management_base_url (str): Base API URL for the selected region.
         logger (logging.Logger): Logger instance.
+        tracer (object): Optional application-owned tracing integration.
+        metrics (object): Optional application-owned metrics integration.
         retry_config (dict): Retry configuration.
         connection_pool (aiohttp.TCPConnector): Async HTTP connection pool connector.
         pool_config (dict): Parameters for connection pool.
@@ -376,6 +422,8 @@ class AsyncConfig(BaseConfig):
         retry_config: dict = None,
         connection_pool: aiohttp.TCPConnector = None,
         pool_config: dict = None,
+        tracer: Any = None,
+        metrics: Any = None,
     ):
         """
         Initialize the async configuration settings.
@@ -390,6 +438,8 @@ class AsyncConfig(BaseConfig):
             timeout (int, optional): HTTP request timeout in seconds.
             logger (logging.Logger, optional): Custom logger instance.
             logger_params (dict, optional): Parameters for logger creation.
+            tracer (object, optional): Tracer exposing ``start_as_current_span``.
+            metrics (object, optional): Metrics sink used by streaming inspection.
             retry_config (dict, optional): Retry configuration dictionary.
             connection_pool (aiohttp.TCPConnector, optional): Custom TCPConnector.
             pool_config (dict, optional): Parameters for connection pool creation.
@@ -402,13 +452,16 @@ class AsyncConfig(BaseConfig):
         self._set_runtime_base_url(runtime_base_url)
         self._set_management_base_url(management_base_url)
         self._set_logger(logger, logger_params)
+        self._set_observability(tracer, metrics)
         self._set_retry_config(retry_config)
         self._set_pool_config(pool_config)
 
         # --- Connection Pool ---
         if connection_pool:
             if not isinstance(connection_pool, aiohttp.TCPConnector):
-                raise TypeError("connection_pool must be an instance of aiohttp.TCPConnector")
+                raise TypeError(
+                    "connection_pool must be an instance of aiohttp.TCPConnector"
+                )
 
             self.connection_pool = connection_pool
         else:

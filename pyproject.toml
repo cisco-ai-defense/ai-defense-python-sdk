@@ -21,6 +21,7 @@ classifiers = [
     "Intended Audience :: Developers"
 ]
 packages = [{include = "aidefense"}]
+include = ["aidefense/runtime/event_stream/README.md"]
 
 [tool.poetry.dependencies]
 aiohttp = "^3.13.2"
@@ -28,10 +29,14 @@ python = "^3.9"
 requests = "^2.32.3"
 pydantic = "^2.12.5"
 tenacity = "^9.1.2"
+eval-type-backport = "^0.2.2"
+grpcio = {version = ">=1.60,<2", optional = true}
+protobuf = {version = ">=5.29,<7", optional = true}
 cisco-aibom = {version = ">=0.4.0", optional = true, python = ">=3.11,<3.14"}
 
 [tool.poetry.extras]
 aibom = ["cisco-aibom"]
+streaming = ["grpcio", "protobuf"]
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2.0"

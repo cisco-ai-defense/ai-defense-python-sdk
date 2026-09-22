@@ -47,6 +47,8 @@ The examples are organized into the following structure:
     │       ├── chat_inspect_mistral.py
     │       ├── chat_inspect_openai.py
     │       └── chat_inspect_vertex_ai.py
+    ├── event_stream/            # Bidirectional streaming inspection
+    │   └── custom_provider.py   # Framework-neutral adapter example
     ├── http/                    # HTTP inspection examples
     │   ├── http_inspect_api.py
     │   ├── http_inspect_multiple_clients.py
