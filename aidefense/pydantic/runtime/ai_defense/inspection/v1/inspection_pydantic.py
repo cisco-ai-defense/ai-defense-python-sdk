@@ -137,7 +137,7 @@ class RuleObject(_ProtoModel):
         default_factory=list,
     )
     # The entity types
-    classification: "ClassificationTypes | None" = _Field(default=None)
+    classification: ClassificationTypes | None = _Field(default=None)
     # According to yaml
     profile_id: str = _Field(default="")
     # Profile id for profile-based response metadata
@@ -203,7 +203,7 @@ class ToolDefinition(_ProtoModel):
         default="",
         alias="type",
     )
-    function: "ToolFunction | None" = _Field(default=None)
+    function: ToolFunction | None = _Field(default=None)
 
 
 class ToolCall(_ProtoModel):
@@ -221,7 +221,7 @@ class ToolCall(_ProtoModel):
         default="",
         alias="type",
     )
-    function: "ToolFunction | None" = _Field(default=None)
+    function: ToolFunction | None = _Field(default=None)
 
 
 class ImageURL(_ProtoModel):
@@ -257,13 +257,13 @@ class ContentPart(_ProtoModel):
 
     model_config = _ConfigDict(populate_by_name=True, protected_namespaces=())
 
-    type_: "ContentPartType | None" = _Field(
+    type_: ContentPartType | None = _Field(
         default=None,
         alias="type",
     )
     text: str = _Field(default="")
-    image_url: "ImageURL | None" = _Field(default=None)
-    input_audio: "InputAudio | None" = _Field(default=None)
+    image_url: ImageURL | None = _Field(default=None)
+    input_audio: InputAudio | None = _Field(default=None)
 
 
 class ContentPartList(_ProtoModel):
@@ -285,7 +285,7 @@ class MessageContent(_ProtoModel):
         default=None,
         description='Only one of the fields can be specified with: ["text", "parts"] (oneof body)',
     )
-    parts: "ContentPartList | None" = _Field(
+    parts: ContentPartList | None = _Field(
         default=None,
         description='Only one of the fields can be specified with: ["text", "parts"] (oneof body)',
     )
@@ -309,8 +309,8 @@ class Message(_ProtoModel):
     - function: legacy function execution output (deprecated by OpenAI in favor of tool role).
     """
 
-    role: "Role | None" = _Field(default=None)
-    content: "MessageContent | None" = _Field(default=None)
+    role: Role | None = _Field(default=None)
+    content: MessageContent | None = _Field(default=None)
     tool_calls: "list[ToolCall]" = _Field(
         default_factory=list,
     )
@@ -318,7 +318,7 @@ class Message(_ProtoModel):
     # Legacy OpenAI function_call field on assistant messages.
     # Added to support the deprecated format where assistant invocations use
     # {"function_call": {"name": "...", "arguments": "..."}} instead of tool_calls.
-    function_call: "FunctionCall | None" = _Field(
+    function_call: FunctionCall | None = _Field(
         default=None,
         description='Legacy OpenAI function_call field on assistant messages.\nAdded to support the deprecated format where assistant invocations use\n{"function_call": {"name": "...", "arguments": "..."}} instead of tool_calls.',
     )
@@ -407,8 +407,8 @@ class ChatInspectRequest(_ProtoModel):
     messages: "list[Message]" = _Field(
         default_factory=list,
     )
-    metadata: "Metadata | None" = _Field(default=None)
-    config: "Config | None" = _Field(default=None)
+    metadata: Metadata | None = _Field(default=None)
+    config: Config | None = _Field(default=None)
     tools: "list[ToolDefinition]" = _Field(
         default_factory=list,
     )
@@ -420,8 +420,8 @@ class DefenseClawInspectRequest(_ProtoModel):
     messages: "list[Message]" = _Field(
         default_factory=list,
     )
-    metadata: "Metadata | None" = _Field(default=None)
-    config: "Config | None" = _Field(default=None)
+    metadata: Metadata | None = _Field(default=None)
+    config: Config | None = _Field(default=None)
     tools: "list[ToolDefinition]" = _Field(
         default_factory=list,
     )
@@ -437,7 +437,7 @@ class HttpMetaObject(_ProtoModel):
 
 class HttpReqObject(_ProtoModel):
     method: str = _Field(default="")
-    headers: "HttpHdrObject | None" = _Field(default=None)
+    headers: HttpHdrObject | None = _Field(default=None)
     body: str = _Field(default="")
     # required as per yaml
     split: bool = _Field(default=False)
@@ -449,7 +449,7 @@ class HttpResObject(_ProtoModel):
     # required
     status_string: str = _Field(default="")
     # required
-    headers: "HttpHdrObject | None" = _Field(default=None)
+    headers: HttpHdrObject | None = _Field(default=None)
     body: str = _Field(default="")
     # required
     split: bool = _Field(default=False)
@@ -457,12 +457,12 @@ class HttpResObject(_ProtoModel):
 
 
 class HttpInspectRequest(_ProtoModel):
-    http_req: "HttpReqObject | None" = _Field(default=None)
+    http_req: HttpReqObject | None = _Field(default=None)
     # required as per yaml
-    http_res: "HttpResObject | None" = _Field(default=None)
-    http_meta: "HttpMetaObject | None" = _Field(default=None)
-    metadata: "Metadata | None" = _Field(default=None)
-    config: "Config | None" = _Field(default=None)
+    http_res: HttpResObject | None = _Field(default=None)
+    http_meta: HttpMetaObject | None = _Field(default=None)
+    metadata: Metadata | None = _Field(default=None)
+    config: Config | None = _Field(default=None)
     policy_id: str = _Field(default="")
     # Optional policy ID to select a synced custom guardrail policy for this inspection.
 
@@ -477,18 +477,18 @@ class InspectResponse(_ProtoModel):
     )
     # According to yaml
     is_safe: bool = _Field(default=False)
-    severity: "SeverityType | None" = _Field(default=None)
+    severity: SeverityType | None = _Field(default=None)
     rules: "list[RuleObject]" = _Field(
         default_factory=list,
     )
-    attack_technique: "AttackTechniqueTypes | None" = _Field(default=None)
+    attack_technique: AttackTechniqueTypes | None = _Field(default=None)
     explanation: str | None = _Field(default=None)
     client_transaction_id: str = _Field(default="")
     event_id: str = _Field(default="")
     processed_rules: "list[RuleObject]" = _Field(
         default_factory=list,
     )
-    action: "Action | None" = _Field(default=None)
+    action: Action | None = _Field(default=None)
     # Configured action for the association
     detected_pii: "list[DetectedPII]" = _Field(
         default_factory=list,
@@ -505,18 +505,18 @@ class DefenseClawInspectResponse(_ProtoModel):
     )
     # According to yaml
     is_safe: bool = _Field(default=False)
-    severity: "SeverityType | None" = _Field(default=None)
+    severity: SeverityType | None = _Field(default=None)
     rules: "list[RuleObject]" = _Field(
         default_factory=list,
     )
-    attack_technique: "AttackTechniqueTypes | None" = _Field(default=None)
+    attack_technique: AttackTechniqueTypes | None = _Field(default=None)
     explanation: str | None = _Field(default=None)
     client_transaction_id: str = _Field(default="")
     event_id: str = _Field(default="")
     processed_rules: "list[RuleObject]" = _Field(
         default_factory=list,
     )
-    action: "Action | None" = _Field(default=None)
+    action: Action | None = _Field(default=None)
     # Configured action for the association
     detected_pii: "list[DetectedPII]" = _Field(
         default_factory=list,
@@ -560,7 +560,7 @@ class MCPMessage(_ProtoModel):
         description="Success result (present in successful responses)\nStructure varies by method, commonly includes content array",
     )
     # Error object (present in error responses)
-    error: "MCPError | None" = _Field(
+    error: MCPError | None = _Field(
         default=None,
         description="Error object (present in error responses)",
     )
@@ -612,12 +612,12 @@ class MCPInspectResponse(_ProtoModel):
         description='JSON-RPC version, always "2.0"',
     )
     # Success result containing inspection details
-    result: "InspectResponse | None" = _Field(
+    result: InspectResponse | None = _Field(
         default=None,
         description='Success result containing inspection details\nOnly one of the fields can be specified with: ["result", "error"] (oneof response)',
     )
     # Error result for failed inspections
-    error: "MCPInspectError | None" = _Field(
+    error: MCPInspectError | None = _Field(
         default=None,
         description='Error result for failed inspections\nOnly one of the fields can be specified with: ["result", "error"] (oneof response)',
     )
@@ -671,7 +671,7 @@ class ApplicationInfo(_ProtoModel):
     ApplicationInfo message definition
     """
 
-    application: "Application | None" = _Field(
+    application: Application | None = _Field(
         default=None,
         description='Only one of the fields can be specified with: ["application", "casp_application_name"] (oneof application_choice)',
     )
@@ -702,10 +702,10 @@ class WebSocketMetadata(_ProtoModel):
 
     client_transaction_id: str = _Field(default="")
     # Client transaction id
-    application: "ApplicationInfo | None" = _Field(default=None)
+    application: ApplicationInfo | None = _Field(default=None)
     url: str = _Field(default="")
-    req_headers: "HttpHdrObject | None" = _Field(default=None)
-    resp_headers: "HttpHdrObject | None" = _Field(default=None)
+    req_headers: HttpHdrObject | None = _Field(default=None)
+    resp_headers: HttpHdrObject | None = _Field(default=None)
 
 
 class WebSocketFrame(_ProtoModel):
@@ -713,7 +713,7 @@ class WebSocketFrame(_ProtoModel):
     WebSocketFrame message definition
     """
 
-    direction: "FrameDirection | None" = _Field(default=None)
+    direction: FrameDirection | None = _Field(default=None)
     body: bytes = _Field(default=b"")
     frame_id: ProtoInt64 = _Field(default=0)
     op_code: int = _Field(default=0)
@@ -727,8 +727,8 @@ class WebSocketInspectRequest(_ProtoModel):
     frames: "list[WebSocketFrame]" = _Field(
         default_factory=list,
     )
-    config: "Config | None" = _Field(default=None)
-    metadata: "WebSocketMetadata | None" = _Field(default=None)
+    config: Config | None = _Field(default=None)
+    metadata: WebSocketMetadata | None = _Field(default=None)
 
 
 class WebSocketInspectResponse(_ProtoModel):
@@ -736,9 +736,9 @@ class WebSocketInspectResponse(_ProtoModel):
     WebSocketInspectResponse message definition
     """
 
-    inspect_response: "InspectResponse | None" = _Field(default=None)
+    inspect_response: InspectResponse | None = _Field(default=None)
     frame_id: ProtoInt64 = _Field(default=0)
-    direction: "FrameDirection | None" = _Field(default=None)
+    direction: FrameDirection | None = _Field(default=None)
     # It will include violated content in frame upto 100 words only.
     violated_content: str = _Field(
         default="",
