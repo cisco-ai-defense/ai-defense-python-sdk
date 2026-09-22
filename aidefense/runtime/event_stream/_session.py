@@ -826,6 +826,11 @@ class _StreamSession:
         )
         if self.call is not None and not self.server_blocked:
             await self.cancel_call()
+        # Close the transport before cancelling source workers. A source
+        # generator may run its ``finally`` block as soon as cancellation is
+        # delivered; closing first makes ``aclose()`` a complete transport
+        # cleanup boundary instead of exposing a scheduling-dependent window.
+        await self.close_channel()
         for task in self.tasks:
             if not task.done():
                 task.cancel()
@@ -840,8 +845,6 @@ class _StreamSession:
                 for task in pending:
                     task.cancel()
                     task.add_done_callback(_consume_task_result)
-        await self.close_channel()
-
         if self.active_stream_counted:
             self.observer.active_streams(-1)
         self.observer.latency(time.monotonic() - self.started, self.outcome)
