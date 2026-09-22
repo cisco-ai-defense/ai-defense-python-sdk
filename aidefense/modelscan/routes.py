@@ -24,3 +24,15 @@ def scan_by_id(scan_id: str) -> str:
 
 def object_by_id(scan_id: str, object_id: str) -> str:
     return f"{scan_by_id(scan_id)}/{SCAN_OBJECTS}/{object_id}"
+
+
+def multipart_part_urls(scan_id: str, object_id: str) -> str:
+    return f"{object_by_id(scan_id, object_id)}/multipart/part-urls"
+
+
+def multipart_complete(scan_id: str, object_id: str) -> str:
+    return f"{object_by_id(scan_id, object_id)}/multipart/complete"
+
+
+def multipart_abort(scan_id: str, object_id: str) -> str:
+    return f"{object_by_id(scan_id, object_id)}/multipart/abort"

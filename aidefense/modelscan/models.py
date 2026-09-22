@@ -16,7 +16,7 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Annotated, Dict, List, Optional
 
 from pydantic import Field, model_validator
 
@@ -173,6 +173,14 @@ class CreateScanObjectRequest(AIDefenseModel):
     file_name: str
     size: Optional[int] = None
     scan_object: Optional[ScanObject] = None
+    use_multipart_upload: bool = False
+
+
+class MultipartUpload(AIDefenseModel):
+    """Server-created multipart upload details."""
+
+    upload_id: str = Field(..., min_length=1, max_length=2048)
+    part_size_bytes: int = Field(..., gt=0)
 
 
 class CreateScanObjectResponse(AIDefenseModel):
@@ -185,6 +193,52 @@ class CreateScanObjectResponse(AIDefenseModel):
 
     object_id: str
     upload_url: Optional[str] = None
+    multipart_upload: Optional[MultipartUpload] = None
+
+
+MultipartPartNumber = Annotated[int, Field(ge=1, le=10_000)]
+
+
+class MultipartUploadPartUrl(AIDefenseModel):
+    """Presigned URL for one multipart upload part."""
+
+    part_number: MultipartPartNumber
+    upload_url: str = Field(..., min_length=1)
+
+
+class GetMultipartUploadPartUrlsRequest(AIDefenseModel):
+    """Request presigned URLs for at most 32 multipart parts."""
+
+    upload_id: str = Field(..., min_length=1, max_length=2048)
+    part_numbers: List[MultipartPartNumber] = Field(..., min_length=1, max_length=32)
+
+
+class GetMultipartUploadPartUrlsResponse(AIDefenseModel):
+    """Presigned multipart upload URLs returned by the service."""
+
+    parts: List[MultipartUploadPartUrl]
+
+
+class CompletedMultipartUploadPart(AIDefenseModel):
+    """S3 ETag associated with one completed multipart part."""
+
+    part_number: MultipartPartNumber
+    etag: str = Field(..., min_length=1, max_length=2048)
+
+
+class CompleteMultipartUploadRequest(AIDefenseModel):
+    """Finalize a multipart upload after every part succeeds."""
+
+    upload_id: str = Field(..., min_length=1, max_length=2048)
+    parts: List[CompletedMultipartUploadPart] = Field(
+        ..., min_length=1, max_length=10_000
+    )
+
+
+class AbortMultipartUploadRequest(AIDefenseModel):
+    """Abort a multipart upload and release object-storage resources."""
+
+    upload_id: str = Field(..., min_length=1, max_length=2048)
 
 
 class ModelRepoConfig(AIDefenseModel):
@@ -195,6 +249,7 @@ class ModelRepoConfig(AIDefenseModel):
         type: Type of the URL provider.
         auth: Optional authentication for accessing the repository.
     """
+
     url: str
     type: URLType
     auth: Optional[Auth] = None
@@ -214,6 +269,7 @@ class ValidateModelUrlResponse(AIDefenseModel):
 
 class AnalysisType(str, Enum):
     """Type of analysis performed on the scan."""
+
     NONE_ANALYSIS_TYPE = "NONE_ANALYSIS_TYPE"
     FILE_ANALYSIS = "FILE_ANALYSIS"
     REPOSITORY_ANALYSIS = "REPOSITORY_ANALYSIS"
@@ -221,6 +277,7 @@ class AnalysisType(str, Enum):
 
 class ScanStatus(str, Enum):
     """Current status of a scan."""
+
     NONE_SCAN_STATUS = "NONE_SCAN_STATUS"
     PENDING = "PENDING"
     IN_PROGRESS = "IN_PROGRESS"
@@ -233,6 +290,7 @@ class ScanStatus(str, Enum):
 
 class RiskCategory(str, Enum):
     """Risk category classification for files."""
+
     NONE_RISK_CATEGORY = "NONE_RISK_CATEGORY"
     VULNERABLE = "VULNERABLE"
     NO_THREATS = "NO_THREATS"
@@ -241,6 +299,7 @@ class RiskCategory(str, Enum):
 
 class ThreatType(str, Enum):
     """Type of threat detected in a file."""
+
     NONE_THREAT_TYPE = "NONE_THREAT_TYPE"
     STACKED_PICKLE = "STACKED_PICKLE"
     UNSAFE_IMPORT = "UNSAFE_IMPORT"
@@ -266,6 +325,7 @@ class ThreatType(str, Enum):
 
 class Severity(str, Enum):
     """Severity level of a detected threat."""
+
     NONE_SEVERITY = "NONE_SEVERITY"
     SAFE = "SAFE"
     LOW = "LOW"
@@ -283,7 +343,11 @@ def restore_enum_wrapper(cls, values):
         if origin is not None:
             args = getattr(annotation, "__args__", ())
             annotation = args[0] if args else annotation
-        if isinstance(value, str) and isinstance(annotation, type) and issubclass(annotation, Enum):
+        if (
+            isinstance(value, str)
+            and isinstance(annotation, type)
+            and issubclass(annotation, Enum)
+        ):
             try:
                 values[name] = annotation(value)
             except ValueError:
@@ -293,6 +357,7 @@ def restore_enum_wrapper(cls, values):
 
 class ThreatInfo(AIDefenseModel):
     """Information about a detected threat."""
+
     id: str = Field(..., description="Unique identifier for the threat")
     threat_id: str = Field(..., description="Threat identifier code")
     threat_type: ThreatType = Field(..., description="Type of threat detected")
@@ -308,12 +373,23 @@ class ThreatInfo(AIDefenseModel):
 
 class SubTechnique(AIDefenseModel):
     """Sub-technique level grouping with threat evidence."""
-    sub_technique_id: str = Field(..., description="Sub-technique identifier (e.g., AITech-9.3.1)")
-    sub_technique_name: str = Field(..., description="Human-readable name of the sub-technique")
+
+    sub_technique_id: str = Field(
+        ..., description="Sub-technique identifier (e.g., AITech-9.3.1)"
+    )
+    sub_technique_name: str = Field(
+        ..., description="Human-readable name of the sub-technique"
+    )
     description: str = Field(..., description="Description of the sub-technique")
-    indicators: List[str] = Field(default_factory=list, description="List of indicators")
-    max_severity: Severity = Field(..., description="Highest severity in this sub-technique")
-    items: List[ThreatInfo] = Field(default_factory=list, description="List of threat detections")
+    indicators: List[str] = Field(
+        default_factory=list, description="List of indicators"
+    )
+    max_severity: Severity = Field(
+        ..., description="Highest severity in this sub-technique"
+    )
+    items: List[ThreatInfo] = Field(
+        default_factory=list, description="List of threat detections"
+    )
 
     @model_validator(mode="before")
     @classmethod
@@ -323,9 +399,14 @@ class SubTechnique(AIDefenseModel):
 
 class Technique(AIDefenseModel):
     """Technique-level grouping of threats."""
-    technique_id: str = Field(..., description="Technique identifier (e.g., AITech-9.3)")
+
+    technique_id: str = Field(
+        ..., description="Technique identifier (e.g., AITech-9.3)"
+    )
     technique_name: str = Field(..., description="Human-readable name of the technique")
-    items: List[SubTechnique] = Field(default_factory=list, description="List of sub-techniques")
+    items: List[SubTechnique] = Field(
+        default_factory=list, description="List of sub-techniques"
+    )
 
 
 class ThreatInfoList(AIDefenseModel):
@@ -335,7 +416,10 @@ class ThreatInfoList(AIDefenseModel):
         items: List of technique-level threat groupings.
         paging: Pagination information.
     """
-    items: List[Technique] = Field(default_factory=list, description="List of technique groupings")
+
+    items: List[Technique] = Field(
+        default_factory=list, description="List of technique groupings"
+    )
     paging: Paging = Field(..., description="Pagination information")
 
 
@@ -349,6 +433,7 @@ class FileInfo(AIDefenseModel):
         threats: Threat information associated with the file.
         reason: Optional reason for scan status (e.g., why it was skipped).
     """
+
     name: str = Field(..., description="File name")
     size: int = Field(..., description="File size in bytes")
     status: ScanStatus = Field(..., description="Analysis status")
@@ -368,6 +453,7 @@ class AnalysisResult(AIDefenseModel):
         items: List of file information objects.
         paging: Pagination information.
     """
+
     items: List[FileInfo] = Field(default_factory=list, description="Analyzed files")
     paging: Paging = Field(..., description="Pagination information")
 
@@ -380,6 +466,7 @@ class RepositoryInfo(AIDefenseModel):
         version: Version or commit hash of the repository.
         files_scanned: Number of files scanned in the repository.
     """
+
     url: str = Field(..., description="Repository URL")
     version: str = Field(..., description="Version or commit hash")
     files_scanned: int = Field(..., description="Number of files scanned")
@@ -397,12 +484,15 @@ class ScanStatusInfo(AIDefenseModel):
         repository: Repository information (if applicable).
         analysis_results: Results of the analysis.
     """
+
     scan_id: str = Field(..., description="Unique scan identifier")
     status: ScanStatus = Field(..., description="Current scan status")
     created_at: datetime = Field(..., description="Creation timestamp")
     completed_at: Optional[datetime] = Field(None, description="Completion timestamp")
     type: AnalysisType = Field(..., description="Analysis type")
-    repository: Optional[RepositoryInfo] = Field(None, description="Repository information")
+    repository: Optional[RepositoryInfo] = Field(
+        None, description="Repository information"
+    )
     analysis_results: AnalysisResult = Field(..., description="Analysis results")
 
     @model_validator(mode="before")
@@ -421,11 +511,14 @@ class GetScanStatusRequest(AIDefenseModel):
         severity: List of severity levels to filter by.
         risk_category: Risk category to filter by.
     """
+
     file_limit: int = Field(default=10, description="File result limit")
     file_offset: int = Field(default=0, description="File result offset")
     query: Optional[str] = Field(None, description="Search query")
     severity: Optional[List[Severity]] = Field(None, description="Severity filters")
-    risk_category: Optional[RiskCategory] = Field(None, description="Risk category filter")
+    risk_category: Optional[RiskCategory] = Field(
+        None, description="Risk category filter"
+    )
 
 
 class GetScanStatusResponse(AIDefenseModel):
@@ -434,6 +527,7 @@ class GetScanStatusResponse(AIDefenseModel):
     Args:
         scan_status_info: Detailed scan status information.
     """
+
     scan_status_info: ScanStatusInfo = Field(..., description="Scan status details")
 
 
@@ -449,12 +543,15 @@ class ScanSummary(AIDefenseModel):
         issues_by_severity: Map of severity levels to issue counts.
         status: Current status of the scan.
     """
+
     scan_id: str = Field(..., description="Unique scan identifier")
     name: str = Field(..., description="File or repository name")
     type: AnalysisType = Field(..., description="Analysis type")
     files_scanned: int = Field(..., description="Number of files scanned")
     created_at: datetime = Field(..., description="Creation timestamp")
-    issues_by_severity: Dict[str, int] = Field(default_factory=dict, description="Issues by severity")
+    issues_by_severity: Dict[str, int] = Field(
+        default_factory=dict, description="Issues by severity"
+    )
     status: ScanStatus = Field(..., description="Current scan status")
 
     @model_validator(mode="before")
@@ -470,6 +567,7 @@ class Scans(AIDefenseModel):
         items: List of scan summary objects.
         paging: Pagination information.
     """
+
     items: List[ScanSummary] = Field(default_factory=list, description="Scan summaries")
     paging: Paging = Field(..., description="Pagination information")
 
@@ -486,6 +584,7 @@ class ListScansRequest(AIDefenseModel):
         severity: Filter by threat severity levels.
         status: Filter by scan status values.
     """
+
     limit: int = Field(default=100, ge=0, description="Result limit")
     offset: int = Field(default=0, ge=0, description="Result offset")
     name: Optional[str] = Field(None, description="Artifact name filter")
@@ -501,4 +600,5 @@ class ListScansResponse(AIDefenseModel):
     Args:
         scans: List of scans with pagination information.
     """
+
     scans: Scans = Field(..., description="Scans list with pagination")
