@@ -139,7 +139,7 @@ class InspectionEvent(_ProtoModel):
         description="source identifies the framework, endpoint, or event source for debugging.",
     )
     # direction identifies whether the content is an LLM request or response.
-    direction: "Direction | None" = _Field(
+    direction: Direction | None = _Field(
         default=None,
         description="direction identifies whether the content is an LLM request or response.",
     )
@@ -149,7 +149,7 @@ class InspectionEvent(_ProtoModel):
         default=False,
         description="is_final marks the final event for this InspectEventStream RPC and closes\nevent ingestion after this event is accepted.",
     )
-    conversation: "ConversationPayload | None" = _Field(
+    conversation: ConversationPayload | None = _Field(
         default=None,
         description='Only one of the fields can be specified with: ["conversation"] (oneof payload)',
     )
@@ -172,12 +172,12 @@ class InspectStreamStart(_ProtoModel):
     """
 
     # context carries required correlation data for the stream.
-    context: "InspectionContext | None" = _Field(
+    context: InspectionContext | None = _Field(
         default=None,
         description="context carries required correlation data for the stream.",
     )
     # inspection_config reuses the canonical inspection API configuration.
-    inspection_config: "Config | None" = _Field(
+    inspection_config: Config | None = _Field(
         default=None,
         description="inspection_config reuses the canonical inspection API configuration.",
     )
@@ -201,11 +201,11 @@ class InspectStreamRequest(_ProtoModel):
     event frames. The client half-closes its send side to flush the final window.
     """
 
-    start: "InspectStreamStart | None" = _Field(
+    start: InspectStreamStart | None = _Field(
         default=None,
         description='Only one of the fields can be specified with: ["start", "events"] (oneof frame)',
     )
-    events: "InspectStreamEvents | None" = _Field(
+    events: InspectStreamEvents | None = _Field(
         default=None,
         description='Only one of the fields can be specified with: ["start", "events"] (oneof frame)',
     )
@@ -233,7 +233,7 @@ class InspectionResult(_ProtoModel):
         description="Each through_sequences entry acknowledges inspection through that event\nsequence. The list must not contain duplicate sequence IDs.",
     )
     # inspect_response is the canonical AI Defense inspection result.
-    inspect_response: "InspectResponse | None" = _Field(
+    inspect_response: InspectResponse | None = _Field(
         default=None,
         description="inspect_response is the canonical AI Defense inspection result.",
     )

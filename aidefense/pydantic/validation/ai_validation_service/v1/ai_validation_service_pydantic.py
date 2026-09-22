@@ -21,6 +21,8 @@ https://github.com/RobustIntelligence/rime/blob/master/protos/ri/api/generativev
 but has had other RI protos merged into this one file for simplicity.
 NOTE: This is NOT meant to be a permanent solution, will update when we have finalized a plan.
 """
+from __future__ import annotations
+
 from typing import Any as _Any
 
 from pydantic import (
@@ -903,7 +905,7 @@ class ValidateModelV3Request(_ProtoModel):
     """
 
     # Parameters for connecting to the customer target.
-    model_connection: "ModelConnectionSpec | None" = _Field(
+    model_connection: ModelConnectionSpec | None = _Field(
         default=None,
         description="Parameters for connecting to the customer target.",
     )
@@ -923,7 +925,7 @@ class ValidateModelV3Request(_ProtoModel):
         description="The batch of attacks to run against the model.",
     )
     # The language of the generative validation test.
-    language: "Language | None" = _Field(
+    language: Language | None = _Field(
         default=None,
         description="The language of the generative validation test.",
     )
@@ -951,7 +953,7 @@ class AttackResultInfo(_ProtoModel):
         description="Identifier for the attack example used to create this result. For multi-turn\nattacks that fan out per strategy, this is the per-strategy id\n(mt-{attack_id}-{strategy_slug}) so each strategy persists as its own row.",
     )
     # Whether the attack succeeded/failed/errored out.
-    result_status: "AttackResult | None" = _Field(
+    result_status: AttackResult | None = _Field(
         default=None,
         description="Whether the attack succeeded/failed/errored out.",
     )
@@ -977,12 +979,12 @@ class ValidateModelRequest(_ProtoModel):
     """
 
     # Parameters for connecting to the user's generative model.
-    model_connection: "ModelConnectionSpec | None" = _Field(
+    model_connection: ModelConnectionSpec | None = _Field(
         default=None,
         description="Parameters for connecting to the user's generative model.",
     )
     # The prompt bank to use.
-    prompt_bank: "PromptBank | None" = _Field(
+    prompt_bank: PromptBank | None = _Field(
         default=None,
         description="The prompt bank to use.",
     )
@@ -998,7 +1000,7 @@ class ValidateModelRequest(_ProtoModel):
         description="Will not be saved to the database, logged in plaintext, etc.",
     )
     # The language of the generative validation test.
-    language: "Language | None" = _Field(
+    language: Language | None = _Field(
         default=None,
         description="The language of the generative validation test.",
     )
@@ -1025,7 +1027,7 @@ class ValidateModelRequest(_ProtoModel):
     # DEPRECATED: Model analyzer choice is no longer supported. The method (or
     # model) to use to analyze customer model respones (whether or not an attack
     # was successful).
-    model_response_analyzer: "ModelResponseAnalyzer | None" = _Field(
+    model_response_analyzer: ModelResponseAnalyzer | None = _Field(
         default=None,
         description="DEPRECATED: Model analyzer choice is no longer supported. The method (or\nmodel) to use to analyze customer model respones (whether or not an attack\nwas successful).",
     )
@@ -1048,7 +1050,7 @@ class ValidateResult(_ProtoModel):
     """
 
     # The attack example for this result
-    attack_example: "AttackExample | None" = _Field(
+    attack_example: AttackExample | None = _Field(
         default=None,
         description="The attack example for this result",
     )
@@ -1058,12 +1060,12 @@ class ValidateResult(_ProtoModel):
         description="The output from the customer's LLM",
     )
     # Whether the attack succeeded/failed/etc.
-    result: "AttackResult | None" = _Field(
+    result: AttackResult | None = _Field(
         default=None,
         description="Whether the attack succeeded/failed/etc.",
     )
     # The security risk level of this test.
-    severity: "Severity | None" = _Field(
+    severity: Severity | None = _Field(
         default=None,
         description="The security risk level of this test.",
     )
@@ -1111,7 +1113,7 @@ class RedTeamTestRequest(_ProtoModel):
         description="Assigned by the validation manager (control plane).",
     )
     # Parameters for connecting to the user's generative model.
-    customer_model_connection: "ModelConnectionSpec | None" = _Field(
+    customer_model_connection: ModelConnectionSpec | None = _Field(
         default=None,
         description="Parameters for connecting to the user's generative model.",
     )
@@ -1121,7 +1123,7 @@ class RedTeamTestRequest(_ProtoModel):
         description="Will not be saved to the database, logged in plaintext, etc.",
     )
     # The language of the generative validation test.
-    language: "Language | None" = _Field(
+    language: Language | None = _Field(
         default=None,
         description="The language of the generative validation test.",
     )
@@ -1138,13 +1140,13 @@ class RedTeamTestRequest(_ProtoModel):
     )
     # Industry vertical to use when generating attacks. Optional.
     # UNSPECIFIED falls back to INDUSTRY_DEFAULT inside the data plane.
-    industry: "Industry | None" = _Field(
+    industry: Industry | None = _Field(
         default=None,
         description="Industry vertical to use when generating attacks. Optional.\nUNSPECIFIED falls back to INDUSTRY_DEFAULT inside the data plane.",
     )
     # Target application context for red-team planning. Optional. The data
     # plane forwards it to the Attacker Service on the generate-config RPC.
-    red_team_target_context: "RedTeamTargetContext | None" = _Field(
+    red_team_target_context: RedTeamTargetContext | None = _Field(
         default=None,
         description="Target application context for red-team planning. Optional. The data\nplane forwards it to the Attacker Service on the generate-config RPC.",
     )
@@ -1203,7 +1205,7 @@ class AttackExample(_ProtoModel):
     model_config = _ConfigDict(populate_by_name=True, protected_namespaces=())
 
     # e.g. bomb, murder
-    objective_sub_category: "ObjectiveSubCategory | None" = _Field(
+    objective_sub_category: ObjectiveSubCategory | None = _Field(
         default=None,
         description="e.g. bomb, murder",
     )
@@ -1228,12 +1230,12 @@ class AttackExample(_ProtoModel):
         description='e.g. "Sensitive Content and Topics", "Model Denial of Service"',
     )
     # e.g. abuse, privacy
-    attack_objective: "AttackObjective | None" = _Field(
+    attack_objective: AttackObjective | None = _Field(
         default=None,
         description="e.g. abuse, privacy",
     )
     # e.g. violence, data extraction, self-harm
-    threat: "Threat | None" = _Field(
+    threat: Threat | None = _Field(
         default=None,
         description="e.g. violence, data extraction, self-harm",
     )
@@ -1266,24 +1268,24 @@ class AttackExample(_ProtoModel):
         alias="id",
     )
     # This field determines if multi-turn logic is used for the attack.
-    attack_type: "AttackType | None" = _Field(
+    attack_type: AttackType | None = _Field(
         default=None,
         description="This field determines if multi-turn logic is used for the attack.",
     )
     # The following fields make up the new attack bank taxonomy as of January 2026.
     # The overall objective of the attack prompt.
-    objective: "Objective | None" = _Field(
+    objective: Objective | None = _Field(
         default=None,
         description="The following fields make up the new attack bank taxonomy as of January 2026.\nThe overall objective of the attack prompt.",
     )
     # Named technique_type to prevent name overlap with previous technique
     # Broad categorization of the attack prompt.
-    technique_type: "Technique | None" = _Field(
+    technique_type: Technique | None = _Field(
         default=None,
         description="Named technique_type to prevent name overlap with previous technique\nBroad categorization of the attack prompt.",
     )
     # More granular categorization of the attack prompt.
-    sub_technique: "SubTechnique | None" = _Field(
+    sub_technique: SubTechnique | None = _Field(
         default=None,
         description="More granular categorization of the attack prompt.",
     )
@@ -1294,12 +1296,12 @@ class AttackExample(_ProtoModel):
         description="The method used to conduct the attack. This is a string because there are\nnumerous methods and they are guaranteed to frequently change over time.",
     )
     # Categorization of the type of content included in the attack.
-    content_category: "ContentCategory | None" = _Field(
+    content_category: ContentCategory | None = _Field(
         default=None,
         description="Categorization of the type of content included in the attack.",
     )
     # More granular categorization of the content included in the attack.
-    content_type: "ContentType | None" = _Field(
+    content_type: ContentType | None = _Field(
         default=None,
         description="More granular categorization of the content included in the attack.",
     )
@@ -1310,7 +1312,7 @@ class AttackExample(_ProtoModel):
     )
     # The modality of this attack. Defaults to TEXT (UNSPECIFIED is treated as
     # TEXT).
-    modality: "AttackModality | None" = _Field(
+    modality: AttackModality | None = _Field(
         default=None,
         description="The modality of this attack. Defaults to TEXT (UNSPECIFIED is treated as\nTEXT).",
     )
@@ -1349,13 +1351,13 @@ class AttackExampleV3(_ProtoModel):
     )
     # Determines whether single-turn, multi-turn or custom goal logic is used to
     # execute this attack against the target model.
-    attack_type: "AttackType | None" = _Field(
+    attack_type: AttackType | None = _Field(
         default=None,
         description="Determines whether single-turn, multi-turn or custom goal logic is used to\nexecute this attack against the target model.",
     )
     # The modality of this attack. Defaults to TEXT (UNSPECIFIED is treated as
     # TEXT for backward compatibility with existing text-only callers).
-    modality: "AttackModality | None" = _Field(
+    modality: AttackModality | None = _Field(
         default=None,
         description="The modality of this attack. Defaults to TEXT (UNSPECIFIED is treated as\nTEXT for backward compatibility with existing text-only callers).",
     )
@@ -1399,7 +1401,7 @@ class HttpConnectionSpec(_ProtoModel):
     )
     # ExternalAPIProvider is the provider of the external http API endpoint that this connection is using.
     # This is used to determine how to parse the response from the particular provider.
-    external_api_provider: "ExternalApiProvider | None" = _Field(
+    external_api_provider: ExternalApiProvider | None = _Field(
         default=None,
         description="ExternalAPIProvider is the provider of the external http API endpoint that this connection is using.\nThis is used to determine how to parse the response from the particular provider.",
     )
@@ -1436,12 +1438,12 @@ class HttpConnectionSpec(_ProtoModel):
         description="Whether the response_json_path is the new jmespath syntax or\nstill the old gjson syntax",
     )
     # Custom message request config for providers not in the ExternalApiProvider enum.
-    message_request_config: "MessageRequestConfig | None" = _Field(
+    message_request_config: MessageRequestConfig | None = _Field(
         default=None,
         description="Custom message request config for providers not in the ExternalApiProvider enum.",
     )
     # AWS SigV4 credentials. When set, outbound requests are signed with AWS SigV4.
-    sigv4: "AwsSigV4Credentials | None" = _Field(
+    sigv4: AwsSigV4Credentials | None = _Field(
         default=None,
         description="AWS SigV4 credentials. When set, outbound requests are signed with AWS SigV4.",
     )
@@ -1521,7 +1523,7 @@ class MessageRequestConfig(_ProtoModel):
         description='The field name for the content in each message object (e.g., "content")',
     )
     # Mapping from standard role types to provider-specific role values
-    role_map: "RoleMap | None" = _Field(
+    role_map: RoleMap | None = _Field(
         default=None,
         description="Mapping from standard role types to provider-specific role values",
     )
@@ -1577,7 +1579,7 @@ class WebsocketConnectionSpec(_ProtoModel):
     )
     # Specifies how the websocket server sends responses.
     # Optional - if unspecified, the client reads a single message.
-    response_type_config: "WebsocketResponseTypeConfig | None" = _Field(
+    response_type_config: WebsocketResponseTypeConfig | None = _Field(
         default=None,
         description="Specifies how the websocket server sends responses.\nOptional - if unspecified, the client reads a single message.",
     )
@@ -1588,7 +1590,7 @@ class WebsocketConnectionSpec(_ProtoModel):
         description="Whether the response_json_path is the new jmespath syntax or\nstill the old gjson syntax",
     )
     # AWS SigV4 credentials. When set, outbound requests are signed with AWS SigV4.
-    sigv4: "AwsSigV4Credentials | None" = _Field(
+    sigv4: AwsSigV4Credentials | None = _Field(
         default=None,
         description="AWS SigV4 credentials. When set, outbound requests are signed with AWS SigV4.",
     )
@@ -1685,20 +1687,20 @@ class BedrockConnectionSpec(_ProtoModel):
         description='The role we should assume to access the bedrock model\nOnly one of the fields can be specified with: ["assume_role_arn", "aws_access_key", "aws_role_chain"] (oneof auth_spec)',
     )
     # The aws access key to access the bedrock model
-    aws_access_key: "AWSAccessKey | None" = _Field(
+    aws_access_key: AWSAccessKey | None = _Field(
         default=None,
         description='The aws access key to access the bedrock model\nOnly one of the fields can be specified with: ["assume_role_arn", "aws_access_key", "aws_role_chain"] (oneof auth_spec)',
     )
     # Ordered sequence of AWS roles to assume for cross-account access.
     # Each role assumes the next in sequence using the previous role's temporary credentials.
     # The final role in the chain must have permissions to invoke Bedrock APIs.
-    aws_role_chain: "AwsRoleChain | None" = _Field(
+    aws_role_chain: AwsRoleChain | None = _Field(
         default=None,
         description='Ordered sequence of AWS roles to assume for cross-account access.\nEach role assumes the next in sequence using the previous role\'s temporary credentials.\nThe final role in the chain must have permissions to invoke Bedrock APIs.\nOnly one of the fields can be specified with: ["assume_role_arn", "aws_access_key", "aws_role_chain"] (oneof auth_spec)',
     )
     # The standard text based model configuration containing max_tokens, temperature,
     # top_p and stop_sequences parameters for converse API calls.
-    inference_config: "BedrockInferenceConfig | None" = _Field(
+    inference_config: BedrockInferenceConfig | None = _Field(
         default=None,
         description="The standard text based model configuration containing max_tokens, temperature,\ntop_p and stop_sequences parameters for converse API calls.",
     )
@@ -1708,7 +1710,7 @@ class BedrockConnectionSpec(_ProtoModel):
         description="The additional configuration parameters associated with the model",
     )
     # The AWS region code to use for Bedrock.
-    region: "AWSRegion | None" = _Field(
+    region: AWSRegion | None = _Field(
         default=None,
         description="The AWS region code to use for Bedrock.",
     )
@@ -1766,15 +1768,15 @@ class BedrockInferenceConfig(_ProtoModel):
 
 
 class ModelConnectionSpec(_ProtoModel):
-    http: "HttpConnectionSpec | None" = _Field(
+    http: HttpConnectionSpec | None = _Field(
         default=None,
         description='Only one of the fields can be specified with: ["http", "bedrock", "websocket"] (oneof spec)',
     )
-    bedrock: "BedrockConnectionSpec | None" = _Field(
+    bedrock: BedrockConnectionSpec | None = _Field(
         default=None,
         description='Only one of the fields can be specified with: ["http", "bedrock", "websocket"] (oneof spec)',
     )
-    websocket: "WebsocketConnectionSpec | None" = _Field(
+    websocket: WebsocketConnectionSpec | None = _Field(
         default=None,
         description='Only one of the fields can be specified with: ["http", "bedrock", "websocket"] (oneof spec)',
     )
@@ -1810,7 +1812,7 @@ class TestModelConnectionRequest(_ProtoModel):
     Request to test model connectivity.
     """
 
-    model_connection: "ModelConnectionSpec | None" = _Field(default=None)
+    model_connection: ModelConnectionSpec | None = _Field(default=None)
     multi_turn_enabled: bool = _Field(default=False)
 
 
@@ -1831,7 +1833,7 @@ class RedTeamReport(_ProtoModel):
 
     schema_version: str = _Field(default="")
     generated_at: ProtoTimestamp | None = _Field(default=None)
-    scan_info: "RedTeamScanInfo | None" = _Field(default=None)
+    scan_info: RedTeamScanInfo | None = _Field(default=None)
     run_ids: list[str] = _Field(
         default_factory=list,
     )
@@ -1873,10 +1875,10 @@ class RedTeamFinding(_ProtoModel):
     success: bool = _Field(default=False)
     goal: str = _Field(default="")
     run_id: str = _Field(default="")
-    attack_success: "RedTeamAttackSuccess | None" = _Field(default=None)
-    attempt: "RedTeamAttempt | None" = _Field(default=None)
-    evidence_chain: "RedTeamEvidenceChain | None" = _Field(default=None)
-    findings_summary: "RedTeamFindingsSummary | None" = _Field(default=None)
+    attack_success: RedTeamAttackSuccess | None = _Field(default=None)
+    attempt: RedTeamAttempt | None = _Field(default=None)
+    evidence_chain: RedTeamEvidenceChain | None = _Field(default=None)
+    findings_summary: RedTeamFindingsSummary | None = _Field(default=None)
     timelines: "list[RedTeamTimelineEvent]" = _Field(
         default_factory=list,
     )
@@ -1908,7 +1910,7 @@ class RedTeamAttempt(_ProtoModel):
     request_refs: "list[RedTeamRequestRef]" = _Field(
         default_factory=list,
     )
-    transcript_excerpt: "RedTeamTranscriptExcerpt | None" = _Field(default=None)
+    transcript_excerpt: RedTeamTranscriptExcerpt | None = _Field(default=None)
 
 
 class RedTeamConversationGroup(_ProtoModel):
@@ -1937,8 +1939,8 @@ class RedTeamTranscriptExcerpt(_ProtoModel):
     Key request/response pair for the winning attempt.
     """
 
-    target_request: "RedTeamTranscriptMessage | None" = _Field(default=None)
-    target_response: "RedTeamTranscriptMessage | None" = _Field(default=None)
+    target_request: RedTeamTranscriptMessage | None = _Field(default=None)
+    target_response: RedTeamTranscriptMessage | None = _Field(default=None)
 
 
 class RedTeamTranscriptMessage(_ProtoModel):
@@ -1967,7 +1969,7 @@ class RedTeamFindingsSummary(_ProtoModel):
 
     finding_count: int = _Field(default=0)
     status: str = _Field(default="")
-    guardrails_summary: "RedTeamGuardrailsSummary | None" = _Field(default=None)
+    guardrails_summary: RedTeamGuardrailsSummary | None = _Field(default=None)
     findings: "list[RedTeamFindingDetail]" = _Field(
         default_factory=list,
     )
@@ -2014,7 +2016,7 @@ class RedTeamFindingDetail(_ProtoModel):
     title: str = _Field(default="")
     confidence: float = _Field(default=0.0)
     confidence_level: str = _Field(default="")
-    primary_failure: "RedTeamClaim | None" = _Field(default=None)
+    primary_failure: RedTeamClaim | None = _Field(default=None)
     contributing_factors: "list[RedTeamContributingFactor]" = _Field(
         default_factory=list,
     )
@@ -2030,8 +2032,8 @@ class RedTeamFindingDetail(_ProtoModel):
     taxonomy_mappings: "list[RedTeamTaxonomyMapping]" = _Field(
         default_factory=list,
     )
-    proof: "RedTeamProof | None" = _Field(default=None)
-    reproduction: "RedTeamReproduction | None" = _Field(default=None)
+    proof: RedTeamProof | None = _Field(default=None)
+    reproduction: RedTeamReproduction | None = _Field(default=None)
     limitations: list[str] = _Field(
         default_factory=list,
     )
@@ -2048,7 +2050,7 @@ class RedTeamClaim(_ProtoModel):
     confidence_score: float = _Field(default=0.0)
     evidence_basis: str = _Field(default="")
     statement: str = _Field(default="")
-    control_attribution: "RedTeamControlAttribution | None" = _Field(default=None)
+    control_attribution: RedTeamControlAttribution | None = _Field(default=None)
 
 
 class RedTeamControlAttribution(_ProtoModel):
@@ -2073,7 +2075,7 @@ class RedTeamRemediation(_ProtoModel):
     controls: "list[RedTeamControlMapping]" = _Field(
         default_factory=list,
     )
-    implementation_example: "RedTeamImplementationExample | None" = _Field(default=None)
+    implementation_example: RedTeamImplementationExample | None = _Field(default=None)
     scope: str = _Field(default="")
     priority: str = _Field(default="")
 
@@ -2363,7 +2365,7 @@ class RedTeamTargetContext(_ProtoModel):
             description="Free-form summary of the application's purpose and behavior.",
         )
         # Deployment environment (development, production, sandbox, etc.).
-        environment: "RedTeamTargetContext.Environment | None" = _Field(
+        environment: RedTeamTargetContext.Environment | None = _Field(
             default=None,
             description="Deployment environment (development, production, sandbox, etc.).",
         )
@@ -2373,7 +2375,7 @@ class RedTeamTargetContext(_ProtoModel):
             description="Architectural patterns the target uses (may be more than one).",
         )
         # Vendor providing the underlying LLM.
-        llm_provider: "RedTeamTargetContext.LLMProvider | None" = _Field(
+        llm_provider: RedTeamTargetContext.LLMProvider | None = _Field(
             default=None,
             description="Vendor providing the underlying LLM.",
         )
@@ -2418,12 +2420,12 @@ class RedTeamTargetContext(_ProtoModel):
             description="Human-readable description of what the tool does.",
         )
         # Potential impact level if the tool is misused.
-        risk_level: "RedTeamTargetContext.ToolRiskLevel | None" = _Field(
+        risk_level: RedTeamTargetContext.ToolRiskLevel | None = _Field(
             default=None,
             description="Potential impact level if the tool is misused.",
         )
         # Whether the tool reads, mutates, and/or reaches external systems.
-        access_type: "RedTeamTargetContext.ToolAccessType | None" = _Field(
+        access_type: RedTeamTargetContext.ToolAccessType | None = _Field(
             default=None,
             description="Whether the tool reads, mutates, and/or reaches external systems.",
         )
@@ -2465,12 +2467,12 @@ class RedTeamTargetContext(_ProtoModel):
             description="Identifiers or descriptions of data sources the target retrieves from.",
         )
         # Access-control model applied to retrieved data.
-        rag_access_control: "RedTeamTargetContext.RagAccessControl | None" = _Field(
+        rag_access_control: RedTeamTargetContext.RagAccessControl | None = _Field(
             default=None,
             description="Access-control model applied to retrieved data.",
         )
         # Persistence/isolation scope of the target's memory.
-        memory_scope: "RedTeamTargetContext.MemoryScope | None" = _Field(
+        memory_scope: RedTeamTargetContext.MemoryScope | None = _Field(
             default=None,
             description="Persistence/isolation scope of the target's memory.",
         )
@@ -2529,7 +2531,7 @@ class RedTeamTargetContext(_ProtoModel):
 
     # High-level description of the target: what it is, where it runs, and which
     # model powers it.
-    architecture_purpose: "RedTeamTargetContext.ArchitecturePurpose | None" = _Field(
+    architecture_purpose: RedTeamTargetContext.ArchitecturePurpose | None = _Field(
         default=None,
         description="High-level description of the target: what it is, where it runs, and which\nmodel powers it.",
     )
@@ -2545,18 +2547,18 @@ class RedTeamTargetContext(_ProtoModel):
     )
     # Protective controls (filters, guardrails, moderation) deployed in front of
     # or around the target.
-    defenses_deployed: "RedTeamTargetContext.DefensesDeployed | None" = _Field(
+    defenses_deployed: RedTeamTargetContext.DefensesDeployed | None = _Field(
         default=None,
         description="Protective controls (filters, guardrails, moderation) deployed in front of\nor around the target.",
     )
     # Retrieval (RAG), data-source, and memory characteristics of the target.
-    data_rag_memory: "RedTeamTargetContext.DataRagMemory | None" = _Field(
+    data_rag_memory: RedTeamTargetContext.DataRagMemory | None = _Field(
         default=None,
         description="Retrieval (RAG), data-source, and memory characteristics of the target.",
     )
     # Regulatory requirements, known limitations, and free-form operator notes.
     compliance_limitations_notes: (
-        "RedTeamTargetContext.ComplianceLimitationsNotes | None"
+        RedTeamTargetContext.ComplianceLimitationsNotes | None
     ) = _Field(
         default=None,
         description="Regulatory requirements, known limitations, and free-form operator notes.",
