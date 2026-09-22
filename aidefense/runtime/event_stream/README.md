@@ -5,6 +5,12 @@ bidirectional gRPC inspection API. Applications send ordinary framework events
 through an adapter and receive only content that has an applicable server
 decision. Normal integrations do not construct protobuf frames.
 
+The feature intentionally lives in this nested ``event_stream`` package because
+it combines a transport, protocol models, adapters, and per-stream lifecycle
+state that are substantially larger than the SDK's existing flat runtime
+clients. The gRPC and protobuf dependencies are optional; install the
+``streaming`` extra to use this package.
+
 ## Behavior at a glance
 
 - One reusable `EventStreamClient` supports multiple sequential or concurrent

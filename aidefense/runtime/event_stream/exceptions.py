@@ -5,8 +5,10 @@
 
 from typing import Optional
 
+from aidefense.exceptions import SDKError
 
-class EventStreamError(Exception):
+
+class EventStreamError(SDKError):
     """Base class for event-stream failures."""
 
     reason_code = "STREAM_FAILURE"

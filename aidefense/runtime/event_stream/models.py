@@ -22,6 +22,7 @@ from aidefense.pydantic.runtime.ai_defense.inspection.v1.inspection_pydantic imp
 )
 
 # Preview compatibility; new integrations should prefer the canonical name.
+# Deprecated; the alias is scheduled for removal in SDK 3.0.0.
 ToolCall = CanonicalToolCall
 
 from .exceptions import StreamConfigurationError

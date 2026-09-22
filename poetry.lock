@@ -987,7 +987,7 @@ tqdm = ["tqdm"]
 name = "grpcio"
 version = "1.80.0"
 description = "HTTP/2-based RPC framework"
-optional = false
+optional = true
 python-versions = ">=3.9"
 files = [
     {file = "grpcio-1.80.0-cp310-cp310-linux_armv7l.whl", hash = "sha256:886457a7768e408cdce226ad1ca67d2958917d306523a0e21e1a2fdaa75c9c9c"},
@@ -2367,7 +2367,7 @@ files = [
 name = "protobuf"
 version = "6.33.6"
 description = ""
-optional = false
+optional = true
 python-versions = ">=3.9"
 files = [
     {file = "protobuf-6.33.6-cp310-abi3-win32.whl", hash = "sha256:7d29d9b65f8afef196f8334e80d6bc1d5d4adedb449971fefd3723824e6e77d3"},
@@ -3602,8 +3602,9 @@ type = ["pytest-mypy"]
 
 [extras]
 aibom = ["cisco-aibom"]
+streaming = ["grpcio", "protobuf"]
 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "c73fb0ba7f563b5784176b953257f5cb2c068075ba131aac5ce7c6ec89919c6c"
+content-hash = "fac1be66fce2e76a025449ad7f09b53ad74e06d4514761d58c1eb72d56323daa"

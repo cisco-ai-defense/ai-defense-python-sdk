@@ -21,22 +21,13 @@ from typing import (
     Union,
 )
 
-import grpc  # type: ignore[import-untyped]
-from google.protobuf.json_format import ParseDict  # type: ignore[import-untyped]
-
 from aidefense.pydantic.runtime.ai_defense.inspection.v1 import (
     inspection_pydantic as runtime_chat,
-)
-from aidefense.pydantic.runtime.ai_defense.inspection_grpc.v1 import (
-    inspection_grpc_pb2 as stream_api,
-)
-from aidefense.pydantic.runtime.ai_defense.inspection_grpc.v1 import (
-    inspection_grpc_pydantic as runtime_stream,
 )
 from aidefense.config import BaseConfig, Config
 from aidefense.runtime.models import InspectionConfig
 
-from ._grpc import InspectionServiceStub
+from ._dependencies import require_grpc, require_wire_dependencies
 from ._session import _StreamSession
 from .adapters import EventStreamAdapter
 from .exceptions import (
@@ -129,7 +120,7 @@ class EventStreamClient:
         observer: Optional[StreamObserver] = None,
         on_decision: Optional[Callable[[StreamInspectionResult], Any]] = None,
         channel_factory: Optional[Callable[..., Any]] = None,
-        stub_factory: Callable[[Any], Any] = InspectionServiceStub,
+        stub_factory: Optional[Callable[[Any], Any]] = None,
     ) -> None:
         # A shared Config gives streaming callers the same API-key/config shape,
         # logger, debug level, tracer, and metrics hooks used elsewhere in the
@@ -164,6 +155,15 @@ class EventStreamClient:
                 "max_stream_bytes": self.config.max_stream_bytes,
             },
         )
+
+    def _make_stub(self, channel: Any) -> Any:
+        """Create the generated stub without importing it during SDK startup."""
+
+        if self._stub_factory is not None:
+            return self._stub_factory(channel)
+        from ._grpc import InspectionServiceStub
+
+        return InspectionServiceStub(channel)
 
     @classmethod
     def from_env(
@@ -377,6 +377,7 @@ class EventStreamClient:
 
         if self._channel_factory is not None:
             return self._channel_factory(self.config)
+        grpc = require_grpc()
         options: List[Tuple[str, Any]] = [
             ("grpc.max_send_message_length", self.config.max_stream_bytes),
             ("grpc.max_receive_message_length", self.config.max_stream_bytes),
@@ -412,9 +413,8 @@ class EventStreamClient:
         return "default_tls"
 
     @staticmethod
-    def _start_frame(
-        context: StreamContext, config: Optional[InspectionConfig]
-    ) -> stream_api.InspectStreamRequest:
+    def _start_frame(context: StreamContext, config: Optional[InspectionConfig]) -> Any:
+        _, _, stream_api, runtime_stream = require_wire_dependencies()
         start = runtime_stream.InspectStreamStart(
             context=runtime_stream.InspectionContext(
                 session_id=context.session_id,
@@ -437,6 +437,7 @@ class EventStreamClient:
         source: str,
         is_final: bool,
     ) -> Any:
+        _, _, stream_api, runtime_stream = require_wire_dependencies()
         direction = (
             runtime_stream.Direction.DIRECTION_REQUEST
             if event.direction is StreamDirection.REQUEST
@@ -473,6 +474,10 @@ class EventStreamClient:
             return StreamCancelledError("event stream was cancelled", cause=exc)
         if isinstance(exc, asyncio.TimeoutError):
             return StreamTimeoutError("event stream timed out", cause=exc)
+        try:
+            grpc = require_grpc()
+        except ImportError:
+            return StreamConnectionError("event stream connection failed", cause=exc)
         if isinstance(exc, grpc.aio.AioRpcError):
             code = exc.code()
             details = " ".join((exc.details() or "").split())
@@ -512,7 +517,7 @@ class EventStreamClient:
         return StreamConnectionError("event stream connection failed", cause=exc)
 
 
-def _inspection_config(config: InspectionConfig) -> runtime_chat.Config:
+def _inspection_config(config: InspectionConfig) -> Any:
     proto = runtime_chat.Config(
         integration_tenant_id=config.integration_tenant_id or "",
         integration_type=config.integration_type or "",
@@ -536,4 +541,5 @@ def _inspection_config(config: InspectionConfig) -> runtime_chat.Config:
 def _to_wire(model: Any, message: Any) -> Any:
     """Convert a validated public Pydantic runtime model to private protobuf."""
 
-    return ParseDict(model.model_dump(mode="json"), message)
+    _, parse_dict, _, _ = require_wire_dependencies()
+    return parse_dict(model.model_dump(mode="json"), message)

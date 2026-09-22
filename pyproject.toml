@@ -29,12 +29,13 @@ python = "^3.9"
 requests = "^2.32.3"
 pydantic = "^2.12.5"
 tenacity = "^9.1.2"
-grpcio = ">=1.60,<2"
-protobuf = ">=5.29,<7"
+grpcio = {version = ">=1.60,<2", optional = true}
+protobuf = {version = ">=5.29,<7", optional = true}
 cisco-aibom = {version = ">=0.4.0", optional = true, python = ">=3.11,<3.14"}
 
 [tool.poetry.extras]
 aibom = ["cisco-aibom"]
+streaming = ["grpcio", "protobuf"]
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2.0"

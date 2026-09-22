@@ -4,6 +4,13 @@ Bidirectional Event Stream Inspection
 This is the complete SDK guide. A shorter package-local integration reference
 is available in ``aidefense/runtime/event_stream/README.md``.
 
+The transport dependencies are optional. Install the SDK with the
+``streaming`` extra before using this module:
+
+.. code-block:: console
+
+   pip install "cisco-aidefense-sdk[streaming]"
+
 Create one ``EventStreamClient`` for the application and reuse it for every LLM
 invocation. Each ``inspect`` call opens an independent gRPC stream, so the same
 client and adapter are safe for sequential and concurrent API calls. Stream

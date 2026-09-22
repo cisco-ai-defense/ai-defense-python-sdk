@@ -70,6 +70,13 @@ The SDK enables you to detect security, privacy, and safety risks in real time, 
 pip install cisco-aidefense-sdk
 ```
 
+For bidirectional event-stream inspection, install the optional transport
+dependencies as well:
+
+```bash
+pip install "cisco-aidefense-sdk[streaming]"
+```
+
 > **Note:** The PyPI package name is `cisco-aidefense-sdk`, but you import it as `aidefense` in your Python code.
 
 Or, for local development:

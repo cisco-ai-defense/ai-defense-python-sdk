@@ -13,17 +13,10 @@ import uuid
 from dataclasses import dataclass
 from typing import Any, AsyncIterator, Dict, List, Optional, Sequence, Tuple
 
-from google.protobuf.json_format import MessageToDict  # type: ignore[import-untyped]
-
-from aidefense.pydantic.runtime.ai_defense.inspection_grpc.v1 import (
-    inspection_grpc_pb2 as stream_api,
-)
-from aidefense.pydantic.runtime.ai_defense.inspection_grpc.v1 import (
-    inspection_grpc_pydantic as runtime_stream,
-)
 from aidefense.runtime.models import InspectionConfig
 
 from .adapters import as_async_iterable
+from ._dependencies import require_wire_dependencies
 from .exceptions import (
     EventStreamError,
     StreamConnectionError,
@@ -145,7 +138,7 @@ class _StreamSession:
         self.config = client.config
         self.observer = client.observer
         self.on_decision = client._on_decision
-        self.stub_factory = client._stub_factory
+        self.stub_factory = client._make_stub
         self.open_channel = client._open_channel
         self.start_frame = client._start_frame
         self.event_frame = client._event_frame
@@ -313,6 +306,7 @@ class _StreamSession:
         control; otherwise the reader could deadlock waiting for the same lock.
         """
 
+        _, _, stream_api, _ = require_wire_dependencies()
         if self.capacity.locked():
             self.observer.event(
                 ReasonCode.BACKPRESSURE_WAIT,
@@ -491,9 +485,10 @@ class _StreamSession:
         buffered until a contiguous prefix can be released in application order.
         """
 
+        message_to_dict, _, _, runtime_stream = require_wire_dependencies()
         try:
             runtime_result = runtime_stream.InspectionResult.model_validate(
-                MessageToDict(wire_result, preserving_proto_field_name=True)
+                message_to_dict(wire_result, preserving_proto_field_name=True)
             )
         except Exception as exc:
             raise StreamProtocolError(
