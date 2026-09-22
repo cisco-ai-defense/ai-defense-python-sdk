@@ -11,6 +11,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   async, tool content, and streaming calls.
 - Add Anthropic provider routing for API and Gateway integration modes.
 
+## [2.2.0] - 2026-09-18
+
+### Added
+
+- **Multipart model file uploads** for model scanning, with upload progress
+  reporting, pipelined multipart URL batches, and a spinner while waiting on
+  scan status ([#120](https://github.com/cisco-ai-defense/ai-defense-python-sdk/pull/120)).
+
+### Changed
+
+- Default model scan timeout extended to ten minutes; timed-out scans are now
+  preserved instead of discarded ([#120](https://github.com/cisco-ai-defense/ai-defense-python-sdk/pull/120)).
+- Multipart size validation deferred to the service
+  ([#120](https://github.com/cisco-ai-defense/ai-defense-python-sdk/pull/120)).
+
+[2.2.0]: https://github.com/cisco-ai-defense/ai-defense-python-sdk/compare/v2.1.3...v2.2.0
+
 ## [2.1.3] - 2026-07-30
 
 - Proxy stream attributes in OpenAI streaming wrapper
