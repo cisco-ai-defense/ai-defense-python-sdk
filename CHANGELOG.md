@@ -30,6 +30,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [2.1.3]: https://github.com/cisco-ai-defense/ai-defense-python-sdk/compare/v2.1.2...v2.1.3
 
+## Unreleased
+
+- Add agentsec support for the native Anthropic Messages API, including sync,
+  async, tool content, and streaming calls.
+- Add Anthropic provider routing for API and Gateway integration modes.
+
 ## [2.1.2] - 2026-07-10
 
 ### Added

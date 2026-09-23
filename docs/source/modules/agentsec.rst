@@ -35,6 +35,34 @@ Quick Start
         messages=[{"role": "user", "content": "Hello!"}]
     )
 
+Anthropic Messages API
+^^^^^^^^^^^^^^^^^^^^^^^
+
+The official Anthropic client is automatically patched when it is installed:
+
+.. code-block:: python
+
+    from aidefense.runtime import agentsec
+    agentsec.protect(config="agentsec.yaml")
+
+    from anthropic import Anthropic
+    client = Anthropic()
+
+    response = client.messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=1024,
+        system="You are a helpful assistant.",
+        messages=[{"role": "user", "content": "Hello!"}],
+    )
+
+Anthropic system prompts, multimodal content blocks, tool use/results, sync and
+async calls, and both raw and helper streaming APIs are supported. Install the
+provider SDK separately because it is an optional runtime dependency:
+
+.. code-block:: bash
+
+    pip install anthropic
+
 protect() Function
 ------------------
 
@@ -344,6 +372,9 @@ Supported Clients
    * - Mistral AI
      - ``mistralai``
      - ``Chat.complete()``, ``Chat.stream()``
+   * - Anthropic
+     - ``anthropic``
+     - ``messages.create()``, ``messages.stream()``, async equivalents
    * - LiteLLM
      - ``litellm``
      - ``completion()``, ``acompletion()``

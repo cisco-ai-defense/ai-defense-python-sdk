@@ -31,7 +31,7 @@ _state_lock = threading.Lock()
 # Supported LLM providers
 SUPPORTED_PROVIDERS = [
     "openai", "azure_openai", "vertexai", "bedrock",
-    "google_genai", "cohere", "mistral",
+    "google_genai", "cohere", "mistral", "anthropic",
 ]
 
 # Valid configuration values — import canonical definitions from config.py
