@@ -308,6 +308,23 @@ class Header(_ProtoModel):
     value: str = _Field(default="")
 
 
+class Tag(_ProtoModel):
+    """
+    A customer-defined key/value tag on a Validation resource.
+    """
+
+    # Tag name, unique within a target. 1-128 characters.
+    key: str = _Field(
+        default="",
+        description="Tag name, unique within a target. 1-128 characters.",
+    )
+    # Tag content. 1-256 characters.
+    value: str = _Field(
+        default="",
+        description="Tag content. 1-256 characters.",
+    )
+
+
 class StartAiValidationRequest(_ProtoModel):
     """
     StartAiValidationRequest has all data to trigger an ai model validation run.
@@ -2185,6 +2202,11 @@ class CreateTargetRequest(_ProtoModel):
         default=None,
         description="Configuration for adaptive red team test runs against this target.",
     )
+    # Customer-defined key/value tags, e.g. [{"key": "agent_id", "value": "wd-agent-18422"}]. Optional; omit to create an untagged target. Keys must be unique.
+    tags: list[Tag] = _Field(
+        default_factory=list,
+        description='Customer-defined key/value tags, e.g. [{"key": "agent_id", "value": "wd-agent-18422"}]. Optional; omit to create an untagged target. Keys must be unique.',
+    )
 
     @_model_validator(mode="after")
     def _validate_oneof_provider_config(self) -> "CreateTargetRequest":
@@ -2331,6 +2353,11 @@ class GetTargetResponse(_ProtoModel):
         default=None,
         description="Configuration for adaptive red team test runs against this target.",
     )
+    # Customer-defined key/value tags, sorted by key. Untagged targets return [].
+    tags: list[Tag] = _Field(
+        default_factory=list,
+        description="Customer-defined key/value tags, sorted by key. Untagged targets return [].",
+    )
 
     @_model_validator(mode="after")
     def _validate_oneof_provider_config(self) -> "GetTargetResponse":
@@ -2436,6 +2463,16 @@ class TargetUpdate(_ProtoModel):
         default=None,
         description='Only one of the fields can be specified with: ["custom", "aws_agentcore"] (oneof provider_config)',
     )
+    # Tags to add or overwrite. Unlisted keys keep their current values.
+    tags: list[Tag] = _Field(
+        default_factory=list,
+        description="Tags to add or overwrite. Unlisted keys keep their current values.",
+    )
+    # Tag keys to delete. Unknown keys are ignored. Sending a key in both tags and remove_tag_keys is rejected.
+    remove_tag_keys: list[str] = _Field(
+        default_factory=list,
+        description="Tag keys to delete. Unknown keys are ignored. Sending a key in both tags and remove_tag_keys is rejected.",
+    )
 
     @_model_validator(mode="after")
     def _validate_oneof_provider_config(self) -> "TargetUpdate":
@@ -2491,6 +2528,16 @@ class ListTargetsRequest(_ProtoModel):
     )
     offset: int | None = _Field(default=None)
     order: SortOrder | None = _Field(default=None)
+    # Exact-match filter on the tag key. May be used alone, or with tag_value to require both on the same tag.
+    tag_key: str | None = _Field(
+        default=None,
+        description="Exact-match filter on the tag key. May be used alone, or with tag_value to require both on the same tag.",
+    )
+    # Exact-match filter on the tag value. May be used alone, or with tag_key to require both on the same tag.
+    tag_value: str | None = _Field(
+        default=None,
+        description="Exact-match filter on the tag value. May be used alone, or with tag_key to require both on the same tag.",
+    )
 
 
 class ListTargetsResponse(_ProtoModel):
@@ -2570,6 +2617,11 @@ class TargetSummary(_ProtoModel):
     adaptive_config: AdaptiveRedTeamTargetConfig | None = _Field(
         default=None,
         description="Configuration for adaptive red team test runs against this target.",
+    )
+    # Customer-defined key/value tags, sorted by key. Untagged targets return [].
+    tags: list[Tag] = _Field(
+        default_factory=list,
+        description="Customer-defined key/value tags, sorted by key. Untagged targets return [].",
     )
 
     @_model_validator(mode="after")

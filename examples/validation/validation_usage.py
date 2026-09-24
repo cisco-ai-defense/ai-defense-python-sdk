@@ -45,8 +45,10 @@ from aidefense.pydantic.validation.ai_validation.v1.ai_validation_pydantic impor
     CreateTargetRequest,
     CustomProviderConfig,
     ListTargetsRequest,
+    Tag,
     TargetProvider,
     TargetType,
+    TargetUpdate,
     TestTargetConnectionRequest,
     CreateAiValidationProfileRequest,
     ListAiValidationProfilesRequest,
@@ -114,12 +116,37 @@ async def main() -> None:
                     model_request_template='{"prompt": "{{prompt}}"}',
                     model_response_json_path="json.prompt",
                 ),
+                tags=[
+                    Tag(key="agent_id", value="wd-agent-18422"),
+                    Tag(key="environment", value="demo"),
+                ],
             )
             create_resp = await client.targets.create(create_req)
             created_target_id = create_resp.target_id
             print(f"Created target: {created_target_id}")
 
-            section("1c  Targets – test connectivity (inline config)")
+            section("1c  Targets – filter by exact tag key and value")
+            tagged_targets = await client.targets.list(
+                ListTargetsRequest(
+                    tag_key="agent_id",
+                    tag_value="wd-agent-18422",
+                )
+            )
+            print(f"Found {len(tagged_targets.targets or [])} matching target(s)")
+
+            section("1d  Targets – merge and remove tags")
+            await client.targets.update(
+                created_target_id,
+                TargetUpdate(
+                    tags=[Tag(key="team", value="validation")],
+                    remove_tag_keys=["environment"],
+                ),
+            )
+            updated_target = await client.targets.get(created_target_id)
+            print("Updated tags:")
+            pretty(updated_target.tags)
+
+            section("1e  Targets – test connectivity (inline config)")
             test_resp = await client.targets.test_connection(
                 TestTargetConnectionRequest(
                     target_type=TargetType.TARGET_TYPE_MODEL,
@@ -133,7 +160,7 @@ async def main() -> None:
             )
             print(f"Connection test result: success={test_resp.success}")
 
-            section("1d  Targets – aggregates")
+            section("1f  Targets – aggregates")
             agg = await client.targets.get_aggregates()
             pretty(agg)
 
