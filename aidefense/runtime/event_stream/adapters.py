@@ -218,7 +218,7 @@ def _wrapped_text_delta(value: Any) -> Optional[str]:
     delta_event = _mapping(event.get("contentBlockDelta")) if event else None
     delta = _mapping(delta_event.get("delta")) if delta_event else None
     text = delta.get("text") if delta else None
-    return text if isinstance(text, str) and text else None
+    return text if isinstance(text, str) and text.strip() else None
 
 
 def _typed_text_delta(value: Any) -> Optional[str]:
@@ -226,7 +226,7 @@ def _typed_text_delta(value: Any) -> Optional[str]:
 
     data = _mapping(value)
     text = data.get("data") if data is not None else None
-    return text if isinstance(text, str) and text else None
+    return text if isinstance(text, str) and text.strip() else None
 
 
 def _complete_message(
@@ -235,7 +235,7 @@ def _complete_message(
     role = str(message.get("role") or default_role)
     content = message.get("content")
     text = _text_content(content)
-    if text:
+    if text.strip():
         return _message(role=role, content=text)
     if isinstance(content, list):
         results = []
@@ -348,6 +348,13 @@ class StrandsEventAdapter:
                         "AgentCore emitted non-UTF-8 content"
                     ) from exc
             if isinstance(original, str):
+                # AgentCore SSE streams can emit an empty JSON string as a
+                # lifecycle heartbeat. It is not an application event and
+                # must not become an empty assistant message: the server
+                # accepts empty assistant messages only when they carry a
+                # tool/function call.
+                if not original.strip():
+                    return self._event(original, None)
                 self._streamed_text = True
                 return self._event(original, _message(self._role, original))
             raise StreamProtocolError(
@@ -364,7 +371,7 @@ class StrandsEventAdapter:
         if delta_event:
             delta = _mapping(delta_event.get("delta")) or {}
             text = delta.get("text")
-            if isinstance(text, str) and text:
+            if isinstance(text, str) and text.strip():
                 self._streamed_text = True
                 return self._event(original, _message(self._role, text))
             tool_delta = _mapping(delta.get("toolUse"))
@@ -403,13 +410,15 @@ class StrandsEventAdapter:
             index = int(stop_event.get("contentBlockIndex", 0))
             tool = self._tools.pop(index, None)
             if tool is not None:
-                if not tool["name"] and tool["arguments"]:
+                if not tool["name"] and tool["arguments"].strip():
                     # Preserve inspection coverage when structured extraction
                     # would reject a nameless call on the server.
                     return self._event(
                         original,
                         _message(role="assistant", content=tool["arguments"]),
                     )
+                if not tool["name"] and not tool["arguments"].strip():
+                    return self._event(original, None)
                 call = ToolCall(
                     id=tool["id"],
                     type="function",
@@ -424,7 +433,7 @@ class StrandsEventAdapter:
 
         # Strands Agent.stream_async commonly emits token text in `data`.
         text = data.get("data")
-        if isinstance(text, str) and text:
+        if isinstance(text, str) and text.strip():
             self._streamed_text = True
             return self._event(original, _message(self._role, text))
 
@@ -545,6 +554,8 @@ def _decode_sse_line(line: str) -> Any:
         if line.startswith(("{'", "[{'")):
             return _SKIP_EVENT
         return line
+    if isinstance(decoded, str) and not decoded:
+        return _SKIP_EVENT
     if isinstance(decoded, str) and decoded.startswith(("{'", "[{'")):
         return _SKIP_EVENT
     return decoded
