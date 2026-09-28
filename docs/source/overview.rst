@@ -128,7 +128,7 @@ Agent Runtime SDK (agentsec)
 
 - ``runtime/agentsec/__init__.py`` — Main entry point (``protect()``, ``skip_inspection()``, ``no_inspection()``)
 - ``runtime/agentsec/config.py`` — Configuration loading from YAML, environment, and kwargs
-- ``runtime/agentsec/patchers/`` — Auto-patching for LLM clients (OpenAI, Azure OpenAI, Bedrock, Vertex AI, GenAI, Cohere, Mistral, LiteLLM, MCP)
+- ``runtime/agentsec/patchers/`` — Auto-patching for LLM clients (OpenAI, Azure OpenAI, Bedrock, Vertex AI, GenAI, Cohere, Mistral, Anthropic, LiteLLM, MCP)
 - ``runtime/agentsec/inspectors/`` — API mode and Gateway mode inspectors
 - ``runtime/agentsec/exceptions.py`` — ``SecurityPolicyError`` raised in enforce mode
 
@@ -162,6 +162,7 @@ agentsec automatically patches the following client libraries:
 * **Google GenAI** (``google-genai``)
 * **Cohere** (``cohere``)
 * **Mistral AI** (``mistralai``)
+* **Anthropic** (``anthropic``)
 * **LiteLLM** (``litellm``)
 * **MCP** (``mcp``)
 

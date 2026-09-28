@@ -337,6 +337,7 @@ def _detect_provider(model: str) -> str:
     - vertex_ai/gemini-2.5-flash-lite
     - azure/gpt-4
     - bedrock/anthropic.claude-3-haiku
+    - anthropic/claude-sonnet-4
     - gpt-4 (OpenAI, no prefix)
     """
     if not model:
@@ -348,6 +349,8 @@ def _detect_provider(model: str) -> str:
         return "azure_openai"
     if model_lower.startswith("bedrock/") or model_lower.startswith("anthropic."):
         return "bedrock"
+    if model_lower.startswith("anthropic/"):
+        return "anthropic"
     if model_lower.startswith("gemini/") or model_lower.startswith("google/"):
         return "google_genai"
     # Default: OpenAI (no prefix)
