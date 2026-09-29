@@ -253,6 +253,40 @@ def _complete_message(
     return None
 
 
+def _replace_stream_text(value: Any, text: str) -> Any:
+    """Replace text in native Strands/Bedrock event shapes after coalescing."""
+    if isinstance(value, str):
+        return text
+    if isinstance(value, bytes):
+        return text.encode("utf-8")
+    data = _mapping(value)
+    if data is None:
+        return value
+
+    updated = dict(data)
+    wrapped = updated.get("event")
+    if isinstance(wrapped, dict):
+        updated["event"] = _replace_stream_text(wrapped, text)
+        return updated
+
+    block_delta = _mapping(updated.get("contentBlockDelta"))
+    if block_delta is not None:
+        block_delta = dict(block_delta)
+        delta = _mapping(block_delta.get("delta"))
+        if delta is not None and isinstance(delta.get("text"), str):
+            delta = dict(delta)
+            delta["text"] = text
+            block_delta["delta"] = delta
+            updated["contentBlockDelta"] = block_delta
+            return updated
+
+    for key in ("data", "text", "content", "message", "result", "response", "completion", "output"):
+        if isinstance(updated.get(key), str):
+            updated[key] = text
+            return updated
+    return value
+
+
 class StrandsEventAdapter:
     """Convert Strands/Bedrock streaming events without requiring Strands imports."""
 
@@ -296,8 +330,9 @@ class StrandsEventAdapter:
             max_tool_argument_chars=self.max_tool_argument_chars,
         )
         source = _isolated_async_iterable(events)
-        pending_raw_text: Optional[Tuple[str, StreamEvent]] = None
-        try:
+
+        async def converted_events() -> AsyncIterator[StreamEvent]:
+            pending_raw_text: Optional[Tuple[str, StreamEvent]] = None
             async for original in source:
                 converted = parser.convert(original)
                 raw_text = _wrapped_text_delta(original)
@@ -330,12 +365,77 @@ class StrandsEventAdapter:
 
             if pending_raw_text is not None:
                 yield pending_raw_text[1]
+
+        pending_event: Optional[StreamEvent] = None
+        pending_text = ""
+        pending_whitespace = ""
+        leading_whitespace = ""
+        try:
+            async for converted in converted_events():
+                message_text = self._assistant_text(converted)
+                if converted.direction is StreamDirection.RESPONSE and message_text is not None:
+                    if not message_text.strip():
+                        if pending_event is None:
+                            leading_whitespace += message_text
+                        else:
+                            pending_whitespace += message_text
+                        continue
+
+                    if pending_event is not None:
+                        yield self._replace_assistant_text(
+                            pending_event, pending_text + pending_whitespace
+                        )
+                    pending_event = converted
+                    pending_text = leading_whitespace + message_text
+                    pending_whitespace = ""
+                    leading_whitespace = ""
+                    continue
+
+                if pending_event is not None:
+                    yield self._replace_assistant_text(
+                        pending_event, pending_text + pending_whitespace
+                    )
+                    pending_event = None
+                    pending_text = ""
+                    pending_whitespace = ""
+
+                if converted.messages:
+                    yield converted
+
+            if pending_event is not None:
+                yield self._replace_assistant_text(
+                    pending_event, pending_text + pending_whitespace
+                )
+            # A response containing only whitespace has no inspectable content.
         finally:
-            # Async-generator close does not automatically propagate through a
-            # nested ``async for``. Close the isolated source here so its
-            # producer task owns Strands cleanup instead of the event-loop
-            # finalizer running it later under an unrelated context.
             await _close_async_iterator(source)
+
+    @staticmethod
+    def _assistant_text(event: StreamEvent) -> Optional[str]:
+        if len(event.messages) != 1:
+            return None
+        message = event.messages[0]
+        if message.role not in (Role.assistant, "assistant"):
+            return None
+        content = message.content
+        if content is None or not isinstance(content.text, str):
+            return None
+        return content.text
+
+    @staticmethod
+    def _replace_assistant_text(event: StreamEvent, text: str) -> StreamEvent:
+        if StrandsEventAdapter._assistant_text(event) == text:
+            return event
+        message = event.messages[0]
+        updated_message = message.model_copy(update={"content": MessageContent(text=text)})
+        application_event = _replace_stream_text(event.application_event, text)
+        return StreamEvent(
+            application_event=application_event,
+            messages=(updated_message,),
+            direction=event.direction,
+            message_id=event.message_id,
+            source_range=event.source_range,
+        )
 
     def convert(self, original: Any) -> StreamEvent:
         data = _mapping(original)
@@ -348,6 +448,8 @@ class StrandsEventAdapter:
                         "AgentCore emitted non-UTF-8 content"
                     ) from exc
             if isinstance(original, str):
+                if not original:
+                    return self._event(original, None)
                 self._streamed_text = True
                 return self._event(original, _message(self._role, original))
             raise StreamProtocolError(
