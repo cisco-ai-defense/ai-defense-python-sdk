@@ -34,7 +34,10 @@ from .connection import (
 from .policy import (
     Policy,
     PolicySortBy,
+    PolicyProfileAssociation,
+    PolicyProfileType,
     Policies,
+    CreatePolicyWithProfilesRequest,
     GuardrailType,
     Guardrail,
     GuardrailRule,
@@ -73,7 +76,10 @@ __all__ = [
     # Policy models
     "Policy",
     "PolicySortBy",
+    "PolicyProfileAssociation",
+    "PolicyProfileType",
     "Policies",
+    "CreatePolicyWithProfilesRequest",
     "GuardrailType",
     "Guardrail",
     "GuardrailRule",

@@ -50,8 +50,10 @@ class ChatInspectRequest:
         messages (List[Message]): List of messages in the chat conversation.
         metadata (Optional[Metadata]): Optional metadata about the request (user, app, etc.).
         config (Optional[InspectionConfig]): Optional inspection configuration for the request.
+        policy_id (Optional[str]): Optional policy ID to use for policy-based inspection.
     """
 
     messages: List[Message]
     metadata: Optional[Metadata] = None
     config: Optional[InspectionConfig] = None
+    policy_id: Optional[str] = None

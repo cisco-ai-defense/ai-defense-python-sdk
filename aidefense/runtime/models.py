@@ -56,6 +56,7 @@ class Classification(str, Enum):
     PRIVACY_VIOLATION = "PRIVACY_VIOLATION"
     SAFETY_VIOLATION = "SAFETY_VIOLATION"
     RELEVANCE_VIOLATION = "RELEVANCE_VIOLATION"
+    CUSTOM_GUARDRAIL_PROFILE_VIOLATION = "CUSTOM_GUARDRAIL_PROFILE_VIOLATION"
 
 
 class Severity(str, Enum):
@@ -85,6 +86,10 @@ class RuleName(str, Enum):
     SEXUAL_CONTENT_EXPLOITATION = "Sexual Content & Exploitation"
     SOCIAL_DIVISION_POLARIZATION = "Social Division & Polarization"
     VIOLENCE_PUBLIC_SAFETY_THREATS = "Violence & Public Safety Threats"
+    TOXICITY = "Toxicity"
+    GENERAL_HARMS = "General Harms"
+    TOOL_EXPLOITATION = "Tool Exploitation"
+    MALICIOUS_URL_DETECTION = "Malicious URL Detection"
 
 
 @dataclass
@@ -104,6 +109,41 @@ class Rule:
     entity_types: Optional[List[str]] = None
     rule_id: Optional[int] = None
     classification: Optional[Classification] = None
+
+
+@dataclass
+class RuleResult(Rule):
+    """
+    Inspection rule result returned by the inspection API.
+
+    Attributes:
+        profile_id (Optional[str]): Profile ID associated with a policy result.
+    """
+
+    profile_id: Optional[str] = None
+
+    @property
+    def custom_guardrail_profile_id(self) -> Optional[str]:
+        """Backward-compatible alias for profile_id."""
+        return self.profile_id
+
+
+@dataclass
+class DetectedPII:
+    """
+    Represents a detected PII entity in the inspected content.
+
+    Attributes:
+        message_index (Optional[str]): Index of the message in the conversation
+        type (Optional[str]): Type of the PII entity (e.g., Email Address, Phone Number)
+        start_index (Optional[str]): Start character index of the PII in the message
+        end_index (Optional[str]): End character index of the PII in the message
+    """
+
+    message_index: Optional[str] = None
+    type: Optional[str] = None
+    start_index: Optional[str] = None
+    end_index: Optional[str] = None
 
 
 @dataclass
@@ -165,22 +205,25 @@ class InspectResponse:
     Attributes:
         classifications (List[Classification]): List of detected classifications (e.g., PII, PCI, PHI).
         is_safe (bool): Whether the inspected content is considered safe.
+        action (Action): Action to take on the detected issue.
         severity (Optional[Severity]): Severity level of the detected issue (if any).
-        rules (Optional[List[Rule]]): List of rules that matched during inspection.
-        processed_rules (Optional[List[Rule]]): List of rules that were evaluated (same structure as rules).
+        rules (Optional[List[RuleResult]]): List of rules that matched during inspection.
+        processed_rules (Optional[List[RuleResult]]): List of rules that were evaluated.
         attack_technique (Optional[str]): Attack technique detected, if applicable.
         explanation (Optional[str]): Human-readable explanation of the inspection result.
         client_transaction_id (Optional[str]): Unique client-provided transaction ID for tracing.
         event_id (Optional[str]): Unique event ID assigned by the backend.
+        detected_pii (Optional[List[DetectedPII]]): List of detected PII entities.
     """
 
     classifications: List[Classification]
     is_safe: bool
     action: Action
     severity: Optional[Severity] = None
-    rules: Optional[List[Rule]] = None
-    processed_rules: Optional[List[Rule]] = None
+    rules: Optional[List[RuleResult]] = None
+    processed_rules: Optional[List[RuleResult]] = None
     attack_technique: Optional[str] = None
     explanation: Optional[str] = None
     client_transaction_id: Optional[str] = None
     event_id: Optional[str] = None
+    detected_pii: Optional[List[DetectedPII]] = None

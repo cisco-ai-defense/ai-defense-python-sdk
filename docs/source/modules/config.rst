@@ -31,6 +31,16 @@ Configuration Options
 - ``logger``: Custom logger instance
 - ``logger_params``: Dictionary with logger settings (``name``, ``level``, ``format``)
 
+**Streaming Observability**
+
+- ``tracer``: Optional tracer exposing ``start_as_current_span``
+- ``metrics``: Optional sink exposing ``record``, ``active_streams``, and ``latency``
+
+These hooks are used by ``EventStreamClient``. They are dependency-free and
+best-effort: telemetry failures never change inspection decisions. Event-stream
+logs and spans contain transport metadata only, not prompts, outputs,
+credentials, or raw customer correlation IDs.
+
 Usage Examples
 -------------
 

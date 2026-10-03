@@ -17,12 +17,12 @@
 """Unit tests for the LiteLLM patcher.
 
 Covers patch_litellm(), _detect_provider(), _should_inspect(), _extract_response_text(),
-_wrap_completion() (API + gateway mode), and _handle_patcher_error()-equivalent paths.
+_wrap_completion() (API + gateway mode), streaming wrappers, and _handle_patcher_error()-equivalent paths.
 """
 
 import pytest
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from aidefense.runtime.agentsec.patchers.litellm import (
     patch_litellm,
@@ -31,6 +31,8 @@ from aidefense.runtime.agentsec.patchers.litellm import (
     _enforce_decision,
     _extract_response_text,
     _wrap_completion,
+    _LiteLLMStreamingInspectionWrapper,
+    _AsyncLiteLLMStreamingInspectionWrapper,
 )
 from aidefense.runtime.agentsec.exceptions import SecurityPolicyError
 from aidefense.runtime.agentsec.decision import Decision
@@ -602,3 +604,222 @@ class TestWrapCompletionArgsParsing:
             {},
         )
         mock_wrapped.assert_called_once()
+
+
+# ===========================================================================
+# _LiteLLMStreamingInspectionWrapper
+# ===========================================================================
+
+class TestLiteLLMStreamingInspectionWrapper:
+    """Test sync streaming wrapper attribute proxying and iteration."""
+
+    def test_proxies_headers_to_underlying_stream(self):
+        mock_stream = SimpleNamespace(
+            headers={"x-ratelimit-remaining-requests": "99"},
+        )
+        wrapper = _LiteLLMStreamingInspectionWrapper(mock_stream, [], {})
+        assert wrapper.headers == {"x-ratelimit-remaining-requests": "99"}
+
+    def test_proxies_arbitrary_attribute(self):
+        mock_stream = SimpleNamespace(model="azure/gpt-4")
+        wrapper = _LiteLLMStreamingInspectionWrapper(mock_stream, [], {})
+        assert wrapper.model == "azure/gpt-4"
+
+    def test_private_attribute_on_underlying_stream_not_proxied(self):
+        mock_stream = SimpleNamespace(_internal="secret", headers={})
+        wrapper = _LiteLLMStreamingInspectionWrapper(mock_stream, [], {})
+        with pytest.raises(AttributeError):
+            _ = wrapper._internal
+
+    @patch("aidefense.runtime.agentsec.patchers.litellm._get_inspector")
+    def test_wrap_completion_returns_wrapper_for_streaming(self, mock_get_inspector):
+        mock_inspector = MagicMock()
+        mock_inspector.inspect_conversation.return_value = Decision.allow(reasons=[])
+        mock_get_inspector.return_value = mock_inspector
+
+        _state.set_state(
+            initialized=True,
+            api_mode={"llm_defaults": {"fail_open": True}, "llm": {"mode": "monitor"}},
+        )
+        clear_inspection_context()
+
+        mock_stream = SimpleNamespace(
+            headers={"x-ms-region": "eastus"},
+            __iter__=lambda self: iter([]),
+        )
+        mock_wrapped = MagicMock(return_value=mock_stream)
+
+        result = _wrap_completion(
+            mock_wrapped, None, (),
+            {
+                "model": "azure/gpt-4",
+                "messages": [{"role": "user", "content": "Hello"}],
+                "stream": True,
+            },
+        )
+
+        assert isinstance(result, _LiteLLMStreamingInspectionWrapper)
+        assert result.headers == {"x-ms-region": "eastus"}
+
+    @patch("aidefense.runtime.agentsec.patchers.litellm._get_inspector")
+    def test_iterates_chunks_and_performs_final_inspection(self, mock_get_inspector):
+        mock_inspector = MagicMock()
+        mock_inspector.inspect_conversation.return_value = Decision.allow(reasons=[])
+        mock_get_inspector.return_value = mock_inspector
+
+        _state.set_state(
+            initialized=True,
+            api_mode={"llm_defaults": {"fail_open": True}, "llm": {"mode": "monitor"}},
+        )
+        clear_inspection_context()
+
+        chunk = SimpleNamespace(
+            choices=[SimpleNamespace(delta=SimpleNamespace(content="Hi"))],
+        )
+        mock_stream = SimpleNamespace(headers={})
+        stream = iter([chunk])
+
+        wrapper = _LiteLLMStreamingInspectionWrapper(
+            stream,
+            [{"role": "user", "content": "Hello"}],
+            {},
+        )
+        chunks = list(wrapper)
+        assert len(chunks) == 1
+        assert mock_inspector.inspect_conversation.called
+
+    @patch("aidefense.runtime.agentsec.patchers.litellm._get_inspector")
+    def test_close_closes_stream_when_inspection_raises(self, mock_get_inspector):
+        mock_inspector = MagicMock()
+        mock_inspector.inspect_conversation.return_value = Decision.block(reasons=["policy"])
+        mock_get_inspector.return_value = mock_inspector
+
+        _state.set_state(
+            initialized=True,
+            api_mode={"llm_defaults": {"fail_open": True}, "llm": {"mode": "enforce"}},
+        )
+        clear_inspection_context()
+
+        chunk = SimpleNamespace(
+            choices=[SimpleNamespace(delta=SimpleNamespace(content="blocked"))],
+        )
+        mock_stream = MagicMock()
+        mock_stream.__iter__ = MagicMock(return_value=iter([chunk]))
+        mock_stream.headers = {}
+
+        wrapper = _LiteLLMStreamingInspectionWrapper(
+            mock_stream,
+            [{"role": "user", "content": "Hello"}],
+            {},
+        )
+        next(wrapper)
+
+        with pytest.raises(SecurityPolicyError):
+            wrapper.close()
+
+        mock_stream.close.assert_called_once()
+
+
+class TestAsyncLiteLLMStreamingInspectionWrapper:
+    """Test async streaming wrapper attribute proxying."""
+
+    def test_proxies_headers_to_underlying_stream(self):
+        mock_stream = SimpleNamespace(
+            headers={"x-ratelimit-remaining-tokens": "1000"},
+        )
+        wrapper = _AsyncLiteLLMStreamingInspectionWrapper(mock_stream, [], {})
+        assert wrapper.headers == {"x-ratelimit-remaining-tokens": "1000"}
+
+    def test_private_attribute_on_underlying_stream_not_proxied(self):
+        mock_stream = SimpleNamespace(_internal="secret", headers={})
+        wrapper = _AsyncLiteLLMStreamingInspectionWrapper(mock_stream, [], {})
+        with pytest.raises(AttributeError):
+            _ = wrapper._internal
+
+    @pytest.mark.asyncio
+    @patch("aidefense.runtime.agentsec.patchers.litellm._get_inspector")
+    async def test_async_iteration_and_final_inspection(self, mock_get_inspector):
+        mock_inspector = MagicMock()
+        mock_inspector.ainspect_conversation = AsyncMock(
+            return_value=Decision.allow(reasons=[]),
+        )
+        mock_get_inspector.return_value = mock_inspector
+
+        _state.set_state(
+            initialized=True,
+            api_mode={"llm_defaults": {"fail_open": True}, "llm": {"mode": "monitor"}},
+        )
+        clear_inspection_context()
+
+        chunk = SimpleNamespace(
+            choices=[SimpleNamespace(delta=SimpleNamespace(content="Hi"))],
+        )
+
+        class AsyncStream:
+            def __init__(self):
+                self.headers = {}
+                self._chunks = [chunk]
+
+            def __aiter__(self):
+                return self
+
+            async def __anext__(self):
+                if not self._chunks:
+                    raise StopAsyncIteration
+                return self._chunks.pop(0)
+
+        wrapper = _AsyncLiteLLMStreamingInspectionWrapper(
+            AsyncStream(),
+            [{"role": "user", "content": "Hello"}],
+            {},
+        )
+        chunks = [c async for c in wrapper]
+        assert len(chunks) == 1
+        mock_inspector.ainspect_conversation.assert_called()
+
+    @pytest.mark.asyncio
+    @patch("aidefense.runtime.agentsec.patchers.litellm._get_inspector")
+    async def test_aclose_closes_stream_when_inspection_raises(self, mock_get_inspector):
+        mock_inspector = MagicMock()
+        mock_inspector.ainspect_conversation = AsyncMock(
+            return_value=Decision.block(reasons=["policy"]),
+        )
+        mock_get_inspector.return_value = mock_inspector
+
+        _state.set_state(
+            initialized=True,
+            api_mode={"llm_defaults": {"fail_open": True}, "llm": {"mode": "enforce"}},
+        )
+        clear_inspection_context()
+
+        chunk = SimpleNamespace(
+            choices=[SimpleNamespace(delta=SimpleNamespace(content="blocked"))],
+        )
+
+        class AsyncStream:
+            def __init__(self):
+                self.headers = {}
+                self._chunks = [chunk]
+                self.close = MagicMock()
+                self.aclose = AsyncMock()
+
+            def __aiter__(self):
+                return self
+
+            async def __anext__(self):
+                if not self._chunks:
+                    raise StopAsyncIteration
+                return self._chunks.pop(0)
+
+        stream = AsyncStream()
+        wrapper = _AsyncLiteLLMStreamingInspectionWrapper(
+            stream,
+            [{"role": "user", "content": "Hello"}],
+            {},
+        )
+        await wrapper.__anext__()
+
+        with pytest.raises(SecurityPolicyError):
+            await wrapper.aclose()
+
+        stream.aclose.assert_awaited_once()

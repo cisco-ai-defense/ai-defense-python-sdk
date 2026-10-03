@@ -25,7 +25,7 @@ Getting Started
       pip install poetry
 
       # Install dependencies
-      poetry install
+      poetry install --extras streaming
 
       # Activate the virtual environment
       poetry shell

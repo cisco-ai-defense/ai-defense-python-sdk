@@ -54,7 +54,9 @@ class BaseChatInspectionClient:
         Raises:
             ValidationError: If the request is missing required fields or is malformed.
         """
-        self.config.logger.debug(f"Validating chat inspection request dictionary | Request dict: {request_dict}")
+        self.config.logger.debug(
+            f"Validating chat inspection request dictionary | Request dict: {request_dict}"
+        )
         messages = request_dict.get("messages")
         if not isinstance(messages, list) or not messages:
             self.config.logger.error("'messages' must be a non-empty list.")
@@ -67,10 +69,14 @@ class BaseChatInspectionClient:
                 raise ValidationError("Each message must be a dict.")
 
             if msg.get("role") not in self.VALID_ROLES:
-                raise ValidationError(f"Message role must be one of: {list(self.VALID_ROLES)}.")
+                raise ValidationError(
+                    f"Message role must be one of: {list(self.VALID_ROLES)}."
+                )
 
             if not msg.get("content") or not isinstance(msg.get("content"), str):
-                raise ValidationError("Each message must have non-empty string content.")
+                raise ValidationError(
+                    "Each message must have non-empty string content."
+                )
 
             if msg.get("role") == Role.USER.value and msg.get("content").strip():
                 has_prompt = True
@@ -95,6 +101,12 @@ class BaseChatInspectionClient:
             and not isinstance(request_dict["config"], dict)
         ):
             raise ValidationError("'config' must be a dict if provided.")
+        if (
+            "policy_id" in request_dict
+            and request_dict["policy_id"] is not None
+            and not isinstance(request_dict["policy_id"], str)
+        ):
+            raise ValidationError("'policy_id' must be a string if provided.")
 
     def _prepare_request_data(self, request: ChatInspectRequest) -> Dict[str, Any]:
         """
@@ -111,6 +123,8 @@ class BaseChatInspectionClient:
             request_dict["metadata"] = convert(request.metadata)
         if request.config:
             request_dict["config"] = convert(request.config)
+        if request.policy_id:
+            request_dict["policy_id"] = request.policy_id
 
         self.config.logger.debug(f"Prepared request dict: {request_dict}")
         return request_dict
@@ -121,6 +135,7 @@ class BaseChatInspectionClient:
         metadata: Metadata = None,
         config: InspectionConfig = None,
         request_id: str = None,
+        policy_id: str = None,
     ) -> Tuple[Dict[str, Any], Dict[str, str]]:
         """
         Prepare and validate a chat inspection request.
@@ -133,6 +148,7 @@ class BaseChatInspectionClient:
             metadata (Metadata, optional): Optional metadata about the context.
             config (InspectionConfig, optional): Optional inspection configuration.
             request_id (str, optional): Unique identifier for request tracing.
+            policy_id (str, optional): Policy ID to use for policy-based inspection.
 
         Returns:
             Tuple[Dict[str, Any], Dict[str, str]]: A tuple of (request_dict, headers).
@@ -141,12 +157,16 @@ class BaseChatInspectionClient:
             ValidationError: If the input messages are invalid.
         """
         self.config.logger.debug(
-            f"Starting chat inspection | Messages: {messages}, Metadata: {metadata}, Config: {config}, Request ID: {request_id}"
+            f"Starting chat inspection | Messages: {messages}, Metadata: {metadata}, Config: {config}, Request ID: {request_id}, Policy ID: {policy_id}"
         )
         if not isinstance(messages, list) or not messages:
-            raise ValidationError("'messages' must be a non-empty list of Message objects.")
+            raise ValidationError(
+                "'messages' must be a non-empty list of Message objects."
+            )
 
-        request = ChatInspectRequest(messages=messages, metadata=metadata, config=config)
+        request = ChatInspectRequest(
+            messages=messages, metadata=metadata, config=config, policy_id=policy_id
+        )
         request_dict = self._prepare_request_data(request)
         self._validate_inspection_request(request_dict)
         headers = {"Content-Type": "application/json"}
@@ -194,6 +214,7 @@ class ChatInspectionClient(BaseChatInspectionClient, InspectionClient):
         config: Optional[InspectionConfig] = None,
         request_id: Optional[str] = None,
         timeout: Optional[int] = None,
+        policy_id: Optional[str] = None,
     ) -> InspectResponse:
         """
         Inspect a single user prompt for security, privacy, and safety violations.
@@ -204,6 +225,7 @@ class ChatInspectionClient(BaseChatInspectionClient, InspectionClient):
             config (InspectionConfig, optional): Optional inspection configuration (rules, etc.).
             request_id (str, optional): Unique identifier for the request (usually a UUID) to enable request tracing.
             timeout(int, optional): Request timeout in seconds.
+            policy_id (str, optional): Policy ID to use for policy-based inspection.
 
         Returns:
             InspectResponse: Inspection results as an InspectResponse object.
@@ -232,10 +254,12 @@ class ChatInspectionClient(BaseChatInspectionClient, InspectionClient):
             ```
         """
         self.config.logger.debug(
-            f"Inspecting prompt: {prompt} | Metadata: {metadata}, Config: {config}, Request ID: {request_id}"
+            f"Inspecting prompt: {prompt} | Metadata: {metadata}, Config: {config}, Request ID: {request_id}, Policy ID: {policy_id}"
         )
         message = Message(role=Role.USER, content=prompt)
-        return self._inspect([message], metadata, config, request_id, timeout)
+        return self._inspect(
+            [message], metadata, config, request_id, timeout, policy_id=policy_id
+        )
 
     def inspect_response(
         self,
@@ -244,6 +268,7 @@ class ChatInspectionClient(BaseChatInspectionClient, InspectionClient):
         config: Optional[InspectionConfig] = None,
         request_id: Optional[str] = None,
         timeout: Optional[int] = None,
+        policy_id: Optional[str] = None,
     ) -> InspectResponse:
         """
         Inspect a single AI response for security, privacy, and safety risks.
@@ -254,6 +279,7 @@ class ChatInspectionClient(BaseChatInspectionClient, InspectionClient):
             config (InspectionConfig, optional): Optional inspection configuration (rules, etc.).
             request_id (str, optional): Unique identifier for the request (usually a UUID) to enable request tracing.
             timeout (int, optional): Request timeout in seconds.
+            policy_id (str, optional): Policy ID to use for policy-based inspection.
 
         Returns:
             InspectResponse: Inspection results as an InspectResponse object.
@@ -293,10 +319,12 @@ class ChatInspectionClient(BaseChatInspectionClient, InspectionClient):
             ```
         """
         self.config.logger.debug(
-            f"Inspecting AI response: {response} | Metadata: {metadata}, Config: {config}, Request ID: {request_id}"
+            f"Inspecting AI response: {response} | Metadata: {metadata}, Config: {config}, Request ID: {request_id}, Policy ID: {policy_id}"
         )
         message = Message(role=Role.ASSISTANT, content=response)
-        return self._inspect([message], metadata, config, request_id, timeout)
+        return self._inspect(
+            [message], metadata, config, request_id, timeout, policy_id=policy_id
+        )
 
     def inspect_conversation(
         self,
@@ -305,6 +333,7 @@ class ChatInspectionClient(BaseChatInspectionClient, InspectionClient):
         config: Optional[InspectionConfig] = None,
         request_id: Optional[str] = None,
         timeout: Optional[int] = None,
+        policy_id: Optional[str] = None,
     ) -> InspectResponse:
         """
         Inspect a full conversation (list of messages) for security, privacy, and safety risks.
@@ -315,6 +344,7 @@ class ChatInspectionClient(BaseChatInspectionClient, InspectionClient):
             config (InspectionConfig, optional): Optional inspection configuration (rules, etc.).
             request_id (str, optional): Unique identifier for the request (usually a UUID) to enable request tracing.
             timeout (int, optional): Request timeout in seconds.
+            policy_id (str, optional): Policy ID to use for policy-based inspection.
 
         Returns:
             InspectResponse: Inspection results as an InspectResponse object.
@@ -370,9 +400,11 @@ class ChatInspectionClient(BaseChatInspectionClient, InspectionClient):
             ```
         """
         self.config.logger.debug(
-            f"Inspecting conversation with {len(messages)} messages. | Messages: {messages}, Metadata: {metadata}, Config: {config}, Request ID: {request_id}"
+            f"Inspecting conversation with {len(messages)} messages. | Messages: {messages}, Metadata: {metadata}, Config: {config}, Request ID: {request_id}, Policy ID: {policy_id}"
         )
-        return self._inspect(messages, metadata, config, request_id, timeout)
+        return self._inspect(
+            messages, metadata, config, request_id, timeout, policy_id=policy_id
+        )
 
     def _inspect(
         self,
@@ -381,6 +413,7 @@ class ChatInspectionClient(BaseChatInspectionClient, InspectionClient):
         config: Optional[InspectionConfig] = None,
         request_id: Optional[str] = None,
         timeout: Optional[int] = None,
+        policy_id: Optional[str] = None,
     ) -> InspectResponse:
         """
         Implements the inspection logic for chat conversations.
@@ -394,6 +427,7 @@ class ChatInspectionClient(BaseChatInspectionClient, InspectionClient):
             config (InspectionConfig, optional): Optional inspection configuration (rules, etc.).
             request_id (str, optional): Unique identifier for the request (usually a UUID) to enable request tracing.
             timeout (int, optional): Request timeout in seconds.
+            policy_id (str, optional): Policy ID to use for policy-based inspection.
 
         Returns:
             InspectResponse: Inspection results as an InspectResponse object.
@@ -401,7 +435,9 @@ class ChatInspectionClient(BaseChatInspectionClient, InspectionClient):
         Raises:
             ValidationError: If the input messages are not a non-empty list of Message objects.
         """
-        request_dict, headers = self._prepare_chat_inspection(messages, metadata, config, request_id)
+        request_dict, headers = self._prepare_chat_inspection(
+            messages, metadata, config, request_id, policy_id
+        )
         result = self._request_handler.request(
             method="POST",
             url=self.endpoint,
@@ -458,6 +494,7 @@ class AsyncChatInspectionClient(BaseChatInspectionClient, AsyncInspectionClient)
         config: Optional[InspectionConfig] = None,
         request_id: Optional[str] = None,
         timeout: Optional[int] = None,
+        policy_id: Optional[str] = None,
     ) -> InspectResponse:
         """
         Inspect a single user prompt for security, privacy, and safety violations.
@@ -468,6 +505,7 @@ class AsyncChatInspectionClient(BaseChatInspectionClient, AsyncInspectionClient)
             config (InspectionConfig, optional): Optional inspection configuration (rules, etc.).
             request_id (str, optional): Unique identifier for the request (usually a UUID) to enable request tracing.
             timeout(int, optional): Request timeout in seconds.
+            policy_id (str, optional): Policy ID to use for policy-based inspection.
 
         Returns:
             InspectResponse: Inspection results as an InspectResponse object.
@@ -495,10 +533,12 @@ class AsyncChatInspectionClient(BaseChatInspectionClient, AsyncInspectionClient)
             ```
         """
         self.config.logger.debug(
-            f"Inspecting prompt: {prompt} | Metadata: {metadata}, Config: {config}, Request ID: {request_id}"
+            f"Inspecting prompt: {prompt} | Metadata: {metadata}, Config: {config}, Request ID: {request_id}, Policy ID: {policy_id}"
         )
         message = Message(role=Role.USER, content=prompt)
-        return await self._inspect([message], metadata, config, request_id, timeout)
+        return await self._inspect(
+            [message], metadata, config, request_id, timeout, policy_id=policy_id
+        )
 
     async def inspect_response(
         self,
@@ -507,6 +547,7 @@ class AsyncChatInspectionClient(BaseChatInspectionClient, AsyncInspectionClient)
         config: Optional[InspectionConfig] = None,
         request_id: Optional[str] = None,
         timeout: Optional[int] = None,
+        policy_id: Optional[str] = None,
     ) -> InspectResponse:
         """
         Inspect a single AI response for security, privacy, and safety risks.
@@ -517,6 +558,7 @@ class AsyncChatInspectionClient(BaseChatInspectionClient, AsyncInspectionClient)
             config (InspectionConfig, optional): Optional inspection configuration (rules, etc.).
             request_id (str, optional): Unique identifier for the request (usually a UUID) to enable request tracing.
             timeout (int, optional): Request timeout in seconds. Overrides the default timeout.
+            policy_id (str, optional): Policy ID to use for policy-based inspection.
 
         Returns:
             InspectResponse: Inspection results as an InspectResponse object.
@@ -555,10 +597,12 @@ class AsyncChatInspectionClient(BaseChatInspectionClient, AsyncInspectionClient)
             ```
         """
         self.config.logger.debug(
-            f"Inspecting AI response: {response} | Metadata: {metadata}, Config: {config}, Request ID: {request_id}"
+            f"Inspecting AI response: {response} | Metadata: {metadata}, Config: {config}, Request ID: {request_id}, Policy ID: {policy_id}"
         )
         message = Message(role=Role.ASSISTANT, content=response)
-        return await self._inspect([message], metadata, config, request_id, timeout)
+        return await self._inspect(
+            [message], metadata, config, request_id, timeout, policy_id=policy_id
+        )
 
     async def inspect_conversation(
         self,
@@ -567,6 +611,7 @@ class AsyncChatInspectionClient(BaseChatInspectionClient, AsyncInspectionClient)
         config: Optional[InspectionConfig] = None,
         request_id: Optional[str] = None,
         timeout: Optional[int] = None,
+        policy_id: Optional[str] = None,
     ) -> InspectResponse:
         """
         Inspect a full conversation (list of messages) for security, privacy, and safety risks.
@@ -577,6 +622,7 @@ class AsyncChatInspectionClient(BaseChatInspectionClient, AsyncInspectionClient)
             config (InspectionConfig, optional): Optional inspection configuration (rules, etc.).
             request_id (str, optional): Unique identifier for the request (usually a UUID) to enable request tracing.
             timeout (int, optional): Request timeout in seconds. Overrides the default client timeout if provided.
+            policy_id (str, optional): Policy ID to use for policy-based inspection.
 
         Returns:
             InspectResponse: Inspection results as an InspectResponse object.
@@ -631,9 +677,11 @@ class AsyncChatInspectionClient(BaseChatInspectionClient, AsyncInspectionClient)
             ```
         """
         self.config.logger.debug(
-            f"Inspecting conversation with {len(messages)} messages. | Messages: {messages}, Metadata: {metadata}, Config: {config}, Request ID: {request_id}"
+            f"Inspecting conversation with {len(messages)} messages. | Messages: {messages}, Metadata: {metadata}, Config: {config}, Request ID: {request_id}, Policy ID: {policy_id}"
         )
-        return await self._inspect(messages, metadata, config, request_id, timeout)
+        return await self._inspect(
+            messages, metadata, config, request_id, timeout, policy_id=policy_id
+        )
 
     async def _inspect(
         self,
@@ -642,6 +690,7 @@ class AsyncChatInspectionClient(BaseChatInspectionClient, AsyncInspectionClient)
         config: Optional[InspectionConfig] = None,
         request_id: Optional[str] = None,
         timeout: Optional[int] = None,
+        policy_id: Optional[str] = None,
     ) -> InspectResponse:
         """
         Implements the inspection logic for chat conversations.
@@ -655,6 +704,7 @@ class AsyncChatInspectionClient(BaseChatInspectionClient, AsyncInspectionClient)
             config (InspectionConfig, optional): Optional inspection configuration (rules, etc.).
             request_id (str, optional): Unique identifier for the request (usually a UUID) to enable request tracing.
             timeout (int, optional): Request timeout in seconds.
+            policy_id (str, optional): Policy ID to use for policy-based inspection.
 
         Returns:
             InspectResponse: Inspection results as an InspectResponse object.
@@ -662,7 +712,9 @@ class AsyncChatInspectionClient(BaseChatInspectionClient, AsyncInspectionClient)
         Raises:
             ValidationError: If the input messages are not a non-empty list of Message objects.
         """
-        request_dict, headers = self._prepare_chat_inspection(messages, metadata, config, request_id)
+        request_dict, headers = self._prepare_chat_inspection(
+            messages, metadata, config, request_id, policy_id
+        )
         result = await self._request_handler.request(
             method="POST",
             url=self.endpoint,

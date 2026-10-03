@@ -141,6 +141,25 @@ class _LiteLLMStreamingInspectionWrapper:
         self._inspect_interval = 10
         self._final_inspection_done = False
 
+    def __getattr__(self, name: str):
+        if name.startswith("_"):
+            raise AttributeError(name)
+        return getattr(self._stream, name)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+        return False
+
+    def close(self) -> None:
+        try:
+            self._perform_final_inspection()
+        finally:
+            if hasattr(self._stream, "close"):
+                self._stream.close()
+
     def __iter__(self):
         return self
 
@@ -216,6 +235,27 @@ class _AsyncLiteLLMStreamingInspectionWrapper:
         self._chunk_count = 0
         self._inspect_interval = 10
         self._final_inspection_done = False
+
+    def __getattr__(self, name: str):
+        if name.startswith("_"):
+            raise AttributeError(name)
+        return getattr(self._stream, name)
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.aclose()
+        return False
+
+    async def aclose(self) -> None:
+        try:
+            await self._perform_final_inspection()
+        finally:
+            if hasattr(self._stream, "aclose"):
+                await self._stream.aclose()
+            elif hasattr(self._stream, "close"):
+                self._stream.close()
 
     def __aiter__(self):
         return self
@@ -297,6 +337,7 @@ def _detect_provider(model: str) -> str:
     - vertex_ai/gemini-2.5-flash-lite
     - azure/gpt-4
     - bedrock/anthropic.claude-3-haiku
+    - anthropic/claude-sonnet-4
     - gpt-4 (OpenAI, no prefix)
     """
     if not model:
@@ -308,6 +349,8 @@ def _detect_provider(model: str) -> str:
         return "azure_openai"
     if model_lower.startswith("bedrock/") or model_lower.startswith("anthropic."):
         return "bedrock"
+    if model_lower.startswith("anthropic/"):
+        return "anthropic"
     if model_lower.startswith("gemini/") or model_lower.startswith("google/"):
         return "google_genai"
     # Default: OpenAI (no prefix)

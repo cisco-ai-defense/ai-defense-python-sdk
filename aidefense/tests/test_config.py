@@ -39,6 +39,13 @@ def test_config_default():
     assert hasattr(config, "connection_pool")
 
 
+def test_config_is_singleton():
+    first = Config(region="us-west-2")
+    second = Config()
+
+    assert second is first
+
+
 def test_config_with_runtime_base_url():
     url = "https://custom.endpoint.com"
     config = Config(runtime_base_url=url)
@@ -54,6 +61,16 @@ def test_config_with_logger():
 def test_config_with_logger_params():
     config = Config(logger_params={"level": "DEBUG"})
     assert config.logger.level == logging.DEBUG
+
+
+def test_config_with_observability_hooks():
+    tracer = object()
+    metrics = object()
+
+    config = Config(tracer=tracer, metrics=metrics)
+
+    assert config.tracer is tracer
+    assert config.metrics is metrics
 
 
 def test_config_with_retry_config():

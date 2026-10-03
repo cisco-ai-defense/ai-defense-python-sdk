@@ -16,3 +16,4 @@
 
 from .model_scan_base import ModelScan
 from .model_scan import ModelScanClient
+from aidefense.exceptions import ScanTimeoutError

@@ -28,6 +28,7 @@ from aidefense.management.models.event import (
     EventMessages,
     ListEventsRequest,
 )
+from aidefense.management.models.connection import ConnectionStatus
 from aidefense.management.models.common import Paging
 from aidefense.config import Config
 from aidefense.exceptions import ValidationError, ApiError, SDKError
@@ -142,6 +143,39 @@ class TestEventManagementClient:
         assert response.paging.count == 2
         assert response.paging.offset == 0
 
+    def test_list_events_accepts_unspecified_connection_status(self, event_client):
+        """Test listing expanded events with unspecified connection status."""
+        mock_response = {
+            "events": {
+                "items": [
+                    {
+                        "event_id": "event-123",
+                        "event_date": "2025-01-01T00:00:00Z",
+                        "application_id": "app-123",
+                        "connection_id": "conn-123",
+                        "event_action": "allow",
+                        "connection": {
+                            "connection_id": "conn-123",
+                            "connection_name": "Test Connection",
+                            "application_id": "app-123",
+                            "connection_status": "ConnectionStatusUnspecified",
+                        },
+                    }
+                ],
+                "paging": {"total": 1, "count": 1, "offset": 0},
+            }
+        }
+        event_client.make_request.return_value = mock_response
+
+        request = ListEventsRequest(limit=1, expanded=True)
+        response = event_client.list_events(request)
+
+        event_client.make_request.assert_called_once_with(
+            "POST", "events", data={"limit": 1, "expanded": True}
+        )
+        assert isinstance(response, Events)
+        assert response.items[0].connection.connection_status == ConnectionStatus.Unspecified
+
     def test_get_event(self, event_client):
         """Test getting an event by ID."""
         # Setup mock response
@@ -193,6 +227,34 @@ class TestEventManagementClient:
         assert response.rule_matches.items[0].guardrail_type == "Security"
         assert response.rule_matches.items[0].guardrail_action == "block"
         assert "PCI DSS" in response.rule_matches.items[0].metadata.standards
+
+    def test_get_event_accepts_unspecified_connection_status(self, event_client):
+        """Test getting an expanded event with unspecified connection status."""
+        mock_response = {
+            "event": {
+                "event_id": "event-123",
+                "event_date": "2025-01-01T00:00:00Z",
+                "application_id": "app-123",
+                "connection_id": "conn-123",
+                "event_action": "allow",
+                "connection": {
+                    "connection_id": "conn-123",
+                    "connection_name": "Test Connection",
+                    "application_id": "app-123",
+                    "connection_status": "ConnectionStatusUnspecified",
+                },
+            }
+        }
+        event_client.make_request.return_value = mock_response
+
+        event_id = "456e4567-e89b-12d3-a456-426614174456"
+        response = event_client.get_event(event_id, expanded=True)
+
+        event_client.make_request.assert_called_once_with(
+            "GET", f"events/{event_id}", params={"expanded": True}
+        )
+        assert isinstance(response, Event)
+        assert response.connection.connection_status == ConnectionStatus.Unspecified
 
     def test_get_event_conversation(self, event_client):
         """Test getting a conversation for an event."""

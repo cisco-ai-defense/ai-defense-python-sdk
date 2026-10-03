@@ -76,6 +76,7 @@ class HttpInspectionClient(InspectionClient):
         config: Optional[InspectionConfig] = None,
         request_id: Optional[str] = None,
         timeout: Optional[int] = None,
+        policy_id: Optional[str] = None,
     ) -> InspectResponse:
         """
         Direct interface for HTTP inspection API using dicts for http_req, http_res, and http_meta.
@@ -89,6 +90,7 @@ class HttpInspectionClient(InspectionClient):
             config (InspectionConfig, optional): Inspection configuration.
             request_id (str, optional): Unique identifier for the request (usually a UUID) to enable request tracing.
             timeout (int, optional): Request timeout in seconds.
+            policy_id (str, optional): Policy ID to use for policy-based inspection.
 
         Note:
             - The 'body' field for both request and response dicts must be a base64-encoded string representing the original bytes.
@@ -127,7 +129,7 @@ class HttpInspectionClient(InspectionClient):
             InspectResponse: Inspection results as an InspectResponse object.
         """
         self.config.logger.debug(
-            f"inspect called | http_req: {http_req}, http_res: {http_res}, http_meta: {http_meta}, metadata: {metadata}, config: {config}, request_id: {request_id}"
+            f"inspect called | http_req: {http_req}, http_res: {http_res}, http_meta: {http_meta}, metadata: {metadata}, config: {config}, request_id: {request_id}, policy_id: {policy_id}"
         )
 
         if http_req:
@@ -151,6 +153,7 @@ class HttpInspectionClient(InspectionClient):
             config,
             request_id=request_id,
             timeout=timeout,
+            policy_id=policy_id,
         )
 
     def inspect_request_from_http_library(
@@ -160,6 +163,7 @@ class HttpInspectionClient(InspectionClient):
         config: Optional[InspectionConfig] = None,
         request_id: Optional[str] = None,
         timeout: Optional[int] = None,
+        policy_id: Optional[str] = None,
     ) -> InspectResponse:
         """
         Inspect an HTTP request from a supported HTTP library (currently requests) that is being sent to the model provider.
@@ -170,6 +174,7 @@ class HttpInspectionClient(InspectionClient):
             config (InspectionConfig, optional): Optional inspection configuration (rules, etc.).
             request_id (str, optional): Unique identifier for the request (usually a UUID) to enable request tracing.
             timeout (int, optional): Request timeout in seconds.
+            policy_id (str, optional): Policy ID to use for policy-based inspection.
 
         Example:
             ```python
@@ -207,7 +212,7 @@ class HttpInspectionClient(InspectionClient):
             ValueError: If the HTTP request object is not supported.
         """
         self.config.logger.debug(
-            f"inspect_request_from_http_library called | http_request: {http_request}, metadata: {metadata}, config: {config}, request_id: {request_id}"
+            f"inspect_request_from_http_library called | http_request: {http_request}, metadata: {metadata}, config: {config}, request_id: {request_id}, policy_id: {policy_id}"
         )
         method = None
         headers = {}
@@ -237,6 +242,7 @@ class HttpInspectionClient(InspectionClient):
             config,
             request_id=request_id,
             timeout=timeout,
+            policy_id=policy_id,
         )
 
     def inspect_response_from_http_library(
@@ -246,6 +252,7 @@ class HttpInspectionClient(InspectionClient):
         config: Optional[InspectionConfig] = None,
         request_id: Optional[str] = None,
         timeout: Optional[int] = None,
+        policy_id: Optional[str] = None,
     ) -> InspectResponse:
         """
         Inspect an HTTP response from a supported HTTP library (currently requests) that comes from model provider and return inspection results.
@@ -256,6 +263,7 @@ class HttpInspectionClient(InspectionClient):
             config (InspectionConfig, optional): Inspection configuration.
             request_id (str, optional): Unique identifier for the request (usually a UUID) to enable request tracing.
             timeout (int, optional): Request timeout in seconds.
+            policy_id (str, optional): Policy ID to use for policy-based inspection.
 
         Example:
             ```python
@@ -289,7 +297,7 @@ class HttpInspectionClient(InspectionClient):
             InspectResponse: Inspection result.
         """
         self.config.logger.debug(
-            f"inspect_response_from_http_library called | http_response: {http_response}, metadata: {metadata}, config: {config}, request_id: {request_id}"
+            f"inspect_response_from_http_library called | http_response: {http_response}, metadata: {metadata}, config: {config}, request_id: {request_id}, policy_id: {policy_id}"
         )
         status_code = None
         headers = {}
@@ -333,6 +341,7 @@ class HttpInspectionClient(InspectionClient):
             config,
             request_id=request_id,
             timeout=timeout,
+            policy_id=policy_id,
         )
 
     def inspect_request(
@@ -345,6 +354,7 @@ class HttpInspectionClient(InspectionClient):
         config: Optional[InspectionConfig] = None,
         request_id: Optional[str] = None,
         timeout: Optional[int] = None,
+        policy_id: Optional[str] = None,
     ) -> InspectResponse:
         """
         Inspect an HTTP request with simplified arguments (method, url, headers, body).
@@ -358,6 +368,7 @@ class HttpInspectionClient(InspectionClient):
             config (InspectionConfig, optional): Inspection configuration.
             request_id (str, optional): Unique identifier for the request (usually a UUID) to enable request tracing.
             timeout (int, optional): Request timeout in seconds.
+            policy_id (str, optional): Policy ID to use for policy-based inspection.
 
         Example:
             ```python
@@ -423,6 +434,7 @@ class HttpInspectionClient(InspectionClient):
             config,
             request_id=request_id,
             timeout=timeout,
+            policy_id=policy_id,
         )
 
     def inspect_response(
@@ -439,6 +451,7 @@ class HttpInspectionClient(InspectionClient):
         config: Optional[InspectionConfig] = None,
         request_id: Optional[str] = None,
         timeout: Optional[int] = None,
+        policy_id: Optional[str] = None,
     ) -> InspectResponse:
         """
         Inspect an HTTP response (status code, url, headers, body), with request context and metadata, for security, privacy, and policy violations.
@@ -456,6 +469,7 @@ class HttpInspectionClient(InspectionClient):
             config (InspectionConfig, optional): Inspection configuration rules.
             request_id (str, optional): Unique identifier for the request (usually a UUID) to enable request tracing.
             timeout (int, optional): Request timeout in seconds.
+            policy_id (str, optional): Policy ID to use for policy-based inspection.
 
         Example:
             ```python
@@ -512,7 +526,7 @@ class HttpInspectionClient(InspectionClient):
             InspectResponse: The inspection result.
         """
         self.config.logger.debug(
-            f"inspect_response called | status_code: {status_code}, url: {url}, headers: {headers}, body: {body}, request_method: {request_method}, request_headers: {request_headers}, request_body: {request_body}, request_metadata: {request_metadata}, metadata: {metadata}, config: {config}, request_id: {request_id}"
+            f"inspect_response called | status_code: {status_code}, url: {url}, headers: {headers}, body: {body}, request_method: {request_method}, request_headers: {request_headers}, request_body: {request_body}, request_metadata: {request_metadata}, metadata: {metadata}, config: {config}, request_id: {request_id}, policy_id: {policy_id}"
         )
         # Response body encoding
         if not isinstance(body, (str, bytes, dict)):
@@ -570,6 +584,7 @@ class HttpInspectionClient(InspectionClient):
             config,
             request_id=request_id,
             timeout=timeout,
+            policy_id=policy_id,
         )
 
     def _inspect(
@@ -581,18 +596,19 @@ class HttpInspectionClient(InspectionClient):
         config: Optional[InspectionConfig] = None,
         request_id: Optional[str] = None,
         timeout: Optional[int] = None,
+        policy_id: Optional[str] = None,
     ) -> InspectResponse:
         """
         Implements InspectionClient._inspect for HTTP inspection.
         See base class for contract. Handles validation and sends the inspection request.
         """
         self.config.logger.debug(
-            f"_inspect called | http_req: {http_req}, http_res: {http_res}, http_meta: {http_meta}, metadata: {metadata}, config: {config}, request_id: {request_id}"
+            f"_inspect called | http_req: {http_req}, http_res: {http_res}, http_meta: {http_meta}, metadata: {metadata}, config: {config}, request_id: {request_id}, policy_id: {policy_id}"
         )
         # Centralized validation for all HTTP inspection
-        if config is None:
+        if config is None and policy_id is None:
             config = InspectionConfig()
-        if not config.enabled_rules:
+        if config is not None and policy_id is None and not config.enabled_rules:
             # Use precomputed default_enabled_rules from InspectionClient
             config.enabled_rules = self.default_enabled_rules
         request = HttpInspectRequest(
@@ -601,6 +617,7 @@ class HttpInspectionClient(InspectionClient):
             http_meta=http_meta,
             metadata=metadata,
             config=config,
+            policy_id=policy_id,
         )
         request_dict = self._prepare_request_data(request)
         # Overwrite config with a serializable version
@@ -637,6 +654,8 @@ class HttpInspectionClient(InspectionClient):
             request_dict["metadata"] = convert(request.metadata)
         if request.config:
             request_dict["config"] = convert(request.config)
+        if request.policy_id:
+            request_dict["policy_id"] = request.policy_id
         self.config.logger.debug(f"Prepared request_dict: {request_dict}")
         return request_dict
 
@@ -662,6 +681,12 @@ class HttpInspectionClient(InspectionClient):
                 raise ValidationError(
                     "config.enabled_rules must be a non-empty list of Rule objects."
                 )
+        if (
+            "policy_id" in request_dict
+            and request_dict["policy_id"] is not None
+            and not isinstance(request_dict["policy_id"], str)
+        ):
+            raise ValidationError("'policy_id' must be a string if provided.")
         # Validate request dict structure (API contract)
         http_req = request_dict.get(HTTP_REQ)
         http_res = request_dict.get(HTTP_RES)

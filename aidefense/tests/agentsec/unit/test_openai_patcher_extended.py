@@ -28,7 +28,7 @@ _get_inspector, and patch_openai.
 import httpx
 import pytest
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from aidefense.runtime.agentsec.patchers.openai import (
     _detect_provider,
@@ -47,8 +47,10 @@ from aidefense.runtime.agentsec.patchers.openai import (
     _dict_to_openai_response,
     _create_stream_chunk_from_response,
     _wrap_chat_completions_create,
+    _wrap_chat_completions_create_async,
     _wrap_responses_create,
     StreamingInspectionWrapper,
+    AsyncStreamingInspectionWrapper,
     patch_openai,
 )
 from aidefense.runtime.agentsec.exceptions import SecurityPolicyError
@@ -70,6 +72,20 @@ def reset_state():
     reset_registry()
     clear_inspection_context()
     openai_module._inspector = None
+
+
+def _legacy_raw_streaming_response(chunks, headers=None):
+    """Simulate openai LegacyAPIResponse from with_raw_response.create(stream=True)."""
+    inner = iter(chunks)
+    return SimpleNamespace(
+        headers=headers
+        or {
+            "x-ms-region": "eastus",
+            "content-type": "text/event-stream; charset=utf-8",
+        },
+        parse=lambda: inner,
+        close=MagicMock(),
+    )
 
 
 # ===========================================================================
@@ -624,6 +640,179 @@ class TestStreamingInspectionWrapper:
         list(wrapper)
         mock_inspector.inspect_conversation.assert_not_called()
 
+    def test_proxies_headers_to_underlying_stream(self):
+        mock_stream = SimpleNamespace(
+            headers={"x-ratelimit-remaining-requests": "99", "x-ms-region": "eastus"},
+        )
+        wrapper = StreamingInspectionWrapper(mock_stream, [], {})
+        assert wrapper.headers == {
+            "x-ratelimit-remaining-requests": "99",
+            "x-ms-region": "eastus",
+        }
+
+    def test_litellm_azure_with_raw_response_pattern(self):
+        chunk = SimpleNamespace(
+            choices=[SimpleNamespace(delta=SimpleNamespace(content="Hi"))],
+        )
+        inner_stream = iter([chunk])
+        raw_response = SimpleNamespace(
+            headers={"x-ms-region": "eastus"},
+            parse=lambda: inner_stream,
+        )
+        wrapper = StreamingInspectionWrapper(
+            raw_response,
+            [{"role": "user", "content": "Hi"}],
+            {},
+        )
+        assert dict(wrapper.headers) == {"x-ms-region": "eastus"}
+        parsed = wrapper.parse()
+        assert isinstance(parsed, StreamingInspectionWrapper)
+        assert parsed is not wrapper
+        assert list(parsed) == [chunk]
+
+    @patch("aidefense.runtime.agentsec.patchers.openai._get_inspector")
+    def test_parse_stream_runs_inspection(self, mock_get_inspector):
+        mock_inspector = MagicMock()
+        mock_inspector.inspect_conversation.return_value = Decision.allow(reasons=[])
+        mock_get_inspector.return_value = mock_inspector
+
+        _state.set_state(
+            initialized=True,
+            api_mode={"llm_defaults": {"fail_open": True}, "llm": {"mode": "monitor"}},
+        )
+        clear_inspection_context()
+
+        chunk = SimpleNamespace(
+            choices=[SimpleNamespace(delta=SimpleNamespace(content="Hello"))],
+        )
+        raw_response = SimpleNamespace(
+            headers={},
+            parse=lambda: iter([chunk]),
+        )
+        wrapper = StreamingInspectionWrapper(
+            raw_response,
+            [{"role": "user", "content": "Hi"}],
+            {},
+        )
+
+        list(wrapper.parse())
+        mock_inspector.inspect_conversation.assert_called()
+
+    def test_private_attribute_on_underlying_stream_not_proxied(self):
+        mock_stream = SimpleNamespace(_internal="secret", headers={})
+        wrapper = StreamingInspectionWrapper(mock_stream, [], {})
+        with pytest.raises(AttributeError):
+            _ = wrapper._internal
+
+    @patch("aidefense.runtime.agentsec.patchers.openai._get_inspector")
+    def test_close_closes_stream_when_inspection_raises(self, mock_get_inspector):
+        mock_inspector = MagicMock()
+        mock_inspector.inspect_conversation.return_value = Decision.block(reasons=["policy"])
+        mock_get_inspector.return_value = mock_inspector
+
+        _state.set_state(
+            initialized=True,
+            api_mode={"llm_defaults": {"fail_open": True}, "llm": {"mode": "enforce"}},
+        )
+        clear_inspection_context()
+
+        chunk = SimpleNamespace(
+            choices=[SimpleNamespace(delta=SimpleNamespace(content="blocked"))],
+        )
+        mock_stream = MagicMock()
+        mock_stream.__iter__ = MagicMock(return_value=iter([chunk]))
+        mock_stream.headers = {}
+
+        wrapper = StreamingInspectionWrapper(
+            mock_stream,
+            [{"role": "user", "content": "Hello"}],
+            {},
+        )
+        next(wrapper)
+
+        with pytest.raises(SecurityPolicyError):
+            wrapper.close()
+
+        mock_stream.close.assert_called_once()
+
+
+class TestAsyncStreamingInspectionWrapper:
+    def test_proxies_headers_to_underlying_stream(self):
+        mock_stream = SimpleNamespace(headers={"x-ms-region": "westus2"})
+        wrapper = AsyncStreamingInspectionWrapper(mock_stream, [], {})
+        assert wrapper.headers == {"x-ms-region": "westus2"}
+
+    def test_litellm_azure_with_raw_response_pattern(self):
+        chunk = SimpleNamespace(
+            choices=[SimpleNamespace(delta=SimpleNamespace(content="Hi"))],
+        )
+        inner_stream = iter([chunk])
+        raw_response = SimpleNamespace(
+            headers={"x-ms-region": "westus2"},
+            parse=lambda: inner_stream,
+        )
+        wrapper = AsyncStreamingInspectionWrapper(
+            raw_response,
+            [{"role": "user", "content": "Hi"}],
+            {},
+        )
+        assert dict(wrapper.headers) == {"x-ms-region": "westus2"}
+        parsed = wrapper.parse()
+        assert isinstance(parsed, StreamingInspectionWrapper)
+        assert list(parsed) == [chunk]
+
+    def test_private_attribute_on_underlying_stream_not_proxied(self):
+        mock_stream = SimpleNamespace(_internal="secret", headers={})
+        wrapper = AsyncStreamingInspectionWrapper(mock_stream, [], {})
+        with pytest.raises(AttributeError):
+            _ = wrapper._internal
+
+    @pytest.mark.asyncio
+    @patch("aidefense.runtime.agentsec.patchers.openai._get_inspector")
+    async def test_aclose_closes_stream_when_inspection_raises(self, mock_get_inspector):
+        mock_inspector = MagicMock()
+        mock_inspector.ainspect_conversation = AsyncMock(
+            return_value=Decision.block(reasons=["policy"]),
+        )
+        mock_get_inspector.return_value = mock_inspector
+
+        _state.set_state(
+            initialized=True,
+            api_mode={"llm_defaults": {"fail_open": True}, "llm": {"mode": "enforce"}},
+        )
+        clear_inspection_context()
+
+        chunk = SimpleNamespace(
+            choices=[SimpleNamespace(delta=SimpleNamespace(content="blocked"))],
+        )
+
+        class AsyncStream:
+            def __init__(self):
+                self.headers = {}
+                self._chunks = [chunk]
+                self.aclose = AsyncMock()
+
+            def __aiter__(self):
+                return self
+
+            async def __anext__(self):
+                if not self._chunks:
+                    raise StopAsyncIteration
+                return self._chunks.pop(0)
+
+        stream = AsyncStream()
+        wrapper = AsyncStreamingInspectionWrapper(
+            stream,
+            [{"role": "user", "content": "Hello"}],
+            {},
+        )
+        await wrapper.__anext__()
+
+        with pytest.raises(SecurityPolicyError):
+            await wrapper.aclose()
+
+        stream.aclose.assert_awaited_once()
+
 
 # ===========================================================================
 # _wrap_chat_completions_create() — sync
@@ -679,6 +868,121 @@ class TestWrapChatCompletionsCreate:
 
         with pytest.raises(SecurityPolicyError):
             _wrap_chat_completions_create(MagicMock(), SimpleNamespace(), (), {"model": "gpt-4", "messages": [{"role": "user", "content": "Hi"}]})
+
+    @patch("aidefense.runtime.agentsec.patchers.openai._get_inspector")
+    @patch("aidefense.runtime.agentsec.patchers.openai.resolve_gateway_settings", return_value=None)
+    def test_streaming_wrap_preserves_litellm_raw_response_access_aifw_24950(
+        self, _gw, mock_get_inspector
+    ):
+        """Regression for AIFW-24950: LiteLLM reads .headers/.parse() on wrapped raw response."""
+        mock_inspector = MagicMock()
+        mock_inspector.inspect_conversation.return_value = Decision.allow(reasons=[])
+        mock_get_inspector.return_value = mock_inspector
+
+        _state.set_state(
+            initialized=True,
+            api_mode={"llm_defaults": {"fail_open": True}, "llm": {"mode": "monitor"}},
+        )
+        clear_inspection_context()
+
+        chunk = SimpleNamespace(
+            choices=[SimpleNamespace(delta=SimpleNamespace(content="Hello"))],
+        )
+        raw_response = _legacy_raw_streaming_response([chunk])
+        mock_wrapped = MagicMock(return_value=raw_response)
+
+        result = _wrap_chat_completions_create(
+            mock_wrapped,
+            SimpleNamespace(),
+            (),
+            {
+                "model": "gpt-4",
+                "messages": [{"role": "user", "content": "Hi"}],
+                "stream": True,
+            },
+        )
+
+        assert isinstance(result, StreamingInspectionWrapper)
+        headers = dict(result.headers)
+        assert headers["x-ms-region"] == "eastus"
+        assert headers["content-type"] == "text/event-stream; charset=utf-8"
+        parsed = result.parse()
+        assert isinstance(parsed, StreamingInspectionWrapper)
+        assert list(parsed) == [chunk]
+
+    @patch("aidefense.runtime.agentsec.patchers.openai._get_inspector")
+    @patch("aidefense.runtime.agentsec.patchers.openai.resolve_gateway_settings", return_value=None)
+    def test_streaming_wrap_plain_iterator_still_iterable(self, _gw, mock_get_inspector):
+        mock_inspector = MagicMock()
+        mock_inspector.inspect_conversation.return_value = Decision.allow(reasons=[])
+        mock_get_inspector.return_value = mock_inspector
+
+        _state.set_state(
+            initialized=True,
+            api_mode={"llm_defaults": {"fail_open": True}, "llm": {"mode": "monitor"}},
+        )
+        clear_inspection_context()
+
+        chunk = SimpleNamespace(
+            choices=[SimpleNamespace(delta=SimpleNamespace(content="Hi"))],
+        )
+        mock_wrapped = MagicMock(return_value=iter([chunk]))
+
+        result = _wrap_chat_completions_create(
+            mock_wrapped,
+            SimpleNamespace(),
+            (),
+            {
+                "model": "gpt-4",
+                "messages": [{"role": "user", "content": "Hi"}],
+                "stream": True,
+            },
+        )
+
+        assert isinstance(result, StreamingInspectionWrapper)
+        assert list(result) == [chunk]
+
+    @pytest.mark.asyncio
+    @patch("aidefense.runtime.agentsec.patchers.openai._get_inspector")
+    @patch("aidefense.runtime.agentsec.patchers.openai.resolve_gateway_settings", return_value=None)
+    async def test_async_streaming_wrap_preserves_litellm_raw_response_access_aifw_24950(
+        self, _gw, mock_get_inspector
+    ):
+        mock_inspector = MagicMock()
+        mock_inspector.ainspect_conversation = AsyncMock(
+            return_value=Decision.allow(reasons=[]),
+        )
+        mock_get_inspector.return_value = mock_inspector
+
+        _state.set_state(
+            initialized=True,
+            api_mode={"llm_defaults": {"fail_open": True}, "llm": {"mode": "monitor"}},
+        )
+        clear_inspection_context()
+
+        chunk = SimpleNamespace(
+            choices=[SimpleNamespace(delta=SimpleNamespace(content="Hello"))],
+        )
+        raw_response = _legacy_raw_streaming_response([chunk])
+        mock_wrapped = AsyncMock(return_value=raw_response)
+
+        result = await _wrap_chat_completions_create_async(
+            mock_wrapped,
+            SimpleNamespace(),
+            (),
+            {
+                "model": "gpt-4",
+                "messages": [{"role": "user", "content": "Hi"}],
+                "stream": True,
+            },
+        )
+
+        assert isinstance(result, AsyncStreamingInspectionWrapper)
+        headers = dict(result.headers)
+        assert headers["x-ms-region"] == "eastus"
+        parsed = result.parse()
+        assert isinstance(parsed, StreamingInspectionWrapper)
+        assert list(parsed) == [chunk]
 
 
 # ===========================================================================

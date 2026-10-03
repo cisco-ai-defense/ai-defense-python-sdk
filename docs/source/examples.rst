@@ -20,6 +20,7 @@ The examples are organized into the following structure:
     │   │   ├── openai_example.py
     │   │   ├── cohere_example.py
     │   │   ├── mistral_example.py
+    │   │   ├── anthropic_example.py
     │   │   ├── streaming_example.py
     │   │   ├── mcp_example.py
     │   │   ├── gateway_mode_example.py
@@ -47,6 +48,8 @@ The examples are organized into the following structure:
     │       ├── chat_inspect_mistral.py
     │       ├── chat_inspect_openai.py
     │       └── chat_inspect_vertex_ai.py
+    ├── event_stream/            # Bidirectional streaming inspection
+    │   └── custom_provider.py   # Framework-neutral adapter example
     ├── http/                    # HTTP inspection examples
     │   ├── http_inspect_api.py
     │   ├── http_inspect_multiple_clients.py
@@ -188,6 +191,7 @@ agentsec automatically patches the following LLM client libraries:
 - **Google GenAI** (``google-genai``) -- ``generate_content()``, ``generate_content_async()``
 - **Cohere** (``cohere``) -- ``V2Client.chat()``, ``V2Client.chat_stream()``
 - **Mistral AI** (``mistralai``) -- ``Chat.complete()``, ``Chat.stream()``
+- **Anthropic** (``anthropic``) -- ``messages.create()``, ``messages.stream()``
 - **LiteLLM** (``litellm``) -- ``completion()``, ``acompletion()``
 - **MCP** (``mcp``) -- ``ClientSession.call_tool()``, ``ClientSession.list_tools()``
 

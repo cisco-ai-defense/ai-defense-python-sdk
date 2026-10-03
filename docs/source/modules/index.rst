@@ -8,6 +8,7 @@ API Reference
    client
    inspection_client
    chat_inspect
+   event_stream
    http_inspect
    mcp_inspect
    config

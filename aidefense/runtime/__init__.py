@@ -20,11 +20,13 @@ from .chat_inspect import Message, Role, ChatInspectRequest
 from .models import (
     Action,
     Rule,
+    RuleResult,
     Classification,
     RuleName,
     InspectionConfig,
     Metadata,
     InspectResponse,
+    DetectedPII,
 )
 from .http_models import HttpInspectRequest
 from .http_models import (
@@ -42,3 +44,33 @@ from .mcp_models import (
     MCPInspectError,
 )
 from .utils import to_base64_bytes
+from .event_stream import (
+    CanonicalMessageContent,
+    CanonicalRole,
+    CanonicalMessage,
+    EventStreamClient,
+    EventStreamConfig,
+    EventStreamError,
+    EventStreamAdapter,
+    ReasonCode,
+    SourceRange,
+    StrandsAgentCoreAdapter,
+    StrandsBedrockAdapter,
+    StrandsEventAdapter,
+    StreamBackpressureError,
+    StreamCancelledError,
+    StreamConfigurationError,
+    StreamConnectionError,
+    StreamContext,
+    StreamDecision,
+    StreamDirection,
+    StreamEvent,
+    StreamInspectionResult,
+    StreamObserver,
+    StreamProtocolError,
+    StreamSourceError,
+    StreamTimeoutError,
+    ToolCall,
+    UnsafeContentError,
+    iter_events,
+)

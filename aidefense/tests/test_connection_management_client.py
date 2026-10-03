@@ -24,6 +24,7 @@ from aidefense.management.models.connection import (
     Connection,
     Connections,
     ConnectionSortBy,
+    ConnectionStatus,
     ConnectionType,
     EditConnectionOperationType,
     ApiKeys,
@@ -169,6 +170,27 @@ class TestConnectionManagementClient:
         assert response.connection_name == "Test Connection"
         assert response.application_id == "app-123"
         assert response.connection_status == "Connected"
+
+    def test_get_connection_accepts_unspecified_status(self, connection_client):
+        """Test parsing a connection with unspecified status."""
+        mock_response = {
+            "connection": {
+                "connection_id": "conn-123",
+                "connection_name": "Test Connection",
+                "application_id": "app-123",
+                "connection_status": "ConnectionStatusUnspecified",
+            }
+        }
+        connection_client.make_request.return_value = mock_response
+
+        connection_id = "323e4567-e89b-12d3-a456-426614174333"
+        response = connection_client.get_connection(connection_id)
+
+        connection_client.make_request.assert_called_once_with(
+            "GET", f"connections/{connection_id}", params=None
+        )
+        assert isinstance(response, Connection)
+        assert response.connection_status == ConnectionStatus.Unspecified
 
     def test_create_connection(self, connection_client):
         """Test creating a connection."""
