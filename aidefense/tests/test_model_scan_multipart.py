@@ -26,7 +26,7 @@ from aidefense.config import Config
 from aidefense.exceptions import SDKError, ScanTimeoutError
 from aidefense.modelscan import model_scan as model_scan_module
 from aidefense.modelscan.model_scan import (
-    DEFAULT_FILE_SCAN_TIMEOUT_SECONDS,
+    DEFAULT_SCAN_RESULT_TIMEOUT_SECONDS,
     DEFAULT_SCAN_TIMEOUT_SECONDS,
     RETRY_COUNT_FOR_SCANNING,
     WAIT_TIME_SECS_SUCCESSIVE_SCAN_INFO_CHECK,
@@ -263,9 +263,9 @@ def test_default_scan_timeout_is_ten_minutes():
     assert DEFAULT_SCAN_TIMEOUT_SECONDS == 10 * 60
 
 
-def test_default_file_scan_timeout_outlasts_service_scan_window():
-    assert DEFAULT_FILE_SCAN_TIMEOUT_SECONDS == 15000
-    assert DEFAULT_FILE_SCAN_TIMEOUT_SECONDS > 4 * 60 * 60
+def test_default_scan_result_timeout_outlasts_service_scan_window():
+    assert DEFAULT_SCAN_RESULT_TIMEOUT_SECONDS == 15000
+    assert DEFAULT_SCAN_RESULT_TIMEOUT_SECONDS > 4 * 60 * 60
 
 
 @pytest.mark.parametrize(
@@ -275,7 +275,7 @@ def test_default_file_scan_timeout_outlasts_service_scan_window():
         ("AIDEFENSE_MODELSCAN_WAIT_TIME_SECS", "10", 120 * 10),
     ],
 )
-def test_polling_env_override_replaces_file_scan_default(
+def test_polling_env_override_replaces_scan_result_default(
     monkeypatch, env_name, env_value, expected_timeout
 ):
     monkeypatch.delenv("AIDEFENSE_MODELSCAN_RETRY_COUNT", raising=False)
@@ -283,7 +283,7 @@ def test_polling_env_override_replaces_file_scan_default(
     monkeypatch.setenv(env_name, env_value)
     try:
         reloaded = importlib.reload(model_scan_module)
-        assert reloaded.DEFAULT_FILE_SCAN_TIMEOUT_SECONDS == expected_timeout
+        assert reloaded.DEFAULT_SCAN_RESULT_TIMEOUT_SECONDS == expected_timeout
     finally:
         monkeypatch.delenv(env_name)
         importlib.reload(model_scan_module)
@@ -301,7 +301,7 @@ def _client_with_mocked_scan_flow():
     return client
 
 
-def test_scan_file_waits_for_file_scan_default(tmp_path):
+def test_scan_file_waits_for_scan_result_default(tmp_path):
     file_path = tmp_path / "model.pkl"
     file_path.write_bytes(b"data")
     client = _client_with_mocked_scan_flow()
@@ -309,16 +309,16 @@ def test_scan_file_waits_for_file_scan_default(tmp_path):
     client.scan_file(file_path, show_progress=False, show_status_spinner=False)
 
     wait_call = client._ModelScanClient__get_scan_info_wait_until_status.call_args
-    assert wait_call.kwargs["timeout_seconds"] == DEFAULT_FILE_SCAN_TIMEOUT_SECONDS
+    assert wait_call.kwargs["timeout_seconds"] == DEFAULT_SCAN_RESULT_TIMEOUT_SECONDS
 
 
-def test_scan_repo_keeps_ten_minute_default():
+def test_scan_repo_waits_for_scan_result_default():
     client = _client_with_mocked_scan_flow()
 
     client.scan_repo(MagicMock(), show_status_spinner=False)
 
     wait_call = client._ModelScanClient__get_scan_info_wait_until_status.call_args
-    assert wait_call.kwargs["timeout_seconds"] == DEFAULT_SCAN_TIMEOUT_SECONDS
+    assert wait_call.kwargs["timeout_seconds"] == DEFAULT_SCAN_RESULT_TIMEOUT_SECONDS
 
 
 def test_upload_file_refreshes_expired_part_url(model_scan, tmp_path):
