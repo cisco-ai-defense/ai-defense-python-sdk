@@ -32,6 +32,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Extend the default `ModelScanClient.scan_file()` result wait from 600 to
+  15,000 seconds so scans of very large model files (hundreds of GiB) are not
+  reported as timed out while the service is still downloading or scanning
+  them. `scan_repo()` keeps its 600-second default, and the
+  `AIDEFENSE_MODELSCAN_RETRY_COUNT` / `AIDEFENSE_MODELSCAN_WAIT_TIME_SECS`
+  overrides still take precedence.
 - Add agentsec support for the native Anthropic Messages API, including sync,
   async, tool content, and streaming calls.
 - Add Anthropic provider routing for API and Gateway integration modes.

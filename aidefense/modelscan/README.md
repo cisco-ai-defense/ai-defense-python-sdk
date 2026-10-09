@@ -73,8 +73,12 @@ before propagating the error.
 Once upload completes, `scan_file()` shows a spinner while it polls the scan status. Disable it with
 `show_status_spinner=False`; this does not affect polling or the upload progress bar.
 
-After upload, `scan_file()` waits up to 10 minutes by default for analysis to reach a terminal state.
-This polling timeout can be changed with `scan_timeout_seconds`. If it expires, the SDK raises
+After upload, `scan_file()` waits up to 15,000 seconds (about 4 hours 10 minutes) by default for
+analysis to reach a terminal state. The service allows a model file scan up to 4 hours after it is
+triggered, and downloading a file of hundreds of GiB alone can take over an hour, so the default
+outlasts the service's limit and returns its final status. If `AIDEFENSE_MODELSCAN_RETRY_COUNT` or
+`AIDEFENSE_MODELSCAN_WAIT_TIME_SECS` is set, the default is their product instead. `scan_repo()` keeps
+its 10-minute default. This polling timeout can be changed with `scan_timeout_seconds`. If it expires, the SDK raises
 `ScanTimeoutError` without canceling or deleting the scan. The exception includes `scan_id`, which can
 be passed to `get_scan()` to retrieve the result later.
 

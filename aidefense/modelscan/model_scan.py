@@ -35,6 +35,23 @@ WAIT_TIME_SECS_SUCCESSIVE_SCAN_INFO_CHECK = int(
 DEFAULT_SCAN_TIMEOUT_SECONDS = (
     RETRY_COUNT_FOR_SCANNING * WAIT_TIME_SECS_SUCCESSIVE_SCAN_INFO_CHECK
 )
+# The service allows a model file scan up to 4 hours after it is triggered
+# (downloading a file of hundreds of GiB alone takes over an hour). Wait a
+# little longer so the service's terminal status is returned rather than a
+# client-side timeout.
+FILE_SCAN_TIMEOUT_SECONDS = 15000
+_POLLING_ENV_OVERRIDDEN = any(
+    name in os.environ
+    for name in (
+        "AIDEFENSE_MODELSCAN_RETRY_COUNT",
+        "AIDEFENSE_MODELSCAN_WAIT_TIME_SECS",
+    )
+)
+DEFAULT_FILE_SCAN_TIMEOUT_SECONDS = (
+    DEFAULT_SCAN_TIMEOUT_SECONDS
+    if _POLLING_ENV_OVERRIDDEN
+    else FILE_SCAN_TIMEOUT_SECONDS
+)
 END_SCAN_STATUS = [ScanStatus.COMPLETED, ScanStatus.FAILED, ScanStatus.CANCELED]
 STATUS_SPINNER_REFRESH_SECONDS = 0.1
 
@@ -212,7 +229,7 @@ class ModelScanClient(ModelScan):
         show_progress: bool = True,
         progress_callback: Optional[UploadProgressCallback] = None,
         show_status_spinner: bool = True,
-        scan_timeout_seconds: float = DEFAULT_SCAN_TIMEOUT_SECONDS,
+        scan_timeout_seconds: float = DEFAULT_FILE_SCAN_TIMEOUT_SECONDS,
     ) -> ScanStatusInfo:
         """
         Run a complete security scan on a model file using the AI Defense service.
@@ -231,7 +248,9 @@ class ModelScanClient(ModelScan):
             progress_callback: Optional callback receiving uploaded and total bytes.
             show_status_spinner: Show a spinner while waiting for scan results.
             scan_timeout_seconds: Maximum time to wait for scan analysis. Defaults to
-                600 seconds. Upload time is not included.
+                15,000 seconds (about 4 hours 10 minutes), or to
+                `AIDEFENSE_MODELSCAN_RETRY_COUNT` x `AIDEFENSE_MODELSCAN_WAIT_TIME_SECS`
+                when either is set. Upload time is not included.
 
         Returns:
             ScanStatusInfo: Complete scan status information including:
