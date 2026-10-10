@@ -23,12 +23,14 @@ This example demonstrates how to:
 3. Get details of a specific MCP server by ID
 4. Update authentication configuration for an MCP server
 """
+from datetime import datetime, timedelta
 from enum import Enum
 import os
 
 from aidefense import Config
 from aidefense.mcpscan import MCPScan
 from aidefense.mcpscan.models import (
+    ListServerType,
     TransportType,
     AuthConfig,
     AuthType,
@@ -96,6 +98,10 @@ def print_server_details(server, verbose: bool = True) -> None:
         print(f"       High:     {server.threat_summary.high_count}")
         print(f"       Medium:   {server.threat_summary.medium_count}")
         print(f"       Low:      {server.threat_summary.low_count}")
+    if server.technique_names:
+        print(f"     Techniques Found: {', '.join(server.technique_names)}")
+    if server.registration_method:
+        print(f"     Registration Method: {server.registration_method.value if hasattr(server.registration_method, 'value') else server.registration_method}")
 
     if verbose:
         if server.status_info:
@@ -126,7 +132,13 @@ def main():
     print("=" * 50)
 
     try:
-        response = client.list_servers(limit=25, offset=0)
+        response = client.list_servers(
+            limit=25,
+            offset=0,
+            scan_date=datetime.now() - timedelta(days=1),
+            server_types=[ListServerType.MCP_SERVER_REMOTE],
+            severity=None,
+            transport_type=None,)
 
         if response.mcp_servers and response.mcp_servers.items:
             servers = response.mcp_servers.items

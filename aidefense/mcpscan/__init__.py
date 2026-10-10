@@ -92,6 +92,11 @@ from .models import (
     # ListMCPServers Request/Response Models
     ListMCPServersRequest,
     ListMCPServersResponse,
+    # MCP Server Stats Request/Response Models
+    GetMCPServerStatsResponse,
+    AttackTechnique,
+    ScanCoverage,
+    MCPServerStats,
     # UpdateAuthConfig Request/Response Models
     UpdateAuthConfigRequest,
     UpdateAuthConfigResponse,
