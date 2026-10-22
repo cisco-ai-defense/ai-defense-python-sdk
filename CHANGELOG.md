@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+## [2.3.0] - 2026-10-22
+
+### Added
+
+- **Bidirectional event-stream inspection** for AgentCore and adapter-based
+  providers, with acknowledgement-gated event release and optional streaming
+  transport dependencies ([#119](https://github.com/cisco-ai-defense/ai-defense-python-sdk/pull/119)).
+- **Native Anthropic Messages API support** in AgentSec, including synchronous,
+  asynchronous, and streaming calls in API and Gateway modes
+  ([#122](https://github.com/cisco-ai-defense/ai-defense-python-sdk/pull/122)).
+
+### Changed
+
+- Updated the validation SDK models and service definitions
+  ([#126](https://github.com/cisco-ai-defense/ai-defense-python-sdk/pull/126)).
+
+[2.3.0]: https://github.com/cisco-ai-defense/ai-defense-python-sdk/compare/v2.2.0...v2.3.0
+
 ## [2.2.0] - 2026-09-18
 
 ### Added
@@ -29,12 +49,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add validation SDK with standard and adaptive validation support
 
 [2.1.3]: https://github.com/cisco-ai-defense/ai-defense-python-sdk/compare/v2.1.2...v2.1.3
-
-## Unreleased
-
-- Add agentsec support for the native Anthropic Messages API, including sync,
-  async, tool content, and streaming calls.
-- Add Anthropic provider routing for API and Gateway integration modes.
 
 ## [2.1.2] - 2026-07-10
 
