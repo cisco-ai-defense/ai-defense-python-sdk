@@ -366,6 +366,26 @@ class EventStreamClient:
         if not isinstance(event.direction, StreamDirection):
             raise StreamProtocolError("StreamEvent.direction is invalid")
 
+        for message in event.messages:
+            if message.role not in (runtime_chat.Role.assistant, "assistant"):
+                continue
+            content = message.content
+            has_text = bool(
+                content is not None
+                and isinstance(content.text, str)
+                and content.text.strip()
+            )
+            has_parts = bool(
+                content is not None
+                and content.parts is not None
+                and content.parts.items
+            )
+            has_tool_call = bool(message.tool_calls) or message.function_call is not None
+            if not (has_text or has_parts or has_tool_call):
+                raise StreamProtocolError(
+                    "assistant messages must contain non-whitespace content or a tool call"
+                )
+
     def _open_channel(self) -> Any:
         """Create one channel per inspection call using the selected TLS mode.
 
