@@ -7,15 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-### Changed
-
-- Default `ModelScanClient.scan_file()` and `scan_repo()` result wait extended
-  from 600 to 15,000 seconds so scans of very large models (hundreds of GiB)
-  are not reported as timed out while the service is still downloading or
-  scanning them. The `AIDEFENSE_MODELSCAN_RETRY_COUNT` /
-  `AIDEFENSE_MODELSCAN_WAIT_TIME_SECS` overrides still take precedence
-  ([#127](https://github.com/cisco-ai-defense/ai-defense-python-sdk/pull/127)).
-
 ## [2.3.0] - 2026-10-22
 
 ### Added
@@ -31,6 +22,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Updated the validation SDK models and service definitions
   ([#126](https://github.com/cisco-ai-defense/ai-defense-python-sdk/pull/126)).
+- Default `ModelScanClient.scan_file()` and `scan_repo()` result wait extended
+  from 600 to 15,000 seconds so scans of very large models (hundreds of GiB)
+  are not reported as timed out while the service is still downloading or
+  scanning them. The `AIDEFENSE_MODELSCAN_RETRY_COUNT` /
+  `AIDEFENSE_MODELSCAN_WAIT_TIME_SECS` overrides still take precedence
+  ([#127](https://github.com/cisco-ai-defense/ai-defense-python-sdk/pull/127)).
 
 [2.3.0]: https://github.com/cisco-ai-defense/ai-defense-python-sdk/compare/v2.2.0...v2.3.0
 
