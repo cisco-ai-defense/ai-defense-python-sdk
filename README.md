@@ -50,7 +50,7 @@ The SDK enables you to detect security, privacy, and safety risks in real time, 
 
 - **Agent Runtime SDK**: Auto-patch LLM clients (OpenAI, Azure OpenAI, Bedrock, Vertex AI, Cohere, Mistral, Anthropic, Google GenAI, LiteLLM) and MCP clients with just 2 lines of code. Supports API mode (inspection) and Gateway mode (proxy).
 - **Chat Inspection**: Analyze chat prompts, responses, or full conversations for risks.
-- **Bidirectional Stream Inspection**: Safely release Strands, AgentCore, and adapter-based vendor events only after server acknowledgement.
+- **Bidirectional Event Stream API**: Inspect AgentCore, Strands, and adapter-based provider streams, releasing events only after server acknowledgement. Install the optional `streaming` extra to use it.
 - **HTTP Inspection**: Inspect HTTP requests and responses, including support for `requests.Request`, `requests.PreparedRequest`, and `requests.Response` objects.
 - **MCP Inspection**: Inspect Model Context Protocol (MCP) JSON-RPC 2.0 messages for security, privacy, and safety violations in AI agent tool calls, resource access, and responses.
 - **MCP Server Scanning**: Scan MCP servers for security threats and vulnerabilities, manage resource connections, policies, and events.
@@ -527,6 +527,11 @@ except SecurityPolicyError as e:
 | **Anthropic** | `anthropic` | `messages.create()`, `messages.stream()`, async equivalents |
 | **LiteLLM** | `litellm` | `completion()`, `acompletion()` |
 | **MCP** | `mcp` | `ClientSession.call_tool()`, `ClientSession.list_tools()` |
+
+Anthropic support covers the native Messages API in API and Gateway modes,
+including synchronous and asynchronous calls, tool use, multimodal content, and
+both raw and helper streaming APIs. Install the provider SDK separately with
+`pip install anthropic`; see the [Anthropic example](examples/agentsec/1-simple/anthropic_example.py).
 
 For end-to-end examples across frameworks (LangChain, CrewAI, Strands, etc.) and cloud runtimes (AWS Bedrock AgentCore, GCP Vertex AI Agent Engine, Azure AI Foundry), see the [agentsec examples](examples/agentsec/README.md).
 
