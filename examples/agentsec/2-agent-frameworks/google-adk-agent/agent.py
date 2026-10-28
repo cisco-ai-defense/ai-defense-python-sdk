@@ -34,7 +34,7 @@ Gemini authentication (one of the two):
     GOOGLE_API_KEY:             Gemini API key
 
   Option B — Vertex AI (current .env setup):
-    GOOGLE_CLOUD_PROJECT:       GCP project ID  (e.g. gcp-aiteamgcp-nprd-22046)
+    GOOGLE_CLOUD_PROJECT:       GCP project ID  (e.g. your-gcp-project-id)
     GOOGLE_CLOUD_LOCATION:      GCP region       (e.g. us-central1)
     + Application Default Credentials (run: gcloud auth application-default login)
 
