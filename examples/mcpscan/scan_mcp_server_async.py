@@ -79,7 +79,7 @@ def main():
     #     name="Authenticated MCP Server",
     #     server_type=ServerType.REMOTE,
     #     remote=RemoteServerInput(
-    #         url="https://feverous-roderick-vertically.ngrok-free.dev/mcp/api-key",
+    #         url="https://mcp-server.example.com/mcp/api-key",
     #         connection_type=TransportType.SSE,
     #     ),
     #     auth_config=AuthConfig(
@@ -96,7 +96,7 @@ def main():
     # oauth_config = OAuthConfig(
     #     client_id="google_search_client_123",
     #     client_secret="google_search_secret_456",
-    #     auth_server_url="https://feverous-roderick-vertically.ngrok-free.dev/oauth/token",
+    #     auth_server_url="https://auth.example.com/oauth/token",
     #     # scope="mcp:read mcp:execute",  # Optional: OAuth scopes
     # )
     #
@@ -105,7 +105,7 @@ def main():
     #     name="OAuth Protected MCP Server",
     #     server_type=ServerType.REMOTE,
     #     remote=RemoteServerInput(
-    #         url="https://feverous-roderick-vertically.ngrok-free.dev/mcp/oauth",  # e.g., "https://secure-mcp.example.com/sse"
+    #         url="https://mcp-server.example.com/mcp/oauth",  # e.g., "https://secure-mcp.example.com/sse"
     #         connection_type=TransportType.SSE,
     #     ),
     #     auth_config=AuthConfig(

@@ -1040,7 +1040,7 @@ agentsec.protect(
         # api_mode settings apply only when the integration mode is "api"
         "mcp": {
             "mode": "enforce",
-            "endpoint": "https://preview.api.inspect.aidefense.aiteam.cisco.com/api",
+            "endpoint": "https://your-ai-defense-api-endpoint",
             "api_key": os.getenv("AI_DEFENSE_API_MODE_LLM_API_KEY"),
         },
         "mcp_defaults": {"fail_open": True},

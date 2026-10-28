@@ -21,10 +21,10 @@ AgentSec MCP example for mock MCP auth servers:
 - API key auth
 
 Default endpoints:
-  - OAuth MCP endpoint:   https://mcp-testing.aiteam.cisco.com/mock_mcp/mcp/oauth
-  - API-Key MCP endpoint: https://mcp-testing.aiteam.cisco.com/mock_mcp/mcp/api-key
-  - OAuth token endpoint: https://mcp-testing.aiteam.cisco.com/mock_mcp/oauth/token
-  - Health check:         https://mcp-testing.aiteam.cisco.com/mock_mcp/health
+  - OAuth MCP endpoint:   https://your-mcp-oauth-server-url
+  - API-Key MCP endpoint: https://your-mcp-api-key-server-url
+  - OAuth token endpoint: https://your-mcp-oauth-token-url
+  - Health check:         https://your-mcp-oauth-health-url
 
 Environment variables (optional):
   MCP_AUTH_TYPE          # oauth2 (default) | api_key
@@ -66,19 +66,19 @@ if env_file.exists():
 MCP_AUTH_TYPE = os.getenv("MCP_AUTH_TYPE", "oauth2").strip().lower()
 MCP_OAUTH_SERVER_URL = os.getenv(
     "MCP_OAUTH_SERVER_URL",
-    "https://mcp-testing.aiteam.cisco.com/mock_mcp/mcp/oauth",
+    "https://your-mcp-oauth-server-url",
 )
 MCP_API_KEY_SERVER_URL = os.getenv(
     "MCP_API_KEY_SERVER_URL",
-    "https://mcp-testing.aiteam.cisco.com/mock_mcp/mcp/api-key",
+    "https://your-mcp-api-key-server-url",
 )
 MCP_TOKEN_URL = os.getenv(
     "MCP_OAUTH_TOKEN_URL",
-    "https://mcp-testing.aiteam.cisco.com/mock_mcp/oauth/token",
+    "https://your-mcp-oauth-token-url",
 )
 MCP_HEALTH_URL = os.getenv(
     "MCP_OAUTH_HEALTH_URL",
-    "https://mcp-testing.aiteam.cisco.com/mock_mcp/health",
+    "https://your-mcp-oauth-health-url",
 )
 MCP_CLIENT_ID = os.getenv("MCP_OAUTH_CLIENT_ID")
 MCP_CLIENT_SECRET = os.getenv("MCP_OAUTH_CLIENT_SECRET")
@@ -197,7 +197,7 @@ async def main() -> None:
         mcp_server_url = MCP_OAUTH_SERVER_URL
     else:
         # API-key flow matching curl:
-        # curl -X POST https://mcp-testing.aiteam.cisco.com/mock_mcp/mcp/api-key \
+        # curl -X POST https://your-mcp-api-key-server-url \
         #   -H "X-API-Key: test_api_key_12345" ...
         headers = {MCP_API_KEY_HEADER_NAME: MCP_API_KEY}
         mcp_server_url = MCP_API_KEY_SERVER_URL
