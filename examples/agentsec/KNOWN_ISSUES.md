@@ -42,7 +42,7 @@ with no function calls. Single-turn requests work correctly.
 ### Affected Endpoint
 
 ```
-POST https://gateway.preview.aidefense.aiteam.cisco.com/{org_id}/connections/{connection_id}/v1/projects/{project}/locations/{location}/publishers/google/models/{model}:generateContent
+POST https://your-ai-defense-gateway-host/{org_id}/connections/{connection_id}/v1/projects/{project}/locations/{location}/publishers/google/models/{model}:generateContent
 ```
 
 Also affects the `streamGenerateContent` variant.
@@ -69,7 +69,7 @@ conversation history) fails.
 **Test 1: Single-turn (PASSES)**
 ```bash
 curl -s -w "\nHTTP_CODE:%{http_code}" \
-  'https://gateway.preview.aidefense.aiteam.cisco.com/{org_id}/connections/{connection_id}/v1/projects/{project}/locations/{location}/publishers/google/models/gemini-2.5-flash-lite:generateContent' \
+  'https://your-ai-defense-gateway-host/{org_id}/connections/{connection_id}/v1/projects/{project}/locations/{location}/publishers/google/models/gemini-2.5-flash-lite:generateContent' \
   --header "Authorization: Bearer $API_TOKEN" \
   --header 'Content-Type: application/json' \
   --data '{
@@ -83,7 +83,7 @@ Result: **200 OK** with valid response.
 **Test 2: Multi-turn text-only (FAILS)**
 ```bash
 curl -s -w "\nHTTP_CODE:%{http_code}" \
-  'https://gateway.preview.aidefense.aiteam.cisco.com/{org_id}/connections/{connection_id}/v1/projects/{project}/locations/{location}/publishers/google/models/gemini-2.5-flash-lite:generateContent' \
+  'https://your-ai-defense-gateway-host/{org_id}/connections/{connection_id}/v1/projects/{project}/locations/{location}/publishers/google/models/gemini-2.5-flash-lite:generateContent' \
   --header "Authorization: Bearer $API_TOKEN" \
   --header 'Content-Type: application/json' \
   --data '{

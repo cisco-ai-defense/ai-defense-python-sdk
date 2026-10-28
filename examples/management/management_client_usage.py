@@ -75,7 +75,7 @@ def main():
     config = Config(
         management_base_url="https://api.security.cisco.com",
         timeout=60,  # Increase timeout for management API calls if needed,
-        runtime_base_url="https://api.inspect.aidefense.aiteam.cisco.com",
+        runtime_base_url="https://your-ai-defense-runtime-url",
     )
     client = ManagementClient(api_key=management_api_key, config=config)
 

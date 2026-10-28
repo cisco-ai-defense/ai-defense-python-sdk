@@ -109,7 +109,7 @@ vim examples/.env
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `AI_DEFENSE_API_MODE_LLM_ENDPOINT` | AI Defense API endpoint | `https://preview.api.inspect.aidefense.aiteam.cisco.com/api` |
+| `AI_DEFENSE_API_MODE_LLM_ENDPOINT` | AI Defense API endpoint | `https://your-ai-defense-api-endpoint` |
 | `AI_DEFENSE_API_MODE_LLM_API_KEY` | AI Defense API key | `your-api-key` |
 | `AGENTSEC_LLM_INTEGRATION_MODE` | Integration mode | `api` or `gateway` |
 

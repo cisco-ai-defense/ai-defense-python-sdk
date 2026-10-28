@@ -72,7 +72,7 @@ def example_api_mode_programmatic():
         api_mode={
             "llm": {
                 "mode": "enforce",  # Block policy violations
-                "endpoint": "https://preview.api.inspect.aidefense.aiteam.cisco.com/api",
+                "endpoint": "https://your-ai-defense-api-endpoint",
                 "api_key": os.getenv("AI_DEFENSE_API_MODE_LLM_API_KEY"),
             },
             "mcp": {
@@ -96,12 +96,12 @@ def example_api_mode_separate_mcp():
         api_mode={
             "llm": {
                 "mode": "enforce",
-                "endpoint": "https://preview.api.inspect.aidefense.aiteam.cisco.com/api",
+                "endpoint": "https://your-ai-defense-api-endpoint",
                 "api_key": os.getenv("AI_DEFENSE_API_MODE_LLM_API_KEY"),
             },
             "mcp": {
                 "mode": "enforce",
-                "endpoint": "https://mcp.api.inspect.aidefense.aiteam.cisco.com/api",
+                "endpoint": "https://your-ai-defense-mcp-api-endpoint",
                 "api_key": os.getenv("AI_DEFENSE_API_MODE_MCP_API_KEY"),
             },
         },
@@ -120,7 +120,7 @@ def example_openai_gateway_programmatic():
         gateway_mode={
             "llm_gateways": {
                 "openai-1": {
-                    "gateway_url": "https://gateway.preview.aidefense.aiteam.cisco.com/{tenant}/connections/{openai-conn}",
+                    "gateway_url": "https://your-ai-defense-gateway-host/{tenant}/connections/{openai-conn}",
                     "gateway_api_key": os.getenv("OPENAI_API_KEY"),
                     "auth_mode": "api_key",
                     "provider": "openai",
@@ -204,7 +204,7 @@ def example_mcp_gateway_programmatic():
         gateway_mode={
             "mcp_gateways": {
                 mcp_server_url: {
-                    "gateway_url": "https://gateway.agent.preview.aidefense.aiteam.cisco.com/mcp/tenant/{tenant}/connections/{connection}/server/{server}",
+                    "gateway_url": "https://your-ai-defense-mcp-gateway-host/mcp/tenant/{tenant}/connections/{connection}/server/{server}",
                     "auth_mode": "none",  # no auth needed for this MCP server
                 },
             },
@@ -238,7 +238,7 @@ def example_both_gateway_programmatic():
             },
             "mcp_gateways": {
                 os.getenv("MCP_SERVER_URL", "https://remote.mcpservers.org/fetch/mcp"): {
-                    "gateway_url": "https://gateway.agent.preview.aidefense.aiteam.cisco.com/mcp/...",
+                    "gateway_url": "https://your-ai-defense-mcp-gateway-host/mcp/...",
                     "auth_mode": "none",
                 },
             },
@@ -295,7 +295,7 @@ def main():
     print('      api_mode={')
     print('          "llm": {')
     print('              "mode": "enforce",')
-    print('              "endpoint": "https://preview.api.inspect.aidefense.aiteam.cisco.com/api",')
+    print('              "endpoint": "https://your-ai-defense-api-endpoint",')
     print('              "api_key": "your-key",')
     print('          },')
     print('      },')

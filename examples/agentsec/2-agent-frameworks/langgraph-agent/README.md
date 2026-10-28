@@ -104,7 +104,7 @@ All agent examples share a common `.env` file in `../_shared/`:
 
 ```bash
 # Cisco AI Defense (required for inspection)
-AI_DEFENSE_API_MODE_LLM_ENDPOINT=https://preview.api.inspect.aidefense.aiteam.cisco.com/api
+AI_DEFENSE_API_MODE_LLM_ENDPOINT=https://your-ai-defense-api-endpoint
 AI_DEFENSE_API_MODE_LLM_API_KEY=your-key-here
 
 # MCP Server (optional)
