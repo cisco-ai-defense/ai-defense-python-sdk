@@ -67,14 +67,14 @@ def main():
     oauth_config = OAuthConfig(
         client_id="google_search_client_123",
         client_secret="google_search_secret_456",
-        auth_server_url="https://feverous-roderick-vertically.ngrok-free.dev/oauth/token",
+        auth_server_url="https://auth.example.com/oauth/token",
     )
 
     # repository_url: optional absolute URI of the source repo (e.g. GitHub). Pass when the API
     # requires it to avoid validation errors; omit or set to None otherwise.
     register_request = RegisterMCPServerRequest(
         name="Demo oauth",
-        url="https://feverous-roderick-vertically.ngrok-free.dev/mcp/oauth",
+        url="https://mcp-server.example.com/mcp/oauth",
         connection_type=TransportType.STREAMABLE,
         scan_enabled=True,
         auth_config=AuthConfig(
