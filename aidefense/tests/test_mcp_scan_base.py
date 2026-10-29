@@ -37,6 +37,7 @@ from aidefense.mcpscan.models import (
     UpdateAuthConfigRequest,
     UpdateAuthConfigResponse,
     CapabilityType,
+    ListServerType,
     OnboardingStatus,
     SeverityLevel,
     TransportType,
@@ -1533,6 +1534,78 @@ class TestListServers:
         )
         assert result.mcp_servers.items[0].scan_enabled is True
         assert result.mcp_servers.items[2].auth_type == "API_KEY"
+
+    def test_list_servers_parses_draft_onboarding_status(self, mcp_scan):
+        """AIFW-33032: servers mid multi-step registration come back as DRAFT."""
+        mcp_scan.make_request.return_value = {
+            "mcpServers": {
+                "items": [
+                    {
+                        "id": "7da426c0-a199-4d23-8ece-0279a496d67d",
+                        "name": "aid-31547-31863-1787657409316",
+                        "url": "",
+                        "connectionType": "TRANSPORT_TYPE_UNSPECIFIED",
+                        "onboardingStatus": "DRAFT",
+                        "type": [],
+                    },
+                    {
+                        "id": "srv-completed-001",
+                        "name": "Completed Server",
+                        "url": "https://completed.example.com/mcp",
+                        "connectionType": "STREAMABLE",
+                        "onboardingStatus": "COMPLETED",
+                        "type": ["MCP_SERVER_REMOTE"],
+                    },
+                ],
+                "paging": {"offset": 0, "count": 2, "total": 76},
+            },
+        }
+
+        result = mcp_scan.list_servers(
+            sort_by=ServersSortBy.SCAN_DATE, sort_order=SortOrder.ASC
+        )
+
+        draft, completed = result.mcp_servers.items
+        assert draft.onboarding_status == OnboardingStatus.DRAFT
+        assert draft.url == ""
+        assert draft.connection_type == TransportType.TRANSPORT_TYPE_UNSPECIFIED
+        assert completed.onboarding_status == OnboardingStatus.COMPLETED
+        assert result.mcp_servers.paging.total == 76
+
+    def test_list_servers_filter_by_draft_onboarding_status(self, mcp_scan):
+        """Filtering by DRAFT sends the enum value as the query param."""
+        mcp_scan.make_request.return_value = {
+            "mcpServers": {"items": [], "paging": {"total": 0}},
+        }
+
+        mcp_scan.list_servers(onboarding_status=[OnboardingStatus.DRAFT])
+
+        params = mcp_scan.make_request.call_args.kwargs["params"]
+        assert params["onboarding_status"] == ["DRAFT"]
+
+    def test_list_servers_parses_package_server_type(self, mcp_scan):
+        """PyPI-registered servers are typed MCP_SERVER_PACKAGE."""
+        mcp_scan.make_request.return_value = {
+            "mcpServers": {
+                "items": [
+                    {
+                        "id": "srv-pypi-001",
+                        "name": "pypi-mcp-server",
+                        "url": "",
+                        "connectionType": "STDIO",
+                        "onboardingStatus": "COMPLETED",
+                        "repositoryUrl": "https://pypi.org/project/example-mcp/1.0.0/",
+                        "sourceIdentifier": "pypi",
+                        "type": ["MCP_SERVER_PACKAGE"],
+                    },
+                ],
+                "paging": {"total": 1},
+            },
+        }
+
+        result = mcp_scan.list_servers()
+
+        assert result.mcp_servers.items[0].type == [ListServerType.MCP_SERVER_PACKAGE]
 
     def test_list_servers_filter_by_transport_type(self, mcp_scan):
         """Test listing servers filtered by transport type."""

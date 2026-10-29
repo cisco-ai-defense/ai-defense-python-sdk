@@ -45,6 +45,7 @@ def format_onboarding_status(status) -> str:
         "COMPLETED": "✅",
         "INPROGRESS": "🔄",
         "FAILED": "❌",
+        "DRAFT": "📝",
     }
     icon = status_icons.get(status_str.upper(), "❓")
     return f"{icon} {status_str}"

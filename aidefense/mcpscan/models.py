@@ -100,6 +100,7 @@ class OnboardingStatus(str, Enum):
     INPROGRESS = "INPROGRESS"
     FAILED = "FAILED"
     COMPLETED = "COMPLETED"
+    DRAFT = "DRAFT"  # Multi-step registration saved but not yet submitted
 
 
 class ServerType(str, Enum):
@@ -119,6 +120,7 @@ class ListServerType(str, Enum):
     MCP_SERVER_NONE = "MCP_SERVER_NONE"
     MCP_SERVER_CODE = "MCP_SERVER_CODE"
     MCP_SERVER_REMOTE = "MCP_SERVER_REMOTE"
+    MCP_SERVER_PACKAGE = "MCP_SERVER_PACKAGE"  # Package-registry origin (e.g. PyPI)
 
 def restore_enum_wrapper(cls, values):
     """Helper to restore enum values from string representations."""
