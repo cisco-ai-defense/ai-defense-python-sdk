@@ -561,9 +561,10 @@ class _AnthropicStreamManagerProxy:
 
     def __exit__(self, exc_type, exc, exc_tb):
         try:
-            return self._manager.__exit__(exc_type, exc, exc_tb)
-        finally:
             self._inspect_final_message()
+        finally:
+            suppress = self._manager.__exit__(exc_type, exc, exc_tb)
+        return suppress
 
     def _inspect_final_message(self):
         if self._inspection_done or not _should_inspect():
@@ -594,9 +595,10 @@ class _AnthropicAsyncStreamManagerProxy:
 
     async def __aexit__(self, exc_type, exc, exc_tb):
         try:
-            return await self._manager.__aexit__(exc_type, exc, exc_tb)
-        finally:
             await self._inspect_final_message()
+        finally:
+            suppress = await self._manager.__aexit__(exc_type, exc, exc_tb)
+        return suppress
 
     async def _inspect_final_message(self):
         if self._inspection_done or not _should_inspect():
