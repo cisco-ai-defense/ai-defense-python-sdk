@@ -121,6 +121,16 @@ class TestAnthropicNormalization:
         assert messages[-1]["role"] == "system"
         assert "tool_definitions" in messages[-1]["content"]
 
+    def test_materializes_iterable_messages_for_inspection(self):
+        prompt = {"role": "user", "content": "My social security number is 123-45-6789"}
+        kwargs = {"messages": (m for m in [prompt])}
+
+        messages = _normalize_kwargs(kwargs)
+
+        assert kwargs["messages"] == [prompt]
+        assert messages[-1]["role"] == "user"
+        assert "123-45-6789" in messages[-1]["content"]
+
     def test_gateway_uses_native_messages_endpoint_and_payload(self):
         settings = SimpleNamespace(url="https://gateway.example.com/tenant/connection")
         assert _gateway_url(settings) == "https://gateway.example.com/tenant/connection/v1/messages"
@@ -185,6 +195,33 @@ class TestAnthropicInspection:
             )
 
         wrapped.assert_not_called()
+
+    @patch("aidefense.runtime.agentsec.patchers.anthropic._get_inspector")
+    def test_iterable_messages_are_inspected_before_provider_call(self, get_inspector):
+        _enable_api(mode="enforce")
+        inspector = MagicMock()
+        inspector.inspect_conversation.return_value = Decision.block(reasons=["pii"])
+        get_inspector.return_value = inspector
+        wrapped = MagicMock()
+
+        class MessageIterable:
+            def __iter__(self):
+                yield {
+                    "role": "user",
+                    "content": "My social security number is 123-45-6789",
+                }
+
+        with pytest.raises(SecurityPolicyError):
+            _wrap_create(
+                wrapped,
+                MagicMock(),
+                (),
+                {"model": "claude-sonnet", "messages": MessageIterable()},
+            )
+
+        wrapped.assert_not_called()
+        request_messages = inspector.inspect_conversation.call_args.args[0]
+        assert "123-45-6789" in request_messages[-1]["content"]
 
     @patch("aidefense.runtime.agentsec.patchers.anthropic._get_inspector")
     def test_sync_stream_inspects_accumulated_text(self, get_inspector):
@@ -340,6 +377,99 @@ class TestAnthropicInspection:
                 chunks.append(chunk)
             assert chunks == ["done"]
         assert inspector.ainspect_conversation.call_count == 2
+
+    @patch("aidefense.runtime.agentsec.patchers.anthropic._get_inspector")
+    def test_sync_unread_stream_is_inspected_before_close(self, get_inspector):
+        _enable_api()
+        inspector = MagicMock()
+        inspector.inspect_conversation.return_value = Decision.allow()
+        get_inspector.return_value = inspector
+        final_message = {"content": [{"type": "text", "text": "123-45-6789"}]}
+
+        class FakeStream:
+            def __init__(self):
+                self.closed = False
+
+            def get_final_message(self):
+                if self.closed:
+                    raise RuntimeError(
+                        "Attempted to read or stream content, but the stream has been closed."
+                    )
+                return final_message
+
+        class FakeManager:
+            def __init__(self):
+                self.stream = FakeStream()
+
+            def __enter__(self):
+                return self.stream
+
+            def __exit__(self, exc_type, exc, exc_tb):
+                self.stream.closed = True
+                return False
+
+        fake_manager = FakeManager()
+        manager = _wrap_stream(
+            MagicMock(return_value=fake_manager),
+            MagicMock(),
+            (),
+            {"model": "claude-sonnet", "messages": [{"role": "user", "content": "Hi"}]},
+        )
+
+        with manager:
+            pass
+
+        assert fake_manager.stream.closed is True
+        assert inspector.inspect_conversation.call_count == 2
+        response_messages = inspector.inspect_conversation.call_args_list[1].args[0]
+        assert "123-45-6789" in response_messages[-1]["content"]
+
+    @pytest.mark.asyncio
+    @patch("aidefense.runtime.agentsec.patchers.anthropic._get_inspector")
+    async def test_async_unread_stream_is_inspected_before_close(self, get_inspector):
+        _enable_api()
+        inspector = MagicMock()
+        inspector.ainspect_conversation = AsyncMock(return_value=Decision.allow())
+        get_inspector.return_value = inspector
+        final_message = {"content": [{"type": "text", "text": "123-45-6789"}]}
+
+        class FakeStream:
+            def __init__(self):
+                self.closed = False
+
+            async def get_final_message(self):
+                if self.closed:
+                    raise RuntimeError(
+                        "Attempted to read or stream content, but the stream has been closed."
+                    )
+                return final_message
+
+        class FakeManager:
+            def __init__(self):
+                self.stream = FakeStream()
+
+            async def __aenter__(self):
+                return self.stream
+
+            async def __aexit__(self, exc_type, exc, exc_tb):
+                self.stream.closed = True
+                return False
+
+        fake_manager = FakeManager()
+        manager = _wrap_stream_async(
+            MagicMock(return_value=fake_manager),
+            MagicMock(),
+            (),
+            {"model": "claude-sonnet", "messages": [{"role": "user", "content": "Hi"}]},
+        )
+
+        async with manager:
+            pass
+
+        assert fake_manager.stream.closed is True
+        assert inspector.ainspect_conversation.call_count == 2
+        response_messages = inspector.ainspect_conversation.call_args_list[1].args[0]
+        assert "123-45-6789" in response_messages[-1]["content"]
 
 
 class TestAnthropicPatchApply:
