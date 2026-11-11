@@ -582,10 +582,25 @@ class _AnthropicStreamManagerProxy:
 
     def __exit__(self, exc_type, exc, exc_tb):
         try:
-            self._inspect_final_message()
+            if exc_type is None:
+                self._inspect_final_message()
+            else:
+                self._skip_final_inspection(exc_type)
         finally:
             suppress = self._manager.__exit__(exc_type, exc, exc_tb)
         return suppress
+
+    def _skip_final_inspection(self, exc_type):
+        # Draining a stream whose block already raised can fail or block, and
+        # an inspection error would replace the caller's original exception.
+        if self._inspection_done or self._stream is None or not _should_inspect():
+            return
+        self._inspection_done = True
+        logger.warning(
+            "[Anthropic message stream inspection] Skipped response inspection "
+            "because the stream block raised %s",
+            exc_type.__name__,
+        )
 
     def _inspect_final_message(self):
         if self._inspection_done or not _should_inspect():
@@ -616,10 +631,26 @@ class _AnthropicAsyncStreamManagerProxy:
 
     async def __aexit__(self, exc_type, exc, exc_tb):
         try:
-            await self._inspect_final_message()
+            if exc_type is None:
+                await self._inspect_final_message()
+            else:
+                self._skip_final_inspection(exc_type)
         finally:
             suppress = await self._manager.__aexit__(exc_type, exc, exc_tb)
         return suppress
+
+    def _skip_final_inspection(self, exc_type):
+        # Awaiting the rest of the stream during cancellation or after an error
+        # can delay teardown, and an inspection error would replace the
+        # caller's original exception.
+        if self._inspection_done or self._stream is None or not _should_inspect():
+            return
+        self._inspection_done = True
+        logger.warning(
+            "[Anthropic async message stream inspection] Skipped response inspection "
+            "because the stream block raised %s",
+            exc_type.__name__,
+        )
 
     async def _inspect_final_message(self):
         if self._inspection_done or not _should_inspect():
