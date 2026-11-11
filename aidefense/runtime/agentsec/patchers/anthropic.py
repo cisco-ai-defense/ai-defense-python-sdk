@@ -150,6 +150,26 @@ def _content_to_text(content: Any) -> str:
     return _block_to_text(content)
 
 
+def _materialize_messages(messages: Any) -> List[Any]:
+    """Copy an Anthropic messages iterable into a list so it can be inspected and reused.
+
+    Anthropic types ``messages`` as Iterable. Generators are consumed once, so
+    inspection and the provider call must share the same materialized list.
+    Strings, bytes, and mappings are not message sequences.
+    """
+    if messages is None:
+        return []
+    if isinstance(messages, list):
+        return messages
+    if isinstance(messages, tuple):
+        return list(messages)
+    if isinstance(messages, (str, bytes, dict)):
+        return []
+    if isinstance(messages, Iterable):
+        return list(messages)
+    return []
+
+
 def _normalize_messages(messages: Any, system: Any = None) -> List[Dict[str, Any]]:
     """Normalize native Anthropic messages to agentsec's role/content format."""
     result: List[Dict[str, Any]] = []
@@ -168,7 +188,8 @@ def _normalize_messages(messages: Any, system: Any = None) -> List[Dict[str, Any
 
 
 def _normalize_kwargs(kwargs: Dict[str, Any]) -> List[Dict[str, Any]]:
-    messages = _normalize_messages(kwargs.get("messages", []), kwargs.get("system"))
+    kwargs["messages"] = _materialize_messages(kwargs.get("messages", []))
+    messages = _normalize_messages(kwargs["messages"], kwargs.get("system"))
     tools = kwargs.get("tools")
     if tools:
         messages.append(
@@ -561,9 +582,25 @@ class _AnthropicStreamManagerProxy:
 
     def __exit__(self, exc_type, exc, exc_tb):
         try:
-            return self._manager.__exit__(exc_type, exc, exc_tb)
+            if exc_type is None:
+                self._inspect_final_message()
+            else:
+                self._skip_final_inspection(exc_type)
         finally:
-            self._inspect_final_message()
+            suppress = self._manager.__exit__(exc_type, exc, exc_tb)
+        return suppress
+
+    def _skip_final_inspection(self, exc_type):
+        # Draining a stream whose block already raised can fail or block, and
+        # an inspection error would replace the caller's original exception.
+        if self._inspection_done or self._stream is None or not _should_inspect():
+            return
+        self._inspection_done = True
+        logger.warning(
+            "[Anthropic message stream inspection] Skipped response inspection "
+            "because the stream block raised %s",
+            exc_type.__name__,
+        )
 
     def _inspect_final_message(self):
         if self._inspection_done or not _should_inspect():
@@ -594,9 +631,26 @@ class _AnthropicAsyncStreamManagerProxy:
 
     async def __aexit__(self, exc_type, exc, exc_tb):
         try:
-            return await self._manager.__aexit__(exc_type, exc, exc_tb)
+            if exc_type is None:
+                await self._inspect_final_message()
+            else:
+                self._skip_final_inspection(exc_type)
         finally:
-            await self._inspect_final_message()
+            suppress = await self._manager.__aexit__(exc_type, exc, exc_tb)
+        return suppress
+
+    def _skip_final_inspection(self, exc_type):
+        # Awaiting the rest of the stream during cancellation or after an error
+        # can delay teardown, and an inspection error would replace the
+        # caller's original exception.
+        if self._inspection_done or self._stream is None or not _should_inspect():
+            return
+        self._inspection_done = True
+        logger.warning(
+            "[Anthropic async message stream inspection] Skipped response inspection "
+            "because the stream block raised %s",
+            exc_type.__name__,
+        )
 
     async def _inspect_final_message(self):
         if self._inspection_done or not _should_inspect():
