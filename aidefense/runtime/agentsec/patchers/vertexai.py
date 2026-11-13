@@ -499,7 +499,7 @@ def _handle_prediction_gateway_call(
         _resp_text = ""
         try:
             _resp_text = e.response.text[:1000] if hasattr(e.response, "text") else ""
-            logger.error(f"[PredictionService GATEWAY] HTTP {e.response.status_code} — body: {_resp_text}")
+            logger.debug(f"[PredictionService GATEWAY] HTTP {e.response.status_code} — body: {_resp_text}")
         except Exception:
             pass
         if e.response.status_code == 500 and _has_multi_turn_contents(request_body.get("contents", [])):
@@ -1017,7 +1017,7 @@ def _handle_vertexai_gateway_call(
         _resp_text = ""
         try:
             _resp_text = e.response.text[:1000] if hasattr(e.response, 'text') else ""
-            logger.error(f"[GATEWAY] HTTP {e.response.status_code} — body preview: {_resp_text}")
+            logger.debug(f"[GATEWAY] HTTP {e.response.status_code} — body preview: {_resp_text}")
         except Exception:
             pass
         if "Invalid JSON payload" in _resp_text:

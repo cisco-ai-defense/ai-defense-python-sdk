@@ -28,7 +28,7 @@ from tenacity import (
 )
 
 from .config import AsyncConfig
-from .exceptions import ApiError
+from .exceptions import ApiError, SDKError
 from .request_handler import BaseRequestHandler
 from .runtime.auth import AsyncAuth
 
@@ -117,8 +117,23 @@ class AsyncRequestHandler(BaseRequestHandler):
         return False
 
     def _log_retry_attempt(self, retry_state: RetryCallState) -> None:
-        """Logs retry attempt."""
-        self.config.logger.info(f"Retry state: {retry_state.__dict__}, Retry attempt: {retry_state.attempt_number}")
+        """
+        Logs retry attempt.
+
+        Only non-sensitive metadata is logged. The retry state's call arguments
+        (headers, json_data) must never be logged since they contain the user's
+        request payload.
+        """
+        exception = retry_state.outcome.exception() if retry_state.outcome else None
+        next_sleep = retry_state.next_action.sleep if retry_state.next_action else 0
+        self.config.logger.warning(
+            "Retrying request | attempt: %s, error: %s, status_code: %s, request_id: %s, next_wait_seconds: %.2f",
+            retry_state.attempt_number,
+            type(exception).__name__ if exception else None,
+            getattr(exception, "status_code", None),
+            getattr(exception, "request_id", None),
+            next_sleep,
+        )
 
 
     async def request(
@@ -194,6 +209,8 @@ class AsyncRequestHandler(BaseRequestHandler):
 
                 return await response.json()
 
+        except SDKError:
+            raise
         except aiohttp.ClientError as e:
             self.config.logger.error(f"Async request failed: {e}")
             raise

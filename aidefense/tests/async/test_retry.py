@@ -16,13 +16,15 @@
 
 """Tests for AsyncRequestHandler retry logic."""
 
+import logging
+
 import aiohttp
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from aidefense.async_request_handler import AsyncRequestHandler
 from aidefense.exceptions import ApiError, SDKError, ValidationError
-from tenacity import RetryCallState
+from tenacity import RetryAction, RetryCallState
 
 
 class TestAsyncRequestHandlerRetry:
@@ -120,21 +122,65 @@ class TestAsyncRequestHandlerRetry:
         result = handler._should_retry_exception(error)
         assert result is True
 
-    @pytest.mark.asyncio
-    async def test_log_retry_attempt_logs_info(self, async_config):
-        """Test that _log_retry_attempt logs retry information."""
-        handler = AsyncRequestHandler(async_config)
-
-        # Create a mock RetryCallState
-        retry_state = MagicMock(spec=RetryCallState)
+    @staticmethod
+    def _make_retry_state(exception, kwargs=None):
+        retry_state = RetryCallState(retry_object=MagicMock(), fn=None, args=(), kwargs=kwargs or {})
         retry_state.attempt_number = 2
-        retry_state.__dict__ = {"attempt_number": 2, "outcome": None}
+        retry_state.set_exception((type(exception), exception, None))
+        retry_state.next_action = RetryAction(1.5)
+        return retry_state
 
-        with patch.object(handler.config.logger, "info") as mock_logger:
+    @pytest.mark.asyncio
+    async def test_log_retry_attempt_logs_metadata_at_warning(self, async_config, caplog):
+        """Test that _log_retry_attempt logs retry metadata at WARNING."""
+        handler = AsyncRequestHandler(async_config)
+        retry_state = self._make_retry_state(ApiError("API error 503: unavailable", status_code=503, request_id="req-123"))
+
+        with caplog.at_level(logging.DEBUG, logger=handler.config.logger.name):
             handler._log_retry_attempt(retry_state)
 
-            # Verify logger.info was called
-            mock_logger.assert_called_once()
-            call_args = mock_logger.call_args[0][0]
-            assert "Retry attempt" in call_args
-            assert "2" in call_args
+        assert len(caplog.records) == 1
+        record = caplog.records[0]
+        assert record.levelno == logging.WARNING
+        message = record.getMessage()
+        assert "attempt: 2" in message
+        assert "error: ApiError" in message
+        assert "status_code: 503" in message
+        assert "request_id: req-123" in message
+        assert "next_wait_seconds: 1.50" in message
+
+    @pytest.mark.asyncio
+    async def test_log_retry_attempt_does_not_log_request_payload(self, async_config, caplog):
+        """Test that _log_retry_attempt never logs the request body or headers."""
+        handler = AsyncRequestHandler(async_config)
+        secret_text = "my credit card number is 4111-1111-1111-1111"
+        retry_state = self._make_retry_state(
+            ApiError("API error 500: internal", status_code=500),
+            kwargs={
+                "method": "POST",
+                "url": "https://example.com/api/v1/inspect/chat",
+                "headers": {"X-Cisco-AI-Defense-API-Key": "secret-api-key"},
+                "json_data": {"messages": [{"role": "user", "content": secret_text}]},
+            },
+        )
+
+        with caplog.at_level(logging.DEBUG, logger=handler.config.logger.name):
+            handler._log_retry_attempt(retry_state)
+
+        assert secret_text not in caplog.text
+        assert "secret-api-key" not in caplog.text
+        assert "json_data" not in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_log_retry_attempt_handles_network_error(self, async_config, caplog):
+        """Test that _log_retry_attempt handles exceptions without status_code or request_id."""
+        handler = AsyncRequestHandler(async_config)
+        retry_state = self._make_retry_state(aiohttp.ServerTimeoutError("Timeout"))
+
+        with caplog.at_level(logging.DEBUG, logger=handler.config.logger.name):
+            handler._log_retry_attempt(retry_state)
+
+        message = caplog.records[0].getMessage()
+        assert "error: ServerTimeoutError" in message
+        assert "status_code: None" in message
+        assert "request_id: None" in message

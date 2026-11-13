@@ -280,7 +280,8 @@ def _handle_gateway_call_sync(
         with httpx.Client(timeout=float(gw_settings.timeout)) as client:
             response = client.post(full_url, json=request_body, headers=auth_headers)
             if response.status_code >= 400:
-                logger.error(f"[GATEWAY] azure gateway returned {response.status_code}: {response.text[:500]}")
+                logger.error(f"[GATEWAY] azure gateway returned {response.status_code}")
+                logger.debug(f"[GATEWAY] azure gateway error body: {response.text[:500]}")
             response.raise_for_status()
             response_data = response.json()
 
@@ -348,7 +349,8 @@ async def _handle_gateway_call_async(
         async with httpx.AsyncClient(timeout=float(gw_settings.timeout)) as client:
             response = await client.post(full_url, json=request_body, headers=auth_headers)
             if response.status_code >= 400:
-                logger.error(f"[GATEWAY] azure gateway returned {response.status_code}: {response.text[:500]}")
+                logger.error(f"[GATEWAY] azure gateway returned {response.status_code}")
+                logger.debug(f"[GATEWAY] azure gateway error body: {response.text[:500]}")
             response.raise_for_status()
             response_data = response.json()
 

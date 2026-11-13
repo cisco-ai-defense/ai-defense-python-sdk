@@ -555,6 +555,32 @@ class TestHandleVertexAIGatewayCall:
         with pytest.raises(SecurityPolicyError):
             _handle_vertexai_gateway_call("model", "Hi", self._gw(fail_open=False))
 
+    @patch("aidefense.runtime.agentsec.patchers.vertexai.logger")
+    @patch("aidefense.runtime.agentsec.patchers._google_common.build_vertexai_gateway_url",
+           return_value="https://gw.example.com/v1/model:generateContent")
+    @patch("httpx.Client")
+    def test_http_error_body_logged_only_at_debug(self, mock_client_cls, _url, mock_logger):
+        secret = "my SSN is 123-45-6789"
+        request = httpx.Request("POST", "https://gw.example.com")
+        response = httpx.Response(500, request=request, text=f'{{"error": "bad input: {secret}"}}')
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+        mock_client.post.return_value = MagicMock(
+            raise_for_status=MagicMock(side_effect=httpx.HTTPStatusError("500", request=request, response=response))
+        )
+        mock_client_cls.return_value = mock_client
+
+        clear_inspection_context()
+        with pytest.raises(httpx.HTTPStatusError):
+            _handle_vertexai_gateway_call("model", "Hi", self._gw(fail_open=True))
+
+        error_logs = " ".join(str(c) for c in mock_logger.error.call_args_list + mock_logger.warning.call_args_list)
+        debug_logs = " ".join(str(c) for c in mock_logger.debug.call_args_list)
+        assert "HTTP error" in error_logs
+        assert secret not in error_logs
+        assert secret in debug_logs
+
 
 # ===========================================================================
 # GoogleStreamingInspectionWrapper

@@ -1038,10 +1038,10 @@ def _handle_bedrock_gateway_call(operation_name: str, api_params: Dict, gw_setti
         
     except httpx.HTTPStatusError as e:
         logger.error(f"[GATEWAY] HTTP error: {e}")
-        # Log status code and truncated body for debugging (avoid leaking sensitive data)
+        # The response body may echo user content, so it is only logged at DEBUG
         try:
             body_preview = e.response.text[:200] if hasattr(e.response, 'text') else ""
-            logger.error(f"[GATEWAY] HTTP {e.response.status_code} — body preview: {body_preview}")
+            logger.debug(f"[GATEWAY] HTTP {e.response.status_code} — body preview: {body_preview}")
         except Exception:
             pass
         if gw_settings.fail_open:

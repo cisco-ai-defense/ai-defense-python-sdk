@@ -865,7 +865,8 @@ def _handle_gateway_call_sync(kwargs: Dict[str, Any], stream: bool, normalized: 
                 headers=auth_headers,
             )
             if response.status_code >= 400:
-                logger.error(f"[GATEWAY] {provider} gateway returned {response.status_code}: {response.text[:500]}")
+                logger.error(f"[GATEWAY] {provider} gateway returned {response.status_code}")
+                logger.debug(f"[GATEWAY] {provider} gateway error body: {response.text[:500]}")
             response.raise_for_status()
             response_data = response.json()
         
@@ -1168,7 +1169,8 @@ async def _handle_gateway_call_async(kwargs: Dict[str, Any], stream: bool, norma
                 headers=auth_headers,
             )
             if response.status_code >= 400:
-                logger.error(f"[GATEWAY] {provider} gateway returned {response.status_code}: {response.text[:500]}")
+                logger.error(f"[GATEWAY] {provider} gateway returned {response.status_code}")
+                logger.debug(f"[GATEWAY] {provider} gateway error body: {response.text[:500]}")
             response.raise_for_status()
             response_data = response.json()
         
