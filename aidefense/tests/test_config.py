@@ -16,7 +16,7 @@
 
 import pytest
 import logging
-from aidefense.config import Config
+from aidefense.config import AsyncConfig, Config
 from requests.adapters import HTTPAdapter
 
 
@@ -61,6 +61,30 @@ def test_config_with_logger():
 def test_config_with_logger_params():
     config = Config(logger_params={"level": "DEBUG"})
     assert config.logger.level == logging.DEBUG
+
+
+def test_config_default_log_level_is_warning():
+    config = Config()
+    assert config.logger.level == logging.WARNING
+    assert not config.logger.isEnabledFor(logging.INFO)
+
+
+def test_config_logger_params_can_enable_info():
+    config = Config(logger_params={"level": "INFO"})
+    assert config.logger.level == logging.INFO
+    assert config.logger.isEnabledFor(logging.INFO)
+
+
+@pytest.mark.asyncio
+async def test_async_config_default_log_level_is_warning():
+    AsyncConfig._instances = {}
+    try:
+        config = AsyncConfig()
+        assert config.logger.level == logging.WARNING
+        assert not config.logger.isEnabledFor(logging.INFO)
+        await config.close()
+    finally:
+        AsyncConfig._instances = {}
 
 
 def test_config_with_observability_hooks():

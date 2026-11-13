@@ -16,10 +16,14 @@
 
 """Tests for AsyncRequestHandler error handling."""
 
+import logging
+
 import aiohttp
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from aidefense.async_request_handler import AsyncRequestHandler
+from aidefense.config import AsyncConfig
 from aidefense.exceptions import SDKError, ValidationError, ApiError
 
 
@@ -161,3 +165,60 @@ class TestAsyncRequestHandlerErrorHandling:
 
             with pytest.raises(ApiError, match="Unknown error"):
                 await handler.request(method="GET", url="https://api.example.com/test", auth=mock_auth)
+
+    @pytest.mark.asyncio
+    async def test_retried_api_error_not_logged_as_unexpected(self, reset_async_config, mock_auth, caplog):
+        """Test that retried ApiErrors are not logged as unexpected errors and do not leak the server message."""
+        config = AsyncConfig(retry_config={"total": 2, "backoff_factor": 0.01})
+        handler = AsyncRequestHandler(config)
+        await handler.ensure_session()
+        secret = "my SSN is 123-45-6789"
+
+        mock_response = AsyncMock()
+        mock_response.status = 500
+        mock_response.text = AsyncMock(return_value="Server Error")
+        mock_response.json = AsyncMock(return_value={"message": f"Internal error processing: {secret}"})
+
+        try:
+            with patch.object(handler._session, "request") as mock_request:
+                mock_request.return_value.__aenter__.return_value = mock_response
+
+                with caplog.at_level(logging.WARNING, logger=config.logger.name):
+                    with pytest.raises(ApiError, match="API error 500"):
+                        await handler.request(method="POST", url="https://api.example.com/test", auth=mock_auth)
+
+            assert mock_request.call_count == 3
+            assert [r for r in caplog.records if r.levelno >= logging.ERROR] == []
+            assert "Unexpected error" not in caplog.text
+            assert secret not in caplog.text
+            assert len([r for r in caplog.records if "Retrying request" in r.getMessage()]) == 2
+        finally:
+            await handler.close()
+            await config.close()
+
+    @pytest.mark.asyncio
+    async def test_validation_error_not_logged_as_unexpected(self, handler, mock_auth, caplog):
+        """Test that SDK validation errors are raised without an unexpected error log."""
+        await handler.ensure_session()
+
+        with caplog.at_level(logging.WARNING, logger=handler.config.logger.name):
+            with pytest.raises(ValidationError, match="Invalid HTTP method"):
+                await handler.request(method="FOO", url="https://api.example.com/test", auth=mock_auth)
+
+        assert "Unexpected error" not in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_unexpected_exception_still_logged(self, handler, mock_auth, caplog):
+        """Test that non-SDK exceptions are still logged as unexpected errors."""
+        await handler.ensure_session()
+
+        with patch.object(handler._session, "request") as mock_request:
+            mock_request.side_effect = RuntimeError("boom")
+
+            with caplog.at_level(logging.WARNING, logger=handler.config.logger.name):
+                with pytest.raises(RuntimeError, match="boom"):
+                    await handler.request(method="GET", url="https://api.example.com/test", auth=mock_auth)
+
+        error_records = [r for r in caplog.records if r.levelno == logging.ERROR]
+        assert len(error_records) == 1
+        assert "Unexpected error in async request: boom" in error_records[0].getMessage()

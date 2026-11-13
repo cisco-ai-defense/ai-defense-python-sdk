@@ -571,7 +571,7 @@ def _handle_google_genai_gateway_call(
             _resp_text = ""
             try:
                 _resp_text = e.response.text[:1000] if hasattr(e.response, "text") else ""
-                logger.error(f"[GATEWAY] HTTP {e.response.status_code} — body preview: {_resp_text}")
+                logger.debug(f"[GATEWAY] HTTP {e.response.status_code} — body preview: {_resp_text}")
             except Exception:
                 pass
             # Detect gateway body-size corruption

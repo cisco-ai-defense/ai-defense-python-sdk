@@ -902,7 +902,9 @@ if events.items:
 
 The SDK uses a `Config` object for global settings:
 
-- **Logger**: Pass a custom logger or logger parameters.
+- **Logger**: Pass a custom logger or logger parameters. The default level is `WARNING`;
+  use `logger_params={"level": "INFO"}` or `"DEBUG"` for more logs. `DEBUG` logs can
+  include request/response bodies, so avoid it in production.
 - **Retry Policy**: Customize retry attempts, backoff, and status codes.
 - **Connection Pool**: Control HTTP connection pooling for performance.
 

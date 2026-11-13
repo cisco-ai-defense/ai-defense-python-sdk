@@ -29,7 +29,8 @@ Configuration Options
 **Logging Configuration**
 
 - ``logger``: Custom logger instance
-- ``logger_params``: Dictionary with logger settings (``name``, ``level``, ``format``)
+- ``logger_params``: Dictionary with logger settings (``name``, ``level``, ``format``).
+  The default level is ``WARNING``. Pass ``{"level": "INFO"}`` or ``{"level": "DEBUG"}`` for more verbose logs.
 
 **Streaming Observability**
 
@@ -82,6 +83,11 @@ Custom Logging
 
     # Pass the logger to the config
     config = Config(logger=logger)
+
+.. note::
+
+   ``DEBUG`` logs can include full request and response bodies, which may contain
+   prompts and other user content. Enable ``DEBUG`` only for troubleshooting.
 
 Advanced Retry Configuration
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -192,7 +198,7 @@ The Config class provides sensible defaults for all parameters:
         timeout=30,                         # 30 second timeout
         logger_params={                     # Default logger settings
             "name": "aidefense",
-            "level": "INFO",
+            "level": "WARNING",
             "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
         },
         retry_config={                      # Default retry settings

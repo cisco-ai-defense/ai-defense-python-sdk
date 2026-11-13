@@ -40,7 +40,7 @@ class BaseConfig(ABC):
     DEFAULT_TOTAL = 3
     DEFAULT_POOL_CONNECTIONS = 10
     DEFAULT_POOL_MAXSIZE = 20
-    DEFAULT_LOG_LEVEL = logging.INFO
+    DEFAULT_LOG_LEVEL = logging.WARNING
     DEFAULT_LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s: %(message)s"
     DEFAULT_NAME = "aidefense_sdk"
     DEFAULT_REGION = "us-west-2"
@@ -283,7 +283,8 @@ class Config(BaseConfig):
         management_base_url (str, optional): Custom base URL for management API endpoint. If provided, takes precedence over region.
         timeout (int, optional): Timeout for HTTP requests in seconds. Default is 30.
         logger (logging.Logger, optional): Optional custom logger instance. If not provided, one is created.
-        logger_params (dict, optional): Parameters for logger creation (`name`, `level`, `format`).
+        logger_params (dict, optional): Parameters for logger creation (`name`, `level`, `format`). Default level is WARNING;
+            pass e.g. {"level": "INFO"} or {"level": "DEBUG"} for more verbose logs.
         tracer (object, optional): Tracer exposing ``start_as_current_span``. Used by streaming inspection.
         metrics (object, optional): Metrics sink exposing the event-stream metric callbacks.
         retry_config (dict, optional): Retry configuration dict (e.g., {"total": 3, "backoff_factor": 0.5, "status_forcelist": [...]}).
@@ -391,7 +392,8 @@ class AsyncConfig(BaseConfig):
         management_base_url (str, optional): Custom base URL for management API endpoint.
         timeout (int, optional): Timeout for HTTP requests in seconds. Default is 30.
         logger (logging.Logger, optional): Optional custom logger instance.
-        logger_params (dict, optional): Parameters for logger creation.
+        logger_params (dict, optional): Parameters for logger creation (`name`, `level`, `format`). Default level is WARNING;
+            pass e.g. {"level": "INFO"} or {"level": "DEBUG"} for more verbose logs.
         tracer (object, optional): Tracer exposing ``start_as_current_span``. Used by streaming inspection.
         metrics (object, optional): Metrics sink exposing the event-stream metric callbacks.
         retry_config (dict, optional): Retry configuration dict.

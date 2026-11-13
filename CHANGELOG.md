@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- Default SDK log level for `Config` and `AsyncConfig` changed from `INFO` to `WARNING`.
+  Use `logger_params={"level": "INFO"}` or pass a custom `logger` for more verbose logs.
+
+### Security
+
+- Async retry logs no longer include the request body or headers; they now log only the
+  attempt number, error type, status code, request ID, and wait time.
+- SDK errors (`ApiError`, `ValidationError`) raised by the async client are no longer
+  logged at ERROR as "unexpected" on every retry attempt.
+- AgentSec gateway error responses are now logged at `DEBUG` instead of `ERROR`, since
+  response bodies may echo user content.
+
 ## [2.3.0] - 2026-10-22
 
 ### Added

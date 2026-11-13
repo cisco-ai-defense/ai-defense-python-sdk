@@ -583,6 +583,29 @@ class TestHandleGatewayCallSync:
         with pytest.raises(SecurityPolicyError):
             _handle_gateway_call_sync({"model": "gpt-4", "messages": []}, False, [], {}, "openai", self._gw(fail_open=False))
 
+    @patch("aidefense.runtime.agentsec.patchers.openai.logger")
+    @patch("httpx.Client")
+    def test_http_error_body_logged_only_at_debug(self, mock_client_cls, mock_logger):
+        secret = "my SSN is 123-45-6789"
+        request = httpx.Request("POST", "https://gw.example.com")
+        response = httpx.Response(500, request=request)
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+        mock_client.post.return_value = MagicMock(status_code=500, text=f'{{"error": "bad input: {secret}"}}')
+        mock_client.post.return_value.raise_for_status.side_effect = httpx.HTTPStatusError("500", request=request, response=response)
+        mock_client_cls.return_value = mock_client
+
+        clear_inspection_context()
+        with pytest.raises(httpx.HTTPStatusError):
+            _handle_gateway_call_sync({"model": "gpt-4", "messages": []}, False, [], {}, "openai", self._gw(fail_open=True))
+
+        error_logs = " ".join(str(c) for c in mock_logger.error.call_args_list + mock_logger.warning.call_args_list)
+        debug_logs = " ".join(str(c) for c in mock_logger.debug.call_args_list)
+        assert "gateway returned 500" in error_logs
+        assert secret not in error_logs
+        assert secret in debug_logs
+
     @patch("httpx.Client")
     def test_azure_url_construction(self, mock_client_cls):
         mock_resp = MagicMock()
