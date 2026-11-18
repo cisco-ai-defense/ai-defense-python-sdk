@@ -48,6 +48,11 @@ def mcp_servers_list() -> str:
     return MCP_SERVERS
 
 
+def mcp_servers_stats() -> str:
+    """Route for getting MCP server stats."""
+    return f"{MCP_SERVERS}:stats"
+
+
 def mcp_server_update_auth_config(server_id: str) -> str:
     """Route for updating MCP server authentication configuration."""
     return f"{MCP_SERVERS}/{server_id}/auth"
