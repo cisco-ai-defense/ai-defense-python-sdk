@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- `MCPScan.list_servers()` and `get_server()` no longer fail with a pydantic
+  `ValidationError` when the API returns MCP servers that are mid multi-step
+  registration (`onboardingStatus: DRAFT`) or registered from a package index
+  (`type: MCP_SERVER_PACKAGE`). Added `OnboardingStatus.DRAFT` and
+  `ListServerType.MCP_SERVER_PACKAGE` to match the published API enums.
+
 ## [2.3.0] - 2026-10-22
 
 ### Added
