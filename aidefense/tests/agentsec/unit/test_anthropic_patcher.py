@@ -87,22 +87,27 @@ class _FakeAsyncMessageStream(_FakeMessageStream):
 
 
 class _FakeStreamManager:
-    def __init__(self, stream):
+    def __init__(self, stream, close_error=None):
         self.stream = stream
+        self._close_error = close_error
+
+    def _close(self):
+        self.stream.closed = True
+        if self._close_error is not None:
+            raise self._close_error
+        return False
 
     def __enter__(self):
         return self.stream
 
     def __exit__(self, exc_type, exc, exc_tb):
-        self.stream.closed = True
-        return False
+        return self._close()
 
     async def __aenter__(self):
         return self.stream
 
     async def __aexit__(self, exc_type, exc, exc_tb):
-        self.stream.closed = True
-        return False
+        return self._close()
 
 
 def _stream_kwargs():
@@ -186,6 +191,37 @@ class TestAnthropicNormalization:
         assert kwargs["messages"] == [prompt]
         assert messages[-1]["role"] == "user"
         assert "123-45-6789" in messages[-1]["content"]
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            None,
+            "Hi",
+            b"Hi",
+            {"role": "user", "content": "Hi"},
+            42,
+            [{"role": "user", "content": "Hi"}],
+            ({"role": "user", "content": "Hi"},),
+        ],
+        ids=["none", "str", "bytes", "dict", "int", "list", "tuple"],
+    )
+    def test_messages_that_need_no_copy_are_left_unchanged(self, value):
+        kwargs = {"messages": value}
+
+        _normalize_kwargs(kwargs)
+
+        assert kwargs["messages"] is value
+
+    def test_missing_messages_key_is_not_added(self):
+        kwargs = {"model": "claude-sonnet"}
+
+        assert _normalize_kwargs(kwargs) == []
+        assert "messages" not in kwargs
+
+    def test_tuple_messages_are_inspected(self):
+        messages = _normalize_kwargs({"messages": ({"role": "user", "content": "Hi"},)})
+
+        assert messages == [{"role": "user", "content": "Hi"}]
 
     def test_gateway_uses_native_messages_endpoint_and_payload(self):
         settings = SimpleNamespace(url="https://gateway.example.com/tenant/connection")
@@ -278,6 +314,24 @@ class TestAnthropicInspection:
         wrapped.assert_not_called()
         request_messages = inspector.inspect_conversation.call_args.args[0]
         assert "123-45-6789" in request_messages[-1]["content"]
+
+    @patch("aidefense.runtime.agentsec.patchers.anthropic._get_inspector")
+    def test_generator_messages_reach_provider_as_inspected_list(self, get_inspector):
+        _enable_api()
+        inspector = MagicMock()
+        inspector.inspect_conversation.return_value = Decision.allow()
+        get_inspector.return_value = inspector
+        prompt = {"role": "user", "content": "Hi"}
+        wrapped = MagicMock(return_value={"content": [{"type": "text", "text": "Hello"}]})
+
+        _wrap_create(
+            wrapped,
+            MagicMock(),
+            (),
+            {"model": "claude-sonnet", "messages": (m for m in [prompt])},
+        )
+
+        assert wrapped.call_args.kwargs["messages"] == [prompt]
 
     @patch("aidefense.runtime.agentsec.patchers.anthropic._get_inspector")
     def test_sync_stream_inspects_accumulated_text(self, get_inspector):
@@ -471,6 +525,43 @@ class TestAnthropicInspection:
         assert inspector.inspect_conversation.call_count == 2
 
     @patch("aidefense.runtime.agentsec.patchers.anthropic._get_inspector")
+    def test_sync_block_is_not_replaced_by_close_error(self, get_inspector):
+        _enable_api(mode="enforce")
+        inspector = MagicMock()
+        inspector.inspect_conversation.side_effect = [
+            Decision.allow(),
+            Decision.block(reasons=["pii"]),
+        ]
+        get_inspector.return_value = inspector
+        fake_manager = _FakeStreamManager(
+            _FakeMessageStream(_SSN_REPLY), close_error=RuntimeError("close failed")
+        )
+        manager = _wrap_stream(MagicMock(return_value=fake_manager), MagicMock(), (), _stream_kwargs())
+
+        with pytest.raises(SecurityPolicyError):
+            with manager:
+                pass
+
+        assert fake_manager.stream.closed is True
+
+    @patch("aidefense.runtime.agentsec.patchers.anthropic._get_inspector")
+    def test_sync_close_error_after_allowed_inspection_propagates(self, get_inspector):
+        _enable_api(mode="enforce")
+        inspector = MagicMock()
+        inspector.inspect_conversation.return_value = Decision.allow()
+        get_inspector.return_value = inspector
+        fake_manager = _FakeStreamManager(
+            _FakeMessageStream(_SSN_REPLY), close_error=RuntimeError("close failed")
+        )
+        manager = _wrap_stream(MagicMock(return_value=fake_manager), MagicMock(), (), _stream_kwargs())
+
+        with pytest.raises(RuntimeError, match="close failed"):
+            with manager:
+                pass
+
+        assert inspector.inspect_conversation.call_count == 2
+
+    @patch("aidefense.runtime.agentsec.patchers.anthropic._get_inspector")
     def test_sync_body_exception_skips_drain_and_keeps_original_error(self, get_inspector):
         _enable_api(mode="enforce", fail_open=False)
         inspector = MagicMock()
@@ -528,6 +619,28 @@ class TestAnthropicInspection:
 
         assert fake_manager.stream.closed is True
         assert inspector.ainspect_conversation.call_count == 2
+
+    @pytest.mark.asyncio
+    @patch("aidefense.runtime.agentsec.patchers.anthropic._get_inspector")
+    async def test_async_block_is_not_replaced_by_close_error(self, get_inspector):
+        _enable_api(mode="enforce")
+        inspector = MagicMock()
+        inspector.ainspect_conversation = AsyncMock(
+            side_effect=[Decision.allow(), Decision.block(reasons=["pii"])]
+        )
+        get_inspector.return_value = inspector
+        fake_manager = _FakeStreamManager(
+            _FakeAsyncMessageStream(_SSN_REPLY), close_error=RuntimeError("close failed")
+        )
+        manager = _wrap_stream_async(
+            MagicMock(return_value=fake_manager), MagicMock(), (), _stream_kwargs()
+        )
+
+        with pytest.raises(SecurityPolicyError):
+            async with manager:
+                pass
+
+        assert fake_manager.stream.closed is True
 
     @pytest.mark.asyncio
     @patch("aidefense.runtime.agentsec.patchers.anthropic._get_inspector")
